@@ -1,9 +1,3 @@
-//! Frontend module for RustPress
-//!
-//! This module contains all frontend components organized into:
-//! - `components/` - Reusable UI components (Nav, Footer, FeatureCard, etc.)
-//! - `pages/` - Page-level components (Landing, Login, Register, Admin, etc.)
-
 pub mod components;
 pub mod pages;
 
@@ -14,26 +8,27 @@ use leptos_router::path;
 
 use pages::{AdminPage, LandingPage, LoginPage, NotFound, RegisterPage};
 
-/// HTML shell for SSR - provides the full document structure
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
         <!DOCTYPE html>
-        <html lang="en">
+        <html lang="en" class="scroll-smooth">
             <head>
                 <meta charset="utf-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <link rel="preconnect" href="https://fonts.googleapis.com"/>
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
                 <AutoReload options=options.clone()/>
                 <HydrationScripts options/>
                 <MetaTags/>
             </head>
-            <body>
+            <body class="bg-slate-950 text-slate-100 antialiased">
                 <App/>
             </body>
         </html>
     }
 }
 
-/// Main application component with routing
 #[component]
 pub fn App() -> impl IntoView {
     provide_meta_context();
@@ -44,7 +39,7 @@ pub fn App() -> impl IntoView {
         <Meta name="description" content="A high-performance, concurrent Content Management System built entirely in Rust"/>
 
         <Router>
-            <main>
+            <main class="min-h-screen">
                 <Routes fallback=|| view! { <NotFound/> }>
                     <Route path=path!("/") view=LandingPage/>
                     <Route path=path!("/login") view=LoginPage/>

@@ -6,27 +6,75 @@ use leptos::prelude::*;
 #[component]
 pub fn RegisterPage() -> impl IntoView {
     view! {
-        <div class="auth-page">
-            <div class="auth-container">
-                <h1>"Create Account"</h1>
-                <p class="auth-subtitle">"Get started with RustPress"</p>
-                <form class="auth-form">
-                    <div class="form-group">
-                        <label for="username">"Username (optional)"</label>
-                        <input type="text" id="username" name="username" placeholder="rustacean"/>
+        <div class="min-h-screen flex items-center justify-center px-6 py-12 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+            <div class="w-full max-w-md">
+                <div class="bg-slate-900/80 backdrop-blur-sm border border-slate-800 rounded-2xl p-8 shadow-xl">
+                    <div class="text-center mb-8">
+                        <a href="/" class="inline-block text-4xl mb-4 hover:animate-bounce">"🦀"</a>
+                        <h1 class="text-2xl font-bold text-white">"Create Account"</h1>
+                        <p class="text-slate-400 mt-2">"Get started with RustPress"</p>
                     </div>
-                    <div class="form-group">
-                        <label for="email">"Email"</label>
-                        <input type="email" id="email" name="email" placeholder="you@example.com" required/>
-                    </div>
-                    <div class="form-group">
-                        <label for="password">"Password"</label>
-                        <input type="password" id="password" name="password" placeholder="••••••••" required/>
-                    </div>
-                    <button type="submit" class="btn-primary btn-full">"Create Account"</button>
-                </form>
-                <p class="auth-link">"Already have an account? "<a href="/login">"Sign in"</a></p>
-                <a href="/" class="back-link">"← Back to home"</a>
+
+                    <form class="space-y-5">
+                        <div>
+                            <label for="username" class="block text-sm font-medium text-slate-300 mb-2">
+                                "Username "<span class="text-slate-500">"(optional)"</span>
+                            </label>
+                            <input
+                                type="text"
+                                id="username"
+                                name="username"
+                                placeholder="rustacean"
+                                class="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700
+                                       text-white placeholder-slate-500
+                                       focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent
+                                       transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-slate-300 mb-2">
+                                "Email"
+                            </label>
+                            <input
+                                type="email"
+                                id="email"
+                                name="email"
+                                placeholder="you@example.com"
+                                required
+                                class="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700
+                                       text-white placeholder-slate-500
+                                       focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent
+                                       transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label for="password" class="block text-sm font-medium text-slate-300 mb-2">
+                                "Password"
+                            </label>
+                            <input
+                                type="password"
+                                id="password"
+                                name="password"
+                                placeholder="••••••••"
+                                required
+                                class="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700
+                                       text-white placeholder-slate-500
+                                       focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent
+                                       transition-all"
+                            />
+                        </div>
+                        <button type="submit" class="btn-primary w-full">"Create Account"</button>
+                    </form>
+
+                    <p class="text-center text-slate-400 mt-6 text-sm">
+                        "Already have an account? "
+                        <a href="/login" class="text-orange-400 hover:text-orange-300 font-medium">"Sign in"</a>
+                    </p>
+                </div>
+
+                <a href="/" class="block text-center text-slate-500 hover:text-slate-300 mt-6 text-sm transition-colors">
+                    "← Back to home"
+                </a>
             </div>
         </div>
     }

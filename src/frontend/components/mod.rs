@@ -1,5 +1,3 @@
-//! Reusable UI components for RustPress frontend
-
 mod feature_card;
 mod footer;
 mod nav;

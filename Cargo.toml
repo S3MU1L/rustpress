@@ -35,10 +35,12 @@ bin-target = "rustpress"
 lib-target = "rustpress"
 site-root = "target/site"
 site-pkg-dir = "pkg"
-style-file = "style/main.css"
 assets-dir = "public"
 site-addr = "127.0.0.1:8080"
 reload-port = 3001
 browserquery = "defaults"
 lib-features = ["hydrate"]
 bin-features = ["ssr"]
+
+tailwind-input-file = "style/tailwind.css"
+tailwind-version = "v4.1.17"
