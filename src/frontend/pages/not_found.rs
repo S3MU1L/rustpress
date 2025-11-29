@@ -1,8 +1,5 @@
-//! 404 Not Found page for RustPress
-
 use leptos::prelude::*;
 
-/// 404 Not Found page component
 #[component]
 pub fn NotFound() -> impl IntoView {
     view! {

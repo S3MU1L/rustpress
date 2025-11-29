@@ -16,7 +16,6 @@ pub fn LandingPage() -> impl IntoView {
                         <span class="w-3 h-3 rounded-full bg-green-500"></span>
                         <span class="ml-4 text-xs text-slate-500 font-mono">"rustpress — bash"</span>
                     </div>
-                    // Terminal Body
                     <div class="p-6 font-mono text-sm text-left space-y-1">
                         <p>
                             <span class="text-green-400">"$ "</span>
@@ -48,17 +47,9 @@ pub fn LandingPage() -> impl IntoView {
 
                 <div class="flex flex-wrap gap-4 justify-center">
                     <a href="/register" class="btn-primary btn-large">"Start Building"</a>
-                    <a
-                        href="https://github.com/S3MU1L/rustpress"
-                        target="_blank"
-                        class="btn-ghost btn-large"
-                    >
-                        "View on GitHub"
-                    </a>
                 </div>
             </section>
 
-            // Features Section
             <section id="features" class="py-20 px-6 bg-slate-900/30">
                 <div class="max-w-6xl mx-auto">
                     <h2 class="text-3xl md:text-4xl font-bold text-center mb-12">
@@ -89,7 +80,6 @@ pub fn LandingPage() -> impl IntoView {
                 </div>
             </section>
 
-            // About Section
             <section id="about" class="py-20 px-6">
                 <div class="max-w-3xl mx-auto text-center">
                     <h2 class="text-3xl md:text-4xl font-bold mb-8">

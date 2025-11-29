@@ -1,8 +1,5 @@
-//! Register page for RustPress
-
 use leptos::prelude::*;
 
-/// Register page component
 #[component]
 pub fn RegisterPage() -> impl IntoView {
     view! {

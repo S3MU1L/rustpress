@@ -1,8 +1,5 @@
-//! Login page for RustPress
-
 use leptos::prelude::*;
 
-/// Login page component
 #[component]
 pub fn LoginPage() -> impl IntoView {
     view! {

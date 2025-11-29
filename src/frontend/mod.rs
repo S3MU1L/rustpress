@@ -6,7 +6,7 @@ use leptos_meta::*;
 use leptos_router::components::*;
 use leptos_router::path;
 
-use pages::{AdminPage, LandingPage, LoginPage, NotFound, RegisterPage};
+use pages::{LandingPage, LoginPage, NotFound, RegisterPage};
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -44,7 +44,6 @@ pub fn App() -> impl IntoView {
                     <Route path=path!("/") view=LandingPage/>
                     <Route path=path!("/login") view=LoginPage/>
                     <Route path=path!("/register") view=RegisterPage/>
-                    <Route path=path!("/admin") view=AdminPage/>
                 </Routes>
             </main>
         </Router>
