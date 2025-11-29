@@ -5,18 +5,7 @@ use leptos::prelude::*;
 /// Currently returns mock data; replace with real backend calls later
 #[server(Login, "/api")]
 pub async fn login(email: String, password: String) -> Result<LoginResponse, ServerFnError> {
-    // Mock implementation - replace with real backend later
-    if email == "demo@rustpress.dev" && password == "demo" {
-        Ok(LoginResponse {
-            user: UserPublic {
-                id: "usr_demo_001".into(),
-                email,
-                username: Some("demo_user".into()),
-            },
-            token: "mock-jwt-token-xyz".into(),
-        })
-    } else if !email.is_empty() && password.len() >= 4 {
-        // Accept any reasonable input for testing
+    if !email.is_empty() && password.len() >= 4 {
         Ok(LoginResponse {
             user: UserPublic {
                 id: format!("usr_{}", &email.chars().take(8).collect::<String>()),
@@ -38,10 +27,6 @@ pub async fn register(
     password: String,
     username: Option<String>,
 ) -> Result<RegisterResponse, ServerFnError> {
-    // Validate input
-    if email.is_empty() || !email.contains('@') {
-        return Err(ServerFnError::new("Invalid email address"));
-    }
     if password.len() < 4 {
         return Err(ServerFnError::new("Password must be at least 4 characters"));
     }
