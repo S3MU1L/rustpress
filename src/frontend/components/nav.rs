@@ -14,8 +14,24 @@ pub fn Nav() -> impl IntoView {
                 <div class="flex items-center gap-6">
                     <a href="#features" class="text-slate-400 hover:text-white transition-colors">"Features"</a>
                     <a href="#about" class="text-slate-400 hover:text-white transition-colors">"About"</a>
-                    <a href="/login" class="btn-ghost text-sm px-4 py-2">"Login"</a>
-                    <a href="/register" class="btn-primary text-sm px-4 py-2">"Get Started"</a>
+                    <a
+                        href="/login"
+                        class="px-5 py-2 text-sm font-semibold rounded-lg border border-slate-700 text-slate-300
+                               hover:border-slate-500 hover:text-white hover:bg-slate-800/50
+                               transition-all duration-200"
+                    >
+                        "Login"
+                    </a>
+                    <a
+                        href="/register"
+                        class="px-5 py-2 text-sm font-semibold rounded-lg
+                               bg-gradient-to-r from-orange-500 to-amber-500 text-white
+                               hover:from-orange-600 hover:to-amber-600
+                               hover:shadow-lg hover:shadow-orange-500/25
+                               transition-all duration-200"
+                    >
+                        "Get Started"
+                    </a>
                 </div>
             </div>
         </nav>

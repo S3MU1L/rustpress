@@ -1,7 +1,29 @@
 use leptos::prelude::*;
 
+use crate::api::Register;
+use crate::frontend::components::{
+    Button, ButtonVariant, EmailInput, ErrorAlert, PasswordInput, SuccessAlert, TextInput,
+};
+
 #[component]
 pub fn RegisterPage() -> impl IntoView {
+    let register_action = ServerAction::<Register>::new();
+
+    let (username, set_username) = signal(String::new());
+    let (email, set_email) = signal(String::new());
+    let (password, set_password) = signal(String::new());
+
+    let pending = register_action.pending();
+    let result = register_action.value();
+
+    let success_message = move || {
+        result
+            .get()
+            .and_then(|r| r.ok().map(|response| response.message))
+    };
+
+    let error_message = move || result.get().and_then(|r| r.err().map(|e| e.to_string()));
+
     view! {
         <div class="min-h-screen flex items-center justify-center px-6 py-12 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
             <div class="w-full max-w-md">
@@ -12,56 +34,42 @@ pub fn RegisterPage() -> impl IntoView {
                         <p class="text-slate-400 mt-2">"Get started with RustPress"</p>
                     </div>
 
-                    <form class="space-y-5">
-                        <div>
-                            <label for="username" class="block text-sm font-medium text-slate-300 mb-2">
-                                "Username "<span class="text-slate-500">"(optional)"</span>
-                            </label>
-                            <input
-                                type="text"
-                                id="username"
-                                name="username"
-                                placeholder="rustacean"
-                                class="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700
-                                       text-white placeholder-slate-500
-                                       focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent
-                                       transition-all"
-                            />
-                        </div>
-                        <div>
-                            <label for="email" class="block text-sm font-medium text-slate-300 mb-2">
-                                "Email"
-                            </label>
-                            <input
-                                type="email"
-                                id="email"
-                                name="email"
-                                placeholder="you@example.com"
-                                required
-                                class="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700
-                                       text-white placeholder-slate-500
-                                       focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent
-                                       transition-all"
-                            />
-                        </div>
-                        <div>
-                            <label for="password" class="block text-sm font-medium text-slate-300 mb-2">
-                                "Password"
-                            </label>
-                            <input
-                                type="password"
-                                id="password"
-                                name="password"
-                                placeholder="••••••••"
-                                required
-                                class="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700
-                                       text-white placeholder-slate-500
-                                       focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent
-                                       transition-all"
-                            />
-                        </div>
-                        <button type="submit" class="btn-primary w-full">"Create Account"</button>
-                    </form>
+                    <Show when=move || success_message().is_some()>
+                        <SuccessAlert message=success_message().unwrap_or_default()>
+                            <a href="/login" class="text-emerald-300 hover:text-emerald-200 font-medium">
+                                "Continue to login →"
+                            </a>
+                        </SuccessAlert>
+                    </Show>
+
+                    <Show when=move || error_message().is_some()>
+                        <ErrorAlert message=error_message().unwrap_or_default() />
+                    </Show>
+
+                    <ActionForm action=register_action attr:class="space-y-5">
+                        <TextInput
+                            label="Username (optional)"
+                            name="username"
+                            placeholder="rustacean"
+                            input_type="text"
+                            value=username
+                            set_value=set_username
+                        />
+                        <EmailInput label="Email" value=email set_value=set_email />
+                        <PasswordInput
+                            label="Password"
+                            hint="Must be at least 4 characters"
+                            value=password
+                            set_value=set_password
+                        />
+                        <Button
+                            variant=ButtonVariant::Primary
+                            loading=pending.get()
+                            loading_text="Creating account..."
+                        >
+                            "Create Account"
+                        </Button>
+                    </ActionForm>
 
                     <p class="text-center text-slate-400 mt-6 text-sm">
                         "Already have an account? "

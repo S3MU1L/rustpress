@@ -12,7 +12,16 @@ pub fn NotFound() -> impl IntoView {
                 <p class="text-slate-400 mb-8 max-w-md">
                     "The page you're looking for doesn't exist or has been moved."
                 </p>
-                <a href="/" class="btn-primary">"Return Home"</a>
+                <a
+                    href="/"
+                    class="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold rounded-lg
+                           bg-gradient-to-r from-orange-500 to-amber-500 text-white
+                           hover:from-orange-600 hover:to-amber-600
+                           hover:shadow-lg hover:shadow-orange-500/25
+                           transition-all duration-200"
+                >
+                    "Return Home"
+                </a>
             </div>
         </div>
     }

@@ -46,7 +46,16 @@ pub fn LandingPage() -> impl IntoView {
                 </p>
 
                 <div class="flex flex-wrap gap-4 justify-center">
-                    <a href="/register" class="btn-primary btn-large">"Start Building"</a>
+                    <a
+                        href="/register"
+                        class="px-10 py-5 text-xl font-semibold rounded-lg
+                               bg-gradient-to-r from-orange-500 to-amber-500 text-white
+                               hover:from-orange-600 hover:to-amber-600
+                               hover:shadow-xl hover:shadow-orange-500/25
+                               transition-all duration-200"
+                    >
+                        "Start Building"
+                    </a>
                 </div>
             </section>
 
