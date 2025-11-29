@@ -1,39 +1,38 @@
-use actix_files as fs;
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
-
-async fn index() -> impl Responder {
-    HttpResponse::Ok()
-        .content_type("text/html; charset=utf-8")
-        .body(include_str!("./templates/index.html"))
-}
-
-async fn admin() -> impl Responder {
-    HttpResponse::Ok()
-        .content_type("text/html; charset=utf-8")
-        .body(include_str!("./templates/admin.html"))
-}
-
-async fn health() -> impl Responder {
-    HttpResponse::Ok().json(serde_json::json!({
-        "status": "ok",
-        "service": "RustPress CMS"
-    }))
-}
-
+#[cfg(feature = "ssr")]
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    println!("🦀 Starting RustPress CMS...");
-    println!("📍 Server running at http://localhost:8080");
-    println!("🔧 Admin console at http://localhost:8080/admin");
+    use actix_files::Files;
+    use actix_web::*;
+    use leptos_actix::{generate_route_list, LeptosRoutes};
+    use rustpress::frontend::{shell, App};
 
-    HttpServer::new(|| {
+    let conf = leptos::config::get_configuration(None).unwrap();
+    let addr = conf.leptos_options.site_addr;
+
+    println!("🦀 Starting RustPress CMS...");
+    println!("📍 Server running at http://{}", addr);
+    println!("🔧 Admin console at http://{}/admin", addr);
+
+    HttpServer::new(move || {
+        let routes = generate_route_list(App);
+        let leptos_options = &conf.leptos_options;
+        let site_root = leptos_options.site_root.clone();
+
         App::new()
-            .route("/", web::get().to(index))
-            .route("/admin", web::get().to(admin))
-            .route("/health", web::get().to(health))
-            .service(fs::Files::new("/static", "./static").show_files_listing())
+            .service(Files::new("/pkg", format!("{}/pkg", site_root)))
+            .leptos_routes(routes, {
+                let leptos_options = leptos_options.clone();
+                move || shell(leptos_options.clone())
+            })
+            .app_data(web::Data::new(leptos_options.clone()))
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind(&addr)?
     .run()
     .await
+}
+
+#[cfg(not(feature = "ssr"))]
+fn main() {
+    // Client-side only - this shouldn't be called directly
+    // The hydrate function in lib.rs handles client-side initialization
 }
