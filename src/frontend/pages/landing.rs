@@ -1,35 +1,13 @@
 use leptos::prelude::*;
 
-/// Feature card component for the features section
-#[component]
-fn FeatureCard(icon: &'static str, title: &'static str, desc: &'static str) -> impl IntoView {
-    view! {
-        <div class="feature-card">
-            <span class="feature-icon">{icon}</span>
-            <h3>{title}</h3>
-            <p>{desc}</p>
-        </div>
-    }
-}
+use crate::frontend::components::{FeatureCard, Footer, Nav};
 
 /// Main landing page component with dark terminal-inspired theme
 #[component]
 pub fn LandingPage() -> impl IntoView {
     view! {
         <div class="landing">
-            // Navigation
-            <nav class="nav">
-                <div class="nav-brand">
-                    <span class="logo">"🦀"</span>
-                    <span class="brand-text">"RustPress"</span>
-                </div>
-                <div class="nav-links">
-                    <a href="#features">"Features"</a>
-                    <a href="#about">"About"</a>
-                    <a href="/login" class="btn-ghost">"Login"</a>
-                    <a href="/register" class="btn-primary">"Get Started"</a>
-                </div>
-            </nav>
+            <Nav/>
 
             // Hero Section
             <section class="hero">
@@ -111,21 +89,7 @@ pub fn LandingPage() -> impl IntoView {
                 </div>
             </section>
 
-            // Footer
-            <footer class="footer">
-                <div class="footer-content">
-                    <p class="footer-brand">"🦀 RustPress"</p>
-                    <p class="footer-tagline">"Modern CMS. Built with Rust."</p>
-                    <div class="footer-links">
-                        <a href="https://github.com/S3MU1L/rustpress" target="_blank">"GitHub"</a>
-                        <span class="divider">"|"</span>
-                        <a href="/admin">"Admin Console"</a>
-                        <span class="divider">"|"</span>
-                        <a href="https://docs.rs" target="_blank">"Documentation"</a>
-                    </div>
-                    <p class="copyright">"© 2024 RustPress Team. MIT License."</p>
-                </div>
-            </footer>
+            <Footer/>
         </div>
     }
 }
