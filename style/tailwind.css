@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+@source "../src/**/*.rs";
+
+@theme {
+    --color-rust-50: #fef3e2;
+    --color-rust-100: #fde4c4;
+    --color-rust-200: #fbc889;
+    --color-rust-300: #f9a94d;
+    --color-rust-400: #f78c1f;
+    --color-rust-500: #e8700a;
+    --color-rust-600: #c95506;
+    --color-rust-700: #a13d09;
+    --color-rust-800: #84310f;
+    --color-rust-900: #6e2a10;
+
+    --font-mono: "JetBrains Mono", "Fira Code", monospace;
+    --font-sans: "Inter", system-ui, sans-serif;
+
+    --animate-blink: blink 1s step-end infinite;
+    --animate-fade-in: fade-in 0.5s ease-out;
+    --animate-slide-up: slide-up 0.5s ease-out;
+
+    @keyframes blink {
+
+        0%,
+        100% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0;
+        }
+    }
+
+    @keyframes fade-in {
+        0% {
+            opacity: 0;
+        }
+
+        100% {
+            opacity: 1;
+        }
+    }
+
+    @keyframes slide-up {
+        0% {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+}
