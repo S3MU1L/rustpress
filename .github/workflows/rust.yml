@@ -44,3 +44,6 @@ jobs:
 
       - name: Build
         run: cargo build --locked --all-targets
+
+      - name: Test
+        run: cargo test --locked --all-targets
