@@ -2000,32 +2000,32 @@ pub mod db_tests {
         let duration = (end - start).num_seconds();
         assert!(duration < TIME_LIMIT, "Get users was too slow");
     }
-
-    #[sqlx::test(migrations = "./tests/migrations")]
-    async fn test_get_users_success_on_created_at(pool: PgPool) {
-        todo!();
-    }
-
-    #[sqlx::test(migrations = "./tests/migrations")]
-    async fn test_get_users_success_on_edited_at(pool: PgPool) {
-        todo!();
-    }
-
-    #[sqlx::test(migrations = "./tests/migrations")]
-    async fn test_get_users_success_on_deleted_at(pool: PgPool) {
-        todo!();
-    }
-
-    #[sqlx::test(migrations = "./tests/migrations")]
-    async fn test_get_users_success_on_sort_by(pool: PgPool) {
-        todo!();
-    }
-
-    #[sqlx::test(migrations = "./tests/migrations")]
-    async fn test_get_users_success_mix(pool: PgPool) {
-        // offset, limit and multiple values
-        todo!();
-    }
+    //
+    // #[sqlx::test(migrations = "./tests/migrations")]
+    // async fn test_get_users_success_on_created_at(pool: PgPool) {
+    //     todo!();
+    // }
+    //
+    // #[sqlx::test(migrations = "./tests/migrations")]
+    // async fn test_get_users_success_on_edited_at(pool: PgPool) {
+    //     todo!();
+    // }
+    //
+    // #[sqlx::test(migrations = "./tests/migrations")]
+    // async fn test_get_users_success_on_deleted_at(pool: PgPool) {
+    //     todo!();
+    // }
+    //
+    // #[sqlx::test(migrations = "./tests/migrations")]
+    // async fn test_get_users_success_on_sort_by(pool: PgPool) {
+    //     todo!();
+    // }
+    //
+    // #[sqlx::test(migrations = "./tests/migrations")]
+    // async fn test_get_users_success_mix(pool: PgPool) {
+    //     // offset, limit and multiple values
+    //     todo!();
+    // }
 
     #[sqlx::test(migrations = "./tests/migrations")]
     async fn test_get_users_failes_when_all_fields_none(
