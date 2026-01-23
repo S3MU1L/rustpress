@@ -1,46 +1,36 @@
 [package]
 name = "rustpress"
 version = "0.1.0"
-edition = "2021"
-
-[lib]
-crate-type = ["cdylib", "rlib"]
+edition = "2024"
+license = "MIT"
+readme = "README.md"
+publish = false
+authors = ["Vladimír Uhlík <514058@mail.muni.cz>", "Peter Rakšány <xraksany@mail.muni.cz>", "Samuel Malec <536542@mail.muni.cz>", "Matej Vavro <536408@mail.muni.cz>"]
 
 [dependencies]
-leptos = { version = "0.8" }
-leptos_router = { version = "0.8" }
-leptos_actix = { version = "0.8", optional = true }
-leptos_meta = { version = "0.8" }
-actix-web = { version = "4.4", optional = true }
-actix-files = { version = "0.6", optional = true }
+# Web
+tokio = { version = "1.49", features = ["macros", "rt-multi-thread"] }
+
+# Database
+sqlx = { version = "0.8.6", features = [
+    "postgres",
+    "runtime-tokio",
+    "macros",
+    "uuid",
+    "chrono",
+    "tls-rustls",
+    "json"
+] }
+
+# Security
+argon2 = { version = "0.5", features = ["password-hash"] }
+
+# Error Handling
+thiserror = "2.0.17"
+
+# Types
+field_names = "0.2"
+uuid = { version = "1.19", features = ["v4", "serde"] }
+chrono = { version = "0.4.42", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "1", features = ["full"], optional = true }
-console_error_panic_hook = "0.1"
-wasm-bindgen = "0.2.106"
-
-[features]
-default = []
-hydrate = ["leptos/hydrate"]
-ssr = [
-    "leptos/ssr",
-    "dep:leptos_actix",
-    "dep:actix-web",
-    "dep:actix-files",
-    "dep:tokio",
-]
-
-[package.metadata.leptos]
-bin-target = "rustpress"
-lib-target = "rustpress"
-site-root = "target/site"
-site-pkg-dir = "pkg"
-assets-dir = "public"
-site-addr = "127.0.0.1:8080"
-reload-port = 3001
-browserquery = "defaults"
-lib-features = ["hydrate"]
-bin-features = ["ssr"]
-
-tailwind-input-file = "style/tailwind.css"
-tailwind-version = "v4.1.17"
