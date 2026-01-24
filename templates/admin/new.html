@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>New {{ kind }} - RustPress</title>
+    <link rel="stylesheet" href="/static/app.css" />
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container">
+        <a class="brand" href="/admin">Admin</a>
+        <nav class="nav">
+          <a href="/">View site</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <h1>New {{ kind }}</h1>
+
+      <form class="card" method="post" action="/admin/{{ kind }}" hx-post="/admin/{{ kind }}" hx-trigger="submit" hx-swap="none">
+        <label>Title
+          <input name="title" required />
+        </label>
+
+        <label>Slug
+          <input name="slug" required placeholder="hello-world" />
+        </label>
+
+        <label>Template
+          <input name="template" value="{{ default_template }}" />
+        </label>
+
+        <label>Content
+          <textarea name="content" rows="14" placeholder="Write something..."></textarea>
+        </label>
+
+        <div class="actions">
+          <button class="button" type="submit">Create draft</button>
+          <a class="button secondary" href="/admin">Cancel</a>
+        </div>
+      </form>
+
+      <p class="muted">HTMX is enabled; on success you’ll be redirected to the editor.</p>
+    </main>
+  </body>
+</html>

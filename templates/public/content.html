@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{{ item.title }} - RustPress</title>
+    <link rel="stylesheet" href="/static/app.css" />
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container">
+        <a class="brand" href="/">RustPress</a>
+        <nav class="nav">
+          <a href="/admin">Admin</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <article class="card">
+        <h1>{{ item.title }}</h1>
+        <p class="muted">/{{ item.slug }} • {{ item.kind }} • {{ item.status }}</p>
+        <div class="prose">
+          <pre class="content">{{ item.content }}</pre>
+        </div>
+      </article>
+    </main>
+  </body>
+</html>

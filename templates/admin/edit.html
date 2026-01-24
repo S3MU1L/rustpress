@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Edit - {{ item.title }} - RustPress</title>
+    <link rel="stylesheet" href="/static/app.css" />
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container">
+        <a class="brand" href="/admin">Admin</a>
+        <nav class="nav">
+          <a href="/">View site</a>
+          {% if item.kind == "post" %}
+            <a href="/post/{{ item.slug }}">View post</a>
+          {% else %}
+            <a href="/p/{{ item.slug }}">View page</a>
+          {% endif %}
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="card-header">
+        <h1>Edit</h1>
+        <span class="badge">{{ item.kind }}</span>
+        <span class="badge">{{ item.status }}</span>
+      </div>
+
+      <form class="card" method="post" action="/admin/edit/{{ item.id }}" hx-post="/admin/edit/{{ item.id }}" hx-target="body" hx-swap="outerHTML">
+        <label>Title
+          <input name="title" value="{{ item.title }}" />
+        </label>
+
+        <label>Slug
+          <input name="slug" value="{{ item.slug }}" />
+        </label>
+
+        <label>Template
+          <input name="template" value="{{ item.template }}" />
+        </label>
+
+        <label>Status
+          <select name="status">
+            <option value="draft" {% if item.status == "draft" %}selected{% endif %}>draft</option>
+            <option value="published" {% if item.status == "published" %}selected{% endif %}>published</option>
+          </select>
+        </label>
+
+        <label>Content
+          <textarea name="content" rows="16">{{ item.content }}</textarea>
+        </label>
+
+        <div class="actions">
+          <button class="button" type="submit">Save</button>
+          <button class="button" type="button" hx-post="/admin/publish/{{ item.id }}" hx-target="body" hx-swap="outerHTML">Publish</button>
+          <a class="button secondary" href="/admin">Back</a>
+        </div>
+      </form>
+
+      <p class="muted">Tip: publishing sets status to published and stamps published_at.</p>
+    </main>
+  </body>
+</html>
