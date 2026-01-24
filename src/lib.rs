@@ -1,5 +1,8 @@
 pub mod api;
+pub mod common;
+pub mod db;
 pub mod frontend;
+pub mod models;
 pub mod types;
 
 /// WASM hydration entry point
