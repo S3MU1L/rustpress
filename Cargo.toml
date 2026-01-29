@@ -5,15 +5,29 @@ edition = "2024"
 license = "MIT"
 readme = "README.md"
 publish = false
-authors = ["Vladimír Uhlík <514058@mail.muni.cz>", "Peter Rakšány <xraksany@mail.muni.cz>", "Samuel Malec <536542@mail.muni.cz>", "Matej Vavro <536408@mail.muni.cz>"]
+authors = [
+    "Vladimír Uhlík <514058@mail.muni.cz>",
+    "Peter Rakšány <xraksany@mail.muni.cz>",
+    "Samuel Malec <536542@mail.muni.cz>",
+    "Matej Vavro <536408@mail.muni.cz>",
+]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+# Frontend
+leptos = { version = "0.8" }
+leptos_router = { version = "0.8" }
+leptos_actix = { version = "0.8", optional = true }
+leptos_meta = { version = "0.8" }
+console_error_panic_hook = "0.1"
+wasm-bindgen = "0.2.106"
+
 # Web
-tokio = { version = "1.49", features = ["macros", "rt-multi-thread"] }
-actix-web = "4.11.0"
-actix-files = "0.6.8"
-dotenvy = "0.15.7"
-askama = "0.12.1"
+actix-web = { version = "4.4", optional = true }
+actix-files = { version = "0.6", optional = true }
+tokio = { version = "1.49", features = ["full"], optional = true }
 
 # Database
 sqlx = { version = "0.8.6", features = [
@@ -23,7 +37,7 @@ sqlx = { version = "0.8.6", features = [
     "uuid",
     "chrono",
     "tls-rustls",
-    "json"
+    "json",
 ] }
 
 # Security
@@ -38,3 +52,29 @@ uuid = { version = "1.19", features = ["v4", "serde"] }
 chrono = { version = "0.4.42", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+
+[features]
+default = ["tokio"]
+hydrate = ["leptos/hydrate"]
+ssr = [
+    "leptos/ssr",
+    "dep:leptos_actix",
+    "dep:actix-web",
+    "dep:actix-files",
+    "tokio",
+]
+
+[package.metadata.leptos]
+bin-target = "rustpress"
+lib-target = "rustpress"
+site-root = "target/site"
+site-pkg-dir = "pkg"
+assets-dir = "public"
+site-addr = "127.0.0.1:8080"
+reload-port = 3001
+browserquery = "defaults"
+lib-features = ["hydrate"]
+bin-features = ["ssr"]
+
+tailwind-input-file = "style/tailwind.css"
+tailwind-version = "v4.1.17"
