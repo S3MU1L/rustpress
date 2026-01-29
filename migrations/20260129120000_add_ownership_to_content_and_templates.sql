@@ -8,11 +8,21 @@
 ALTER TABLE site_templates
 ADD COLUMN IF NOT EXISTS owner_user_id uuid;
 
-ALTER TABLE site_templates
-ADD CONSTRAINT IF NOT EXISTS fk_site_templates_owner_user
-FOREIGN KEY (owner_user_id)
-REFERENCES users(id)
-ON DELETE CASCADE;
+DO $$
+BEGIN
+	IF NOT EXISTS (
+		SELECT 1
+		FROM pg_constraint
+		WHERE conname = 'fk_site_templates_owner_user'
+	) THEN
+		ALTER TABLE site_templates
+		ADD CONSTRAINT fk_site_templates_owner_user
+		FOREIGN KEY (owner_user_id)
+		REFERENCES users(id)
+		ON DELETE CASCADE;
+	END IF;
+END
+$$;
 
 -- The original schema had a global UNIQUE(name). Remove it so users can reuse names.
 ALTER TABLE site_templates
@@ -34,11 +44,21 @@ ON site_templates(owner_user_id);
 ALTER TABLE content_items
 ADD COLUMN IF NOT EXISTS owner_user_id uuid;
 
-ALTER TABLE content_items
-ADD CONSTRAINT IF NOT EXISTS fk_content_items_owner_user
-FOREIGN KEY (owner_user_id)
-REFERENCES users(id)
-ON DELETE SET NULL;
+DO $$
+BEGIN
+	IF NOT EXISTS (
+		SELECT 1
+		FROM pg_constraint
+		WHERE conname = 'fk_content_items_owner_user'
+	) THEN
+		ALTER TABLE content_items
+		ADD CONSTRAINT fk_content_items_owner_user
+		FOREIGN KEY (owner_user_id)
+		REFERENCES users(id)
+		ON DELETE SET NULL;
+	END IF;
+END
+$$;
 
 CREATE INDEX IF NOT EXISTS idx_content_items_owner
 ON content_items(owner_user_id);
