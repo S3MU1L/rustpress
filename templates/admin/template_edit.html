@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Edit template - {{ template.name }} - RustPress</title>
+    <link rel="stylesheet" href="/static/app.css" />
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container">
+        <a class="brand" href="/admin/templates">Templates</a>
+        <nav class="nav">
+          <a href="/admin">Dashboard</a>
+          <a href="/">View site</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="card-header">
+        <h1>Edit template</h1>
+        {% if template.is_builtin %}
+          <span class="badge">built-in</span>
+        {% else %}
+          <span class="badge">custom</span>
+        {% endif %}
+      </div>
+
+      <form class="card" method="post" action="/admin/templates/{{ template.id }}" hx-post="/admin/templates/{{ template.id }}" hx-target="body" hx-swap="outerHTML">
+        <label>Name
+          <input name="name" value="{{ template.name }}" {% if template.is_builtin %}disabled{% endif %} />
+        </label>
+
+        <label>Description
+          <input name="description" value="{{ template.description }}" />
+        </label>
+
+        <label>HTML
+          <textarea name="html" rows="18" {% if template.is_builtin %}disabled{% endif %}>{{ template.html }}</textarea>
+        </label>
+
+        <div class="actions">
+          <button class="button" type="submit">Save</button>
+          <a class="button secondary" href="/admin/templates">Back</a>
+        </div>
+      </form>
+
+      {% if template.is_builtin %}
+        <p class="muted">Built-in templates are read-only (copy it into a new custom template if needed).</p>
+      {% else %}
+        <p class="muted">Placeholders: <code>{{"{{title}}"}}</code>, <code>{{"{{content}}"}}</code>, <code>{{"{{slug}}"}}</code>, <code>{{"{{kind}}"}}</code></p>
+      {% endif %}
+    </main>
+  </body>
+</html>
