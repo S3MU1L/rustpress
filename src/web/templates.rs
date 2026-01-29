@@ -1,6 +1,7 @@
 use askama::Template;
 
 use rustpress::models::ContentItem;
+use rustpress::models::SiteTemplate;
 
 #[derive(Template)]
 #[template(path = "public/index.html")]
@@ -11,7 +12,7 @@ pub struct PublicIndexTemplate {
 #[derive(Template)]
 #[template(path = "public/content.html")]
 pub struct PublicContentTemplate {
-    pub item: ContentItem,
+    pub html: String,
 }
 
 #[derive(Template)]
@@ -32,6 +33,7 @@ pub struct AdminDashboardTemplate {
 #[template(path = "admin/edit.html")]
 pub struct AdminEditTemplate {
     pub item: ContentItem,
+    pub templates: Vec<SiteTemplate>,
 }
 
 #[derive(Template)]
@@ -39,4 +41,23 @@ pub struct AdminEditTemplate {
 pub struct AdminNewTemplate {
     pub kind: String,
     pub default_template: String,
+    pub templates: Vec<SiteTemplate>,
+}
+
+#[derive(Template)]
+#[template(path = "admin/templates_list.html")]
+pub struct AdminTemplatesListTemplate {
+    pub templates: Vec<SiteTemplate>,
+}
+
+#[derive(Template)]
+#[template(path = "admin/template_new.html")]
+pub struct AdminTemplateNewTemplate {
+    pub starter_html: String,
+}
+
+#[derive(Template)]
+#[template(path = "admin/template_edit.html")]
+pub struct AdminTemplateEditTemplate {
+    pub template: SiteTemplate,
 }
