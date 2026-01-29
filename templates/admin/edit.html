@@ -29,40 +29,68 @@
         <span class="badge">{{ item.status }}</span>
       </div>
 
-      <form class="card" method="post" action="/admin/edit/{{ item.id }}" hx-post="/admin/edit/{{ item.id }}" hx-target="body" hx-swap="outerHTML">
-        <label>Title
-          <input name="title" value="{{ item.title }}" />
-        </label>
+      <div class="editor-grid">
+        <form id="edit-form" class="card" method="post" action="/admin/edit/{{ item.id }}" hx-post="/admin/edit/{{ item.id }}" hx-target="body" hx-swap="outerHTML">
+          <label>Title
+            <input id="title" name="title" value="{{ item.title }}" />
+          </label>
 
-        <label>Slug
-          <input name="slug" value="{{ item.slug }}" />
-        </label>
+          <label>Slug
+            <input id="slug" name="slug" value="{{ item.slug }}" />
+          </label>
 
-        <label>Template
-          <select name="template">
-            {% for t in templates %}
-              <option value="{{ t.name }}" {% if t.name == item.template %}selected{% endif %}>{{ t.name }}</option>
-            {% endfor %}
-          </select>
-        </label>
+          <label>Template
+            <select name="template">
+              {% for t in templates %}
+                <option value="{{ t.name }}" {% if t.name == item.template %}selected{% endif %}>{{ t.name }}</option>
+              {% endfor %}
+            </select>
+          </label>
 
-        <label>Status
-          <select name="status">
-            <option value="draft" {% if item.status == "draft" %}selected{% endif %}>draft</option>
-            <option value="published" {% if item.status == "published" %}selected{% endif %}>published</option>
-          </select>
-        </label>
+          <label>Status
+            <select name="status">
+              <option value="draft" {% if item.status == "draft" %}selected{% endif %}>draft</option>
+              <option value="published" {% if item.status == "published" %}selected{% endif %}>published</option>
+            </select>
+          </label>
 
-        <label>Content
-          <textarea name="content" rows="16">{{ item.content }}</textarea>
-        </label>
+          <label>Content
+            <textarea id="editor" name="content" rows="18">{{ item.content }}</textarea>
+          </label>
 
-        <div class="actions">
-          <button class="button" type="submit">Save</button>
-          <button class="button" type="button" hx-post="/admin/publish/{{ item.id }}" hx-target="body" hx-swap="outerHTML">Publish</button>
-          <a class="button secondary" href="/admin">Back</a>
+          <div class="actions">
+            <button class="button" type="submit">Save</button>
+            <button class="button" type="button" hx-post="/admin/publish/{{ item.id }}" hx-target="body" hx-swap="outerHTML">Publish</button>
+            <a class="button secondary" href="/admin">Back</a>
+          </div>
+
+          <div
+            id="autosave"
+            class="muted"
+            hx-post="/admin/edit/{{ item.id }}/autosave"
+            hx-trigger="keyup changed delay:1s from:#editor, keyup changed delay:1s from:#title, keyup changed delay:1s from:#slug, change delay:1s from:select[name='template']"
+            hx-include="#edit-form"
+            hx-swap="innerHTML"
+          ></div>
+        </form>
+
+        <div class="card">
+          <div class="card-header">
+            <h2>Live preview</h2>
+            <span class="badge">HTMX</span>
+          </div>
+          <div
+            id="preview"
+            hx-post="/admin/edit/{{ item.id }}/preview"
+            hx-trigger="load, keyup changed delay:450ms from:#editor, keyup changed delay:450ms from:#title, keyup changed delay:450ms from:#slug, change from:select[name='template']"
+            hx-include="#edit-form"
+            hx-swap="innerHTML"
+          >
+            <p class="muted">Loading preview…</p>
+          </div>
+          <p class="muted">Tip: preview updates as you type; autosave runs in the background.</p>
         </div>
-      </form>
+      </div>
 
       <p class="muted">Tip: publishing sets status to published and stamps published_at.</p>
     </main>

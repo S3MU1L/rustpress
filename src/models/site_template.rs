@@ -6,6 +6,7 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct SiteTemplate {
     pub id: Uuid,
+    pub owner_user_id: Option<Uuid>,
     pub name: String,
     pub description: String,
     pub html: String,
@@ -16,6 +17,7 @@ pub struct SiteTemplate {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SiteTemplateCreate {
+    pub owner_user_id: Uuid,
     pub name: String,
     pub description: String,
     pub html: String,

@@ -7,11 +7,12 @@ use crate::models::{ContentCreate, ContentItem, ContentKind, ContentStatus, Cont
 pub async fn create_content(pool: &PgPool, data: &ContentCreate) -> Result<ContentItem, sqlx::Error> {
     sqlx::query_as::<_, ContentItem>(
         r#"
-        INSERT INTO content_items (kind, status, title, slug, content, template)
-        VALUES ($1, 'draft', $2, $3, $4, $5)
+        INSERT INTO content_items (owner_user_id, kind, status, title, slug, content, template)
+        VALUES ($1, $2, 'draft', $3, $4, $5, $6)
         RETURNING *
         "#,
     )
+    .bind(data.owner_user_id)
     .bind(data.kind.as_str())
     .bind(&data.title)
     .bind(&data.slug)

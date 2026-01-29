@@ -1,5 +1,6 @@
 use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use askama::Template;
+use chrono::Utc;
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -20,6 +21,27 @@ fn is_htmx(req: &HttpRequest) -> bool {
         .get("HX-Request")
         .and_then(|v| v.to_str().ok())
         .is_some_and(|s| s.eq_ignore_ascii_case("true"))
+}
+
+fn current_user_id(req: &HttpRequest) -> Option<Uuid> {
+    // Temporary user identification mechanism until full auth/session exists.
+    // Priority: request header -> env var.
+    let header_val = req
+        .headers()
+        .get("X-Rustpress-User-Id")
+        .or_else(|| req.headers().get("X-User-Id"))
+        .and_then(|v| v.to_str().ok())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .and_then(|s| Uuid::parse_str(s).ok());
+
+    header_val.or_else(|| {
+        std::env::var("RUSTPRESS_USER_ID")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .and_then(|s| Uuid::parse_str(&s).ok())
+    })
 }
 
 fn render<T: Template>(t: T) -> HttpResponse {
@@ -46,6 +68,15 @@ fn escape_html(input: &str) -> String {
         }
     }
     out
+}
+
+fn iframe_srcdoc(html: &str) -> String {
+    // `srcdoc` is an attribute; escape enough to keep it valid.
+    // Browsers will decode entities inside attributes.
+    format!(
+        r#"<iframe class=\"preview-iframe\" sandbox=\"allow-same-origin\" referrerpolicy=\"no-referrer\" srcdoc=\"{}\"></iframe>"#,
+        escape_html(html)
+    )
 }
 
 fn apply_site_template(template_html: &str, title: &str, content_html: &str, slug: &str, kind: &str) -> String {
@@ -96,15 +127,35 @@ pub async fn public_post(
 
     match maybe {
         Some(item) => {
-            let mut tpl = db::get_site_template_by_name(&state.pool, &item.template)
+            let mut tpl = match item.owner_user_id {
+                Some(owner_id) => db::get_site_template_by_name_for_user(
+                    &state.pool,
+                    owner_id,
+                    &item.template,
+                )
                 .await
                 .ok()
-                .flatten();
-            if tpl.is_none() {
-                tpl = db::get_site_template_by_name(&state.pool, "default")
+                .flatten(),
+                None => db::get_site_template_by_name(&state.pool, &item.template)
                     .await
                     .ok()
-                    .flatten();
+                    .flatten(),
+            };
+            if tpl.is_none() {
+                tpl = match item.owner_user_id {
+                    Some(owner_id) => db::get_site_template_by_name_for_user(
+                        &state.pool,
+                        owner_id,
+                        "default",
+                    )
+                    .await
+                    .ok()
+                    .flatten(),
+                    None => db::get_site_template_by_name(&state.pool, "default")
+                        .await
+                        .ok()
+                        .flatten(),
+                };
             }
 
             let html = match tpl {
@@ -143,15 +194,35 @@ pub async fn public_page(
 
     match maybe {
         Some(item) => {
-            let mut tpl = db::get_site_template_by_name(&state.pool, &item.template)
+            let mut tpl = match item.owner_user_id {
+                Some(owner_id) => db::get_site_template_by_name_for_user(
+                    &state.pool,
+                    owner_id,
+                    &item.template,
+                )
                 .await
                 .ok()
-                .flatten();
-            if tpl.is_none() {
-                tpl = db::get_site_template_by_name(&state.pool, "default")
+                .flatten(),
+                None => db::get_site_template_by_name(&state.pool, &item.template)
                     .await
                     .ok()
-                    .flatten();
+                    .flatten(),
+            };
+            if tpl.is_none() {
+                tpl = match item.owner_user_id {
+                    Some(owner_id) => db::get_site_template_by_name_for_user(
+                        &state.pool,
+                        owner_id,
+                        "default",
+                    )
+                    .await
+                    .ok()
+                    .flatten(),
+                    None => db::get_site_template_by_name(&state.pool, "default")
+                        .await
+                        .ok()
+                        .flatten(),
+                };
             }
 
             let html = match tpl {
@@ -192,6 +263,7 @@ pub async fn admin_dashboard(state: web::Data<AppState>) -> impl Responder {
 #[get("/admin/{kind}/new")]
 pub async fn admin_new(
     state: web::Data<AppState>,
+    req: HttpRequest,
     path: web::Path<String>,
 ) -> impl Responder {
     let kind = path.into_inner();
@@ -199,9 +271,14 @@ pub async fn admin_new(
         return HttpResponse::NotFound().body("Unknown kind");
     }
 
-    let templates = db::list_site_templates(&state.pool)
-        .await
-        .unwrap_or_default();
+    let templates = match current_user_id(&req) {
+        Some(uid) => db::list_site_templates_for_user(&state.pool, uid)
+            .await
+            .unwrap_or_default(),
+        None => db::list_site_templates(&state.pool)
+            .await
+            .unwrap_or_default(),
+    };
 
     render(AdminNewTemplate {
         kind,
@@ -232,6 +309,7 @@ pub async fn admin_create(
     };
 
     let data = ContentCreate {
+        owner_user_id: current_user_id(&req),
         kind,
         title: form.title.trim().to_string(),
         slug: form.slug.trim().to_string(),
@@ -265,6 +343,7 @@ pub async fn admin_create(
 #[get("/admin/edit/{id}")]
 pub async fn admin_edit(
     state: web::Data<AppState>,
+    req: HttpRequest,
     path: web::Path<Uuid>,
 ) -> impl Responder {
     let id = path.into_inner();
@@ -274,17 +353,33 @@ pub async fn admin_edit(
         Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
     };
 
-    let templates = db::list_site_templates(&state.pool)
-        .await
-        .unwrap_or_default();
+    let templates = match item.owner_user_id.or_else(|| current_user_id(&req)) {
+        Some(uid) => db::list_site_templates_for_user(&state.pool, uid)
+            .await
+            .unwrap_or_default(),
+        None => db::list_site_templates(&state.pool)
+            .await
+            .unwrap_or_default(),
+    };
     render(AdminEditTemplate { item, templates })
 }
 
 #[get("/admin/templates")]
-pub async fn admin_templates_list(state: web::Data<AppState>) -> impl Responder {
-    let templates = db::list_site_templates(&state.pool)
-        .await
-        .unwrap_or_default();
+pub async fn admin_templates_list(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+) -> impl Responder {
+    let templates = match current_user_id(&req) {
+        Some(uid) => db::list_site_templates_for_user(&state.pool, uid)
+            .await
+            .unwrap_or_default(),
+        None => db::list_site_templates(&state.pool)
+            .await
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|t| t.owner_user_id.is_none())
+            .collect(),
+    };
     render(AdminTemplatesListTemplate { templates })
 }
 
@@ -307,7 +402,19 @@ pub async fn admin_template_create(
     req: HttpRequest,
     form: web::Form<AdminTemplateCreateForm>,
 ) -> impl Responder {
+    let owner_user_id = match current_user_id(&req) {
+        Some(uid) => uid,
+        None => {
+            return HttpResponse::BadRequest()
+                .content_type("text/plain; charset=utf-8")
+                .body(
+                    "Missing user context. Set header X-Rustpress-User-Id or env RUSTPRESS_USER_ID (UUID).",
+                );
+        }
+    };
+
     let data = rustpress::models::SiteTemplateCreate {
+        owner_user_id,
         name: form.name.trim().to_string(),
         description: form.description.clone().unwrap_or_default(),
         html: form.html.clone(),
@@ -336,6 +443,7 @@ pub async fn admin_template_create(
 #[get("/admin/templates/{id}")]
 pub async fn admin_template_edit(
     state: web::Data<AppState>,
+    req: HttpRequest,
     path: web::Path<Uuid>,
 ) -> impl Responder {
     let id = path.into_inner();
@@ -344,6 +452,23 @@ pub async fn admin_template_edit(
         Ok(None) => return HttpResponse::NotFound().body("Not found"),
         Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
     };
+
+    if !template.is_builtin {
+        let uid = match current_user_id(&req) {
+            Some(uid) => uid,
+            None => {
+                return HttpResponse::BadRequest()
+                    .content_type("text/plain; charset=utf-8")
+                    .body(
+                        "Missing user context. Set header X-Rustpress-User-Id or env RUSTPRESS_USER_ID (UUID).",
+                    );
+            }
+        };
+
+        if template.owner_user_id != Some(uid) {
+            return HttpResponse::Forbidden().body("Forbidden");
+        }
+    }
     render(AdminTemplateEditTemplate { template })
 }
 
@@ -362,6 +487,31 @@ pub async fn admin_template_update(
     form: web::Form<AdminTemplateUpdateForm>,
 ) -> impl Responder {
     let id = path.into_inner();
+
+    let existing = match db::get_site_template_by_id(&state.pool, id).await {
+        Ok(Some(t)) => t,
+        Ok(None) => return HttpResponse::NotFound().body("Not found"),
+        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+    };
+
+    if existing.is_builtin {
+        return HttpResponse::Forbidden().body("Built-in templates are read-only");
+    }
+
+    let uid = match current_user_id(&req) {
+        Some(uid) => uid,
+        None => {
+            return HttpResponse::BadRequest()
+                .content_type("text/plain; charset=utf-8")
+                .body(
+                    "Missing user context. Set header X-Rustpress-User-Id or env RUSTPRESS_USER_ID (UUID).",
+                );
+        }
+    };
+
+    if existing.owner_user_id != Some(uid) {
+        return HttpResponse::Forbidden().body("Forbidden");
+    }
     let update = rustpress::models::SiteTemplateUpdate {
         name: form.name.as_ref().map(|s| s.trim().to_string()),
         description: form.description.clone(),
@@ -433,9 +583,14 @@ pub async fn admin_update(
     };
 
     if is_htmx(&req) {
-        let templates = db::list_site_templates(&state.pool)
-            .await
-            .unwrap_or_default();
+        let templates = match updated.owner_user_id.or_else(|| current_user_id(&req)) {
+            Some(uid) => db::list_site_templates_for_user(&state.pool, uid)
+                .await
+                .unwrap_or_default(),
+            None => db::list_site_templates(&state.pool)
+                .await
+                .unwrap_or_default(),
+        };
         render(AdminEditTemplate {
             item: updated,
             templates,
@@ -466,9 +621,14 @@ pub async fn admin_publish(
     };
 
     if is_htmx(&req) {
-        let templates = db::list_site_templates(&state.pool)
-            .await
-            .unwrap_or_default();
+        let templates = match published.owner_user_id.or_else(|| current_user_id(&req)) {
+            Some(uid) => db::list_site_templates_for_user(&state.pool, uid)
+                .await
+                .unwrap_or_default(),
+            None => db::list_site_templates(&state.pool)
+                .await
+                .unwrap_or_default(),
+        };
         render(AdminEditTemplate {
             item: published,
             templates,
@@ -480,6 +640,128 @@ pub async fn admin_publish(
     }
 }
 
+#[derive(serde::Deserialize)]
+pub struct AdminLiveForm {
+    pub title: Option<String>,
+    pub slug: Option<String>,
+    pub content: Option<String>,
+    pub template: Option<String>,
+}
+
+#[post("/admin/edit/{id}/autosave")]
+pub async fn admin_autosave(
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    form: web::Form<AdminLiveForm>,
+) -> impl Responder {
+    let id = path.into_inner();
+
+    // Autosave should never implicitly publish.
+    let update = ContentUpdate {
+        title: form.title.as_ref().map(|s| s.trim().to_string()),
+        slug: form.slug.as_ref().map(|s| s.trim().to_string()),
+        content: form.content.clone(),
+        template: form.template.as_ref().map(|s| s.trim().to_string()),
+        status: None,
+    };
+
+    match db::update_content(&state.pool, id, &update).await {
+        Ok(Some(_)) => HttpResponse::Ok()
+            .content_type("text/html; charset=utf-8")
+            .body(format!(
+                "<span class=\"muted\">Autosaved at {}</span>",
+                Utc::now().format("%H:%M:%S")
+            )),
+        Ok(None) => HttpResponse::NotFound().body("Not found"),
+        Err(e) => HttpResponse::BadRequest()
+            .content_type("text/html; charset=utf-8")
+            .body(format!(
+                "<span class=\"muted\">Autosave failed: {}</span>",
+                escape_html(&e.to_string())
+            )),
+    }
+}
+
+#[post("/admin/edit/{id}/preview")]
+pub async fn admin_preview(
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    form: web::Form<AdminLiveForm>,
+) -> impl Responder {
+    let id = path.into_inner();
+    let item = match db::get_content_by_id(&state.pool, id).await {
+        Ok(Some(item)) => item,
+        Ok(None) => return HttpResponse::NotFound().body("Not found"),
+        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+    };
+
+    let title = form
+        .title
+        .as_ref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| item.title.clone());
+    let slug = form
+        .slug
+        .as_ref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| item.slug.clone());
+    let content = form.content.clone().unwrap_or_else(|| item.content.clone());
+    let template_name = form
+        .template
+        .as_ref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| item.template.clone());
+
+    let mut tpl = match item.owner_user_id {
+        Some(owner_id) => db::get_site_template_by_name_for_user(
+            &state.pool,
+            owner_id,
+            &template_name,
+        )
+        .await
+        .ok()
+        .flatten(),
+        None => db::get_site_template_by_name(&state.pool, &template_name)
+            .await
+            .ok()
+            .flatten(),
+    };
+    if tpl.is_none() {
+        tpl = match item.owner_user_id {
+            Some(owner_id) => db::get_site_template_by_name_for_user(
+                &state.pool,
+                owner_id,
+                "default",
+            )
+            .await
+            .ok()
+            .flatten(),
+            None => db::get_site_template_by_name(&state.pool, "default")
+                .await
+                .ok()
+                .flatten(),
+        };
+    }
+
+    let html = match tpl {
+        Some(tpl) => apply_site_template(&tpl.html, &title, &content, &slug, &item.kind),
+        None => apply_site_template(
+            "<!doctype html><html><head><meta charset=\"utf-8\"><title>{{title}}</title></head><body><h1>{{title}}</h1>{{content}}</body></html>",
+            &title,
+            &content,
+            &slug,
+            &item.kind,
+        ),
+    };
+
+    HttpResponse::Ok()
+        .content_type("text/html; charset=utf-8")
+        .body(iframe_srcdoc(&html))
+}
+
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(public_index)
         .service(public_post)
@@ -489,10 +771,12 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(admin_create)
         .service(admin_edit)
         .service(admin_update)
-    .service(admin_publish)
-    .service(admin_templates_list)
-    .service(admin_template_new)
-    .service(admin_template_create)
-    .service(admin_template_edit)
-    .service(admin_template_update);
+        .service(admin_publish)
+        .service(admin_autosave)
+        .service(admin_preview)
+        .service(admin_templates_list)
+        .service(admin_template_new)
+        .service(admin_template_create)
+        .service(admin_template_edit)
+        .service(admin_template_update);
 }

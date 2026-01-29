@@ -38,6 +38,7 @@ impl ContentStatus {
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct ContentItem {
     pub id: Uuid,
+    pub owner_user_id: Option<Uuid>,
     pub kind: String,
     pub status: String,
     pub title: String,
@@ -51,6 +52,7 @@ pub struct ContentItem {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContentCreate {
+    pub owner_user_id: Option<Uuid>,
     pub kind: ContentKind,
     pub title: String,
     pub slug: String,
