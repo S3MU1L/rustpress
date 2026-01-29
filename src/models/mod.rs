@@ -1,5 +1,3 @@
-pub use {content::*, site_template::*, user::*};
+pub use user::*;
 
-mod content;
-mod site_template;
 mod user;

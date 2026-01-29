@@ -10,10 +10,6 @@ authors = ["Vladimír Uhlík <514058@mail.muni.cz>", "Peter Rakšány <xraksany@
 [dependencies]
 # Web
 tokio = { version = "1.49", features = ["macros", "rt-multi-thread"] }
-actix-web = "4.11.0"
-actix-files = "0.6.8"
-dotenvy = "0.15.7"
-askama = "0.12.1"
 
 # Database
 sqlx = { version = "0.8.6", features = [

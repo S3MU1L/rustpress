@@ -39,15 +39,16 @@ impl Database {
         &mut self,
         data: &UserCreate,
     ) -> Result<User, UserError> {
-        let user = sqlx::query_as::<_, User>(
+        let user = sqlx::query_as!(
+            User,
             r#"
             INSERT INTO users (email, password_hash) VALUES ($1, $2)
             ON CONFLICT (email) DO NOTHING
             RETURNING *
             "#,
+            data.email,
+            data.password_hash,
         )
-        .bind(&data.email)
-        .bind(&data.password_hash)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -69,11 +70,12 @@ impl Database {
             UserIden::Email(email) => (None, Some(email.clone())),
         };
 
-        let result = sqlx::query_as::<_, User>(
+        let result = sqlx::query_as!(
+            User,
             r#"SELECT * FROM users WHERE id = $1 OR email = $2"#,
+            id,
+            email
         )
-        .bind(id)
-        .bind(email)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -203,7 +205,8 @@ impl Database {
             ));
         }
 
-        let result = sqlx::query_as::<_, User>(
+        let result = sqlx::query_as!(
+            User,
             r#"
             UPDATE users
             SET
@@ -222,10 +225,10 @@ impl Database {
             WHERE id = $3
             RETURNING *
             "#,
+            data.email,
+            data.password_hash,
+            data.id
         )
-        .bind(data.email.as_deref())
-        .bind(data.password_hash.as_deref())
-        .bind(data.id)
         .fetch_optional(&self.pool)
         .await;
 
@@ -267,7 +270,8 @@ impl Database {
             UserIden::Email(email) => (None, Some(email.clone())),
         };
 
-        let result = sqlx::query_as::<_, UserWithOldState>(
+        let result = sqlx::query_as!(
+            UserWithOldState,
             r#"
             WITH old_state AS (
                 SELECT id, edited_at FROM users
@@ -289,13 +293,13 @@ impl Database {
             )
             SELECT
                 u.*,
-                os.edited_at AS old_edited_at
+                os.edited_at AS "old_edited_at"
             FROM updated_state u
             JOIN old_state os ON u.id = os.id
             "#,
+            id,
+            email
         )
-        .bind(id)
-        .bind(email)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -317,7 +321,8 @@ impl Database {
             UserIden::Email(email) => (None, Some(email.clone())),
         };
 
-        let user = sqlx::query_as::<_, User>(
+        let user = sqlx::query_as!(
+            User,
             r#"
             DELETE FROM users
             WHERE id = $1 OR email = $2
@@ -326,12 +331,12 @@ impl Database {
                 email,
                 password_hash,
                 created_at,
-                now() as edited_at,
+                now() as "edited_at!",
                 deleted_at
             "#,
+            id,
+            email
         )
-        .bind(id)
-        .bind(email)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -350,7 +355,8 @@ impl Database {
             UserIden::Email(email) => (None, Some(email.clone())),
         };
 
-        let result = sqlx::query_as::<_, UserWithOldState>(
+        let result = sqlx::query_as!(
+            UserWithOldState,
             r#"
             WITH old_state AS (
                 SELECT id, edited_at FROM users
@@ -374,13 +380,13 @@ impl Database {
             )
             SELECT
                 u.*,
-                os.edited_at AS old_edited_at
+                os.edited_at AS "old_edited_at"
             FROM updated_state u
             JOIN old_state os ON u.id = os.id
             "#,
+            id,
+            email
         )
-        .bind(id)
-        .bind(email)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -402,7 +408,8 @@ impl Database {
             UserIden::Email(email) => (None, Some(email.clone())),
         };
 
-        let result = sqlx::query_as::<_, UserWithOldState>(
+        let result = sqlx::query_as!(
+            UserWithOldState,
             r#"
             WITH old_state AS (
                 SELECT id, edited_at FROM users
@@ -427,13 +434,13 @@ impl Database {
             )
             SELECT
                 u.*,
-                os.edited_at AS old_edited_at
+                os.edited_at AS "old_edited_at"
             FROM updated_state u
             JOIN old_state os ON u.id = os.id
             "#,
+            id,
+            email
         )
-        .bind(id)
-        .bind(email)
         .fetch_optional(&self.pool)
         .await?;
 
