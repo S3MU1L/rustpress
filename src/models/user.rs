@@ -60,7 +60,7 @@ pub struct UserQuery {
     pub sort_by: Option<Vec<Option<bool>>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct UserWithOldState {
     pub id: Uuid,
     pub email: String,

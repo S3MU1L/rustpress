@@ -9,14 +9,14 @@ macro_rules! log_err {
             .unwrap_or(::serde_json::Value::Null);
 
         ::tokio::spawn(async move {
-            let _ = ::sqlx::query!(
+            let _ = ::sqlx::query(
                 r#"
                     INSERT INTO error_logs (location, parameters)
                     VALUES ($1, $2)
                     "#,
-                location,
-                params_json
             )
+            .bind(location)
+            .bind(params_json)
             .execute(&pool_clone)
             .await;
         });

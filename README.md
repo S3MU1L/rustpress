@@ -57,6 +57,25 @@ cargo run --release
    - Website: `http://localhost:8080`
    - Admin Console: `http://localhost:8080/admin`
 
+## 🐳 Docker
+
+Run RustPress + Postgres locally:
+
+```bash
+docker compose up --build
+```
+
+Then open:
+- Website: `http://localhost:8080`
+- Admin: `http://localhost:8080/admin`
+
+The compose file provisions a Postgres database with:
+- user: `rustpress`
+- password: `rustpress`
+- db: `rustpress`
+
+If you want to run without Docker, copy `.env.example` to `.env` and adjust `DATABASE_URL`.
+
 ## 🎯 Usage
 
 ### Creating Content

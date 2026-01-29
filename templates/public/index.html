@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>RustPress</title>
+    <link rel="stylesheet" href="/static/app.css" />
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container">
+        <a class="brand" href="/">RustPress</a>
+        <nav class="nav">
+          <a href="/admin">Admin</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <h1>Latest posts</h1>
+
+      {% if posts.len() == 0 %}
+        <p class="muted">No published posts yet.</p>
+      {% else %}
+        <ul class="list">
+          {% for p in posts %}
+            <li class="list-item">
+              <a href="/post/{{ p.slug }}">{{ p.title }}</a>
+              <span class="badge">{{ p.status }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </main>
+  </body>
+</html>

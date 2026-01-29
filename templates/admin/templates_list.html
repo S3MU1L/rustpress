@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Templates - RustPress</title>
+    <link rel="stylesheet" href="/static/app.css" />
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container">
+        <a class="brand" href="/admin">Admin</a>
+        <nav class="nav">
+          <a href="/admin">Dashboard</a>
+          <a href="/admin/templates/new">New template</a>
+          <a href="/">View site</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="card-header">
+        <h1>Templates</h1>
+        <a class="button" href="/admin/templates/new">+ New</a>
+      </div>
+
+      <div class="card">
+        {% if templates.len() == 0 %}
+          <p class="muted">No templates found.</p>
+        {% else %}
+          <ul class="list">
+            {% for t in templates %}
+              <li class="list-item">
+                <a href="/admin/templates/{{ t.id }}">{{ t.name }}</a>
+                {% if t.is_builtin %}
+                  <span class="badge">built-in</span>
+                {% else %}
+                  <span class="badge">custom</span>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+
+      <p class="muted">Placeholders supported: <code>{{"{{title}}"}}</code>, <code>{{"{{content}}"}}</code>, <code>{{"{{slug}}"}}</code>, <code>{{"{{kind}}"}}</code></p>
+    </main>
+  </body>
+</html>
