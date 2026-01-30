@@ -16,6 +16,9 @@
           <a href="/admin/templates">Templates</a>
           <a href="/admin/posts/new">New post</a>
           <a href="/admin/pages/new">New page</a>
+          <form method="post" action="/logout" style="display:inline; margin:0;">
+            <button class="button" type="submit" style="padding:6px 10px;">Logout</button>
+          </form>
         </nav>
       </div>
     </header>
@@ -62,8 +65,6 @@
           {% endif %}
         </div>
       </section>
-
-      <p class="muted">Note: admin auth is not wired yet (MVP).</p>
     </main>
   </body>
 </html>

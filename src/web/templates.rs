@@ -51,6 +51,18 @@ pub struct AdminTemplatesListTemplate {
 }
 
 #[derive(Template)]
+#[template(path = "admin/login.html")]
+pub struct AdminLoginTemplate {
+    pub error: Option<String>,
+}
+
+#[derive(Template)]
+#[template(path = "admin/register.html")]
+pub struct AdminRegisterTemplate {
+    pub error: Option<String>,
+}
+
+#[derive(Template)]
 #[template(path = "admin/template_new.html")]
 pub struct AdminTemplateNewTemplate {
     pub starter_html: String,

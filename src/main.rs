@@ -1,46 +1,78 @@
 #[cfg(feature = "ssr")]
+mod web;
+
+#[cfg(feature = "ssr")]
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    use actix_files::Files;
-    use actix_web::*;
-    use leptos_actix::{LeptosRoutes, generate_route_list, handle_server_fns};
-    use rustpress::frontend::{App, shell};
-    use rustpress::db::Database;
-
-    let conf = leptos::config::get_configuration(None).unwrap();
-    let addr = conf.leptos_options.site_addr;
-
     dotenvy::dotenv().ok();
+
+    use actix_files::Files;
+    use actix_web::body::BoxBody;
+    use actix_web::dev::{ServiceRequest, ServiceResponse};
+    use actix_web::http::header::LOCATION;
+    use actix_web::middleware::{from_fn, Next};
+    use actix_web::{App, Error, HttpResponse, HttpServer};
+    use rustpress::db::Database;
+    use crate::web::routes;
+
+    async fn admin_auth_guard(
+        req: ServiceRequest,
+        next: Next<BoxBody>,
+    ) -> Result<ServiceResponse<BoxBody>, Error> {
+        let path = req.path();
+
+        if path.starts_with("/admin") {
+            let has_cookie = req.cookie("rp_uid").is_some();
+            if !has_cookie {
+                let is_htmx = req
+                    .headers()
+                    .get("HX-Request")
+                    .and_then(|v| v.to_str().ok())
+                    .is_some_and(|s| s.eq_ignore_ascii_case("true"));
+
+                if is_htmx {
+                    return Ok(req.into_response(
+                        HttpResponse::Unauthorized()
+                            .insert_header(("HX-Redirect", "/login"))
+                            .finish(),
+                    ));
+                }
+
+                return Ok(req.into_response(
+                    HttpResponse::SeeOther()
+                        .insert_header((LOCATION, "/login"))
+                        .finish(),
+                ));
+            }
+        }
+
+        next.call(req).await
+    }
+
     let database_url = std::env::var("DATABASE_URL")
-        .expect("DATABASE_URL must be set (e.g. postgres://user:pass@localhost/rustpress)");
+        .expect("DATABASE_URL must be set (e.g. postgres://...)");
+    let bind_addr = std::env::var("BIND_ADDR").unwrap_or_else(|_| "127.0.0.1:8080".to_string());
+
     let db = Database::new(&database_url)
         .await
-        .expect("Failed to connect to database / run migrations");
-    let pool = db.pool;
-    let pool_data = web::Data::new(pool);
+        .expect("Failed to initialize database");
 
-    println!("🦀 Starting RustPress CMS...");
-    println!("📍 Server running at http://{}", addr);
-    println!("🔧 Admin console at http://{}/admin", addr);
+    let state = actix_web::web::Data::new(routes::AppState {
+        pool: db.pool.clone(),
+    });
+
+    println!("Starting RustPress (Actix + Askama + HTMX)");
+    println!("Server running at http://{bind_addr}");
+    println!("Admin console at http://{bind_addr}/admin");
 
     HttpServer::new(move || {
-        let routes = generate_route_list(App);
-        let leptos_options = &conf.leptos_options;
-        let site_root = leptos_options.site_root.clone();
-
         App::new()
-            .app_data(pool_data.clone())
-            // Leptos server functions (backend API)
-            .route("/api/{tail:.*}", handle_server_fns())
-            .service(Files::new("/pkg", format!("{}/pkg", site_root)))
-            .service(Files::new("/static", "./static").prefer_utf8(true))
-            .leptos_routes(routes, {
-                let leptos_options = leptos_options.clone();
-                move || shell(leptos_options.clone())
-            })
-            .app_data(web::Data::new(leptos_options.clone()))
+            .app_data(state.clone())
+            .wrap(from_fn(admin_auth_guard))
+            .service(Files::new("/static", "./static"))
+            .configure(routes::configure)
     })
-    .bind(&addr)?
+    .bind(bind_addr)?
     .run()
     .await
 }

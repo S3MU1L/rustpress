@@ -6,11 +6,12 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use rustpress::db;
-use rustpress::models::{ContentCreate, ContentKind, ContentStatus, ContentUpdate, UserCreate, UserIden};
+use rustpress::models::{ContentCreate, ContentKind, ContentStatus, ContentUpdate, User};
 use rustpress::services::PasswordManager;
 use crate::web::templates::{
     AdminDashboardTemplate, AdminEditTemplate, AdminNewTemplate, AdminTemplateEditTemplate,
-    AdminTemplateNewTemplate, AdminTemplatesListTemplate, PublicContentTemplate, PublicIndexTemplate,
+    AdminTemplateNewTemplate, AdminTemplatesListTemplate, AdminLoginTemplate, AdminRegisterTemplate,
+    PublicContentTemplate, PublicIndexTemplate,
 };
 
 const AUTH_COOKIE: &str = "rp_uid";
@@ -28,13 +29,16 @@ fn is_htmx(req: &HttpRequest) -> bool {
 }
 
 fn current_user_id(req: &HttpRequest) -> Option<Uuid> {
-    // Temporary user identification mechanism until full auth/session exists.
+    // MVP auth/session.
     // Priority: cookie -> request header -> env var.
-    if let Some(c) = req.cookie(AUTH_COOKIE) {
-        let v = c.value().trim();
-        if let Ok(uid) = Uuid::parse_str(v) {
-            return Some(uid);
-        }
+    let cookie_val = req
+        .cookie("rp_uid")
+        .map(|c| c.value().trim().to_string())
+        .filter(|s| !s.is_empty())
+        .and_then(|s| Uuid::parse_str(&s).ok());
+
+    if cookie_val.is_some() {
+        return cookie_val;
     }
 
     let header_val = req
@@ -55,12 +59,165 @@ fn current_user_id(req: &HttpRequest) -> Option<Uuid> {
     })
 }
 
-fn require_user(req: &HttpRequest) -> Result<Uuid, HttpResponse> {
-    match current_user_id(req) {
-        Some(uid) => Ok(uid),
-        None => Err(HttpResponse::SeeOther()
-            .insert_header(("Location", "/admin/login"))
-            .finish()),
+#[derive(serde::Deserialize)]
+pub struct LoginForm {
+    pub email: String,
+    pub password: String,
+}
+
+#[get("/login")]
+pub async fn login_form() -> impl Responder {
+    render(AdminLoginTemplate { error: None })
+}
+
+#[derive(serde::Deserialize)]
+pub struct RegisterForm {
+    pub email: String,
+    pub password: String,
+}
+
+#[get("/register")]
+pub async fn register_form() -> impl Responder {
+    render(AdminRegisterTemplate { error: None })
+}
+
+#[post("/register")]
+pub async fn register_submit(
+    state: web::Data<AppState>,
+    form: web::Form<RegisterForm>,
+) -> impl Responder {
+    let email = form.email.trim().to_string();
+    let password = form.password.to_string();
+
+    if email.is_empty() || password.len() < 4 {
+        return render(AdminRegisterTemplate {
+            error: Some("Email required and password must be at least 4 characters".to_string()),
+        });
+    }
+
+    let password_hash = match PasswordManager::hash_password(&password) {
+        Ok(h) => h,
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(format!("Password hashing error: {e}"));
+        }
+    };
+
+    let user = sqlx::query_as::<_, User>(
+        r#"
+        INSERT INTO users (email, password_hash)
+        VALUES ($1, $2)
+        ON CONFLICT (email) DO NOTHING
+        RETURNING *
+        "#,
+    )
+    .bind(&email)
+    .bind(&password_hash)
+    .fetch_optional(&state.pool)
+    .await;
+
+    let user = match user {
+        Ok(Some(u)) => u,
+        Ok(None) => {
+            return render(AdminRegisterTemplate {
+                error: Some("Email already exists".to_string()),
+            });
+        }
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(format!("Database error: {e}"));
+        }
+    };
+
+    let cookie = Cookie::build("rp_uid", user.id.to_string())
+        .path("/")
+        .http_only(true)
+        .same_site(SameSite::Lax)
+        .finish();
+
+    HttpResponse::SeeOther()
+        .cookie(cookie)
+        .insert_header(("Location", "/admin"))
+        .finish()
+}
+
+#[post("/login")]
+pub async fn login_submit(
+    state: web::Data<AppState>,
+    form: web::Form<LoginForm>,
+) -> impl Responder {
+    let email = form.email.trim().to_string();
+    let password = form.password.to_string();
+
+    if email.is_empty() || password.is_empty() {
+        return HttpResponse::BadRequest().body("Missing email/password");
+    }
+
+    let user = sqlx::query_as::<_, User>(
+        r#"SELECT * FROM users WHERE email = $1"#,
+    )
+    .bind(&email)
+    .fetch_optional(&state.pool)
+    .await;
+
+    let user = match user {
+        Ok(Some(u)) => u,
+        Ok(None) => {
+            return render(AdminLoginTemplate {
+                error: Some("Invalid credentials".to_string()),
+            });
+        }
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(format!("Database error: {e}"));
+        }
+    };
+
+    let ok = match PasswordManager::verify_password(&password, &user.password_hash) {
+        Ok(v) => v,
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(format!("Password verification error: {e}"));
+        }
+    };
+
+    if !ok {
+        return render(AdminLoginTemplate {
+            error: Some("Invalid credentials".to_string()),
+        });
+    }
+
+    let cookie = Cookie::build("rp_uid", user.id.to_string())
+        .path("/")
+        .http_only(true)
+        .same_site(SameSite::Lax)
+        .finish();
+
+    HttpResponse::SeeOther()
+        .cookie(cookie)
+        .insert_header(("Location", "/admin"))
+        .finish()
+}
+
+#[post("/logout")]
+pub async fn logout(req: HttpRequest) -> impl Responder {
+    let mut cookie = Cookie::build("rp_uid", "")
+        .path("/")
+        .http_only(true)
+        .same_site(SameSite::Lax)
+        .finish();
+    cookie.make_removal();
+
+    if is_htmx(&req) {
+        HttpResponse::Ok()
+            .cookie(cookie)
+            .insert_header(("HX-Redirect", "/login"))
+            .finish()
+    } else {
+        HttpResponse::SeeOther()
+            .cookie(cookie)
+            .insert_header(("Location", "/login"))
+            .finish()
     }
 }
 
@@ -295,7 +452,7 @@ pub async fn admin_dashboard(state: web::Data<AppState>, req: HttpRequest) -> im
     render(AdminDashboardTemplate { posts, pages })
 }
 
-#[get("/admin/{kind}/new")]
+#[get("/admin/{kind:posts|pages}/new")]
 pub async fn admin_new(
     state: web::Data<AppState>,
     req: HttpRequest,
@@ -307,9 +464,6 @@ pub async fn admin_new(
     };
 
     let kind = path.into_inner();
-    if kind != "posts" && kind != "pages" {
-        return HttpResponse::NotFound().body("Unknown kind");
-    }
 
     let templates = db::list_site_templates_for_user(&state.pool, uid)
         .await
@@ -330,7 +484,7 @@ pub struct AdminCreateForm {
     pub template: Option<String>,
 }
 
-#[post("/admin/{kind}")]
+#[post("/admin/{kind:posts|pages}")]
 pub async fn admin_create(
     state: web::Data<AppState>,
     req: HttpRequest,
@@ -793,141 +947,15 @@ pub async fn admin_preview(
         .body(iframe_srcdoc(&html))
 }
 
-#[derive(serde::Deserialize)]
-pub struct AdminLoginForm {
-    pub email: String,
-    pub password: String,
-}
-
-#[get("/admin/login")]
-pub async fn admin_login_page() -> impl Responder {
-    render(crate::web::templates::AdminLoginTemplate { error: None })
-}
-
-#[post("/admin/login")]
-pub async fn admin_login_post(
-    state: web::Data<AppState>,
-    form: web::Form<AdminLoginForm>,
-) -> impl Responder {
-    let mut database = rustpress::db::Database::from_pool(state.pool.clone());
-    let user = match database
-        .get_user(&UserIden::Email(form.email.trim().to_string()), false)
-        .await
-    {
-        Ok(u) => u,
-        Err(_) => {
-            return render(crate::web::templates::AdminLoginTemplate {
-                error: Some("Invalid email or password".to_string()),
-            });
-        }
-    };
-
-    let ok = PasswordManager::verify_password(form.password.as_str(), &user.password_hash)
-        .unwrap_or(false);
-    if !ok {
-        return render(crate::web::templates::AdminLoginTemplate {
-            error: Some("Invalid email or password".to_string()),
-        });
-    }
-
-    let cookie = Cookie::build(AUTH_COOKIE, user.id.to_string())
-        .path("/")
-        .http_only(true)
-        .same_site(SameSite::Lax)
-        .finish();
-
-    HttpResponse::SeeOther()
-        .insert_header(("Location", "/admin"))
-        .cookie(cookie)
-        .finish()
-}
-
-#[derive(serde::Deserialize)]
-pub struct AdminRegisterForm {
-    pub email: String,
-    pub password: String,
-}
-
-#[get("/admin/register")]
-pub async fn admin_register_page() -> impl Responder {
-    render(crate::web::templates::AdminRegisterTemplate { error: None })
-}
-
-#[post("/admin/register")]
-pub async fn admin_register_post(
-    state: web::Data<AppState>,
-    form: web::Form<AdminRegisterForm>,
-) -> impl Responder {
-    let email = form.email.trim().to_string();
-    if email.is_empty() || !email.contains('@') {
-        return render(crate::web::templates::AdminRegisterTemplate {
-            error: Some("Please enter a valid email".to_string()),
-        });
-    }
-    if form.password.len() < 6 {
-        return render(crate::web::templates::AdminRegisterTemplate {
-            error: Some("Password must be at least 6 characters".to_string()),
-        });
-    }
-
-    let password_hash = match PasswordManager::hash_password(form.password.as_str()) {
-        Ok(h) => h,
-        Err(_) => {
-            return render(crate::web::templates::AdminRegisterTemplate {
-                error: Some("Failed to hash password".to_string()),
-            });
-        }
-    };
-
-    let mut database = rustpress::db::Database::from_pool(state.pool.clone());
-    let user = match database
-        .add_user(&UserCreate {
-            email,
-            password_hash,
-        })
-        .await
-    {
-        Ok(u) => u,
-        Err(e) => {
-            return render(crate::web::templates::AdminRegisterTemplate {
-                error: Some(e.to_string()),
-            });
-        }
-    };
-
-    let cookie = Cookie::build(AUTH_COOKIE, user.id.to_string())
-        .path("/")
-        .http_only(true)
-        .same_site(SameSite::Lax)
-        .finish();
-
-    HttpResponse::SeeOther()
-        .insert_header(("Location", "/admin"))
-        .cookie(cookie)
-        .finish()
-}
-
-#[post("/admin/logout")]
-pub async fn admin_logout_post() -> impl Responder {
-    let cookie = Cookie::build(AUTH_COOKIE, "")
-        .path("/")
-        .http_only(true)
-        .same_site(SameSite::Lax)
-        .max_age(actix_web::cookie::time::Duration::seconds(0))
-        .finish();
-
-    HttpResponse::SeeOther()
-        .insert_header(("Location", "/"))
-        .cookie(cookie)
-        .finish()
-}
-
-pub fn configure_admin(cfg: &mut web::ServiceConfig) {
-    cfg.service(admin_login_page)
-        .service(admin_login_post)
-        .service(admin_register_page)
-        .service(admin_register_post)
-        .service(admin_logout_post)
+pub fn configure(cfg: &mut web::ServiceConfig) {
+    cfg.service(login_form)
+        .service(login_submit)
+        .service(register_form)
+        .service(register_submit)
+        .service(logout)
+        .service(public_index)
+        .service(public_post)
+        .service(public_page)
         .service(admin_dashboard)
         .service(admin_new)
         .service(admin_create)
