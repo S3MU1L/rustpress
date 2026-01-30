@@ -1,14 +1,17 @@
 use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::cookie::{Cookie, SameSite};
 use askama::Template;
 use chrono::Utc;
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use rustpress::db;
-use rustpress::models::{ContentCreate, ContentKind, ContentStatus, ContentUpdate};
+use rustpress::models::{ContentCreate, ContentKind, ContentStatus, ContentUpdate, User};
+use rustpress::services::PasswordManager;
 use crate::web::templates::{
     AdminDashboardTemplate, AdminEditTemplate, AdminNewTemplate, AdminTemplateEditTemplate,
-    AdminTemplateNewTemplate, AdminTemplatesListTemplate, PublicContentTemplate, PublicIndexTemplate,
+    AdminTemplateNewTemplate, AdminTemplatesListTemplate, AdminLoginTemplate, AdminRegisterTemplate,
+    PublicContentTemplate, PublicIndexTemplate,
 };
 
 #[derive(Clone)]
@@ -24,8 +27,18 @@ fn is_htmx(req: &HttpRequest) -> bool {
 }
 
 fn current_user_id(req: &HttpRequest) -> Option<Uuid> {
-    // Temporary user identification mechanism until full auth/session exists.
-    // Priority: request header -> env var.
+    // MVP auth/session.
+    // Priority: cookie -> request header -> env var.
+    let cookie_val = req
+        .cookie("rp_uid")
+        .map(|c| c.value().trim().to_string())
+        .filter(|s| !s.is_empty())
+        .and_then(|s| Uuid::parse_str(&s).ok());
+
+    if cookie_val.is_some() {
+        return cookie_val;
+    }
+
     let header_val = req
         .headers()
         .get("X-Rustpress-User-Id")
@@ -42,6 +55,168 @@ fn current_user_id(req: &HttpRequest) -> Option<Uuid> {
             .filter(|s| !s.is_empty())
             .and_then(|s| Uuid::parse_str(&s).ok())
     })
+}
+
+#[derive(serde::Deserialize)]
+pub struct LoginForm {
+    pub email: String,
+    pub password: String,
+}
+
+#[get("/login")]
+pub async fn login_form() -> impl Responder {
+    render(AdminLoginTemplate { error: None })
+}
+
+#[derive(serde::Deserialize)]
+pub struct RegisterForm {
+    pub email: String,
+    pub password: String,
+}
+
+#[get("/register")]
+pub async fn register_form() -> impl Responder {
+    render(AdminRegisterTemplate { error: None })
+}
+
+#[post("/register")]
+pub async fn register_submit(
+    state: web::Data<AppState>,
+    form: web::Form<RegisterForm>,
+) -> impl Responder {
+    let email = form.email.trim().to_string();
+    let password = form.password.to_string();
+
+    if email.is_empty() || password.len() < 4 {
+        return render(AdminRegisterTemplate {
+            error: Some("Email required and password must be at least 4 characters".to_string()),
+        });
+    }
+
+    let password_hash = match PasswordManager::hash_password(&password) {
+        Ok(h) => h,
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(format!("Password hashing error: {e}"));
+        }
+    };
+
+    let user = sqlx::query_as::<_, User>(
+        r#"
+        INSERT INTO users (email, password_hash)
+        VALUES ($1, $2)
+        ON CONFLICT (email) DO NOTHING
+        RETURNING *
+        "#,
+    )
+    .bind(&email)
+    .bind(&password_hash)
+    .fetch_optional(&state.pool)
+    .await;
+
+    let user = match user {
+        Ok(Some(u)) => u,
+        Ok(None) => {
+            return render(AdminRegisterTemplate {
+                error: Some("Email already exists".to_string()),
+            });
+        }
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(format!("Database error: {e}"));
+        }
+    };
+
+    let cookie = Cookie::build("rp_uid", user.id.to_string())
+        .path("/")
+        .http_only(true)
+        .same_site(SameSite::Lax)
+        .finish();
+
+    HttpResponse::SeeOther()
+        .cookie(cookie)
+        .insert_header(("Location", "/admin"))
+        .finish()
+}
+
+#[post("/login")]
+pub async fn login_submit(
+    state: web::Data<AppState>,
+    form: web::Form<LoginForm>,
+) -> impl Responder {
+    let email = form.email.trim().to_string();
+    let password = form.password.to_string();
+
+    if email.is_empty() || password.is_empty() {
+        return HttpResponse::BadRequest().body("Missing email/password");
+    }
+
+    let user = sqlx::query_as::<_, User>(
+        r#"SELECT * FROM users WHERE email = $1"#,
+    )
+    .bind(&email)
+    .fetch_optional(&state.pool)
+    .await;
+
+    let user = match user {
+        Ok(Some(u)) => u,
+        Ok(None) => {
+            return render(AdminLoginTemplate {
+                error: Some("Invalid credentials".to_string()),
+            });
+        }
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(format!("Database error: {e}"));
+        }
+    };
+
+    let ok = match PasswordManager::verify_password(&password, &user.password_hash) {
+        Ok(v) => v,
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(format!("Password verification error: {e}"));
+        }
+    };
+
+    if !ok {
+        return render(AdminLoginTemplate {
+            error: Some("Invalid credentials".to_string()),
+        });
+    }
+
+    let cookie = Cookie::build("rp_uid", user.id.to_string())
+        .path("/")
+        .http_only(true)
+        .same_site(SameSite::Lax)
+        .finish();
+
+    HttpResponse::SeeOther()
+        .cookie(cookie)
+        .insert_header(("Location", "/admin"))
+        .finish()
+}
+
+#[post("/logout")]
+pub async fn logout(req: HttpRequest) -> impl Responder {
+    let mut cookie = Cookie::build("rp_uid", "")
+        .path("/")
+        .http_only(true)
+        .same_site(SameSite::Lax)
+        .finish();
+    cookie.make_removal();
+
+    if is_htmx(&req) {
+        HttpResponse::Ok()
+            .cookie(cookie)
+            .insert_header(("HX-Redirect", "/login"))
+            .finish()
+    } else {
+        HttpResponse::SeeOther()
+            .cookie(cookie)
+            .insert_header(("Location", "/login"))
+            .finish()
+    }
 }
 
 fn render<T: Template>(t: T) -> HttpResponse {
@@ -260,16 +435,13 @@ pub async fn admin_dashboard(state: web::Data<AppState>) -> impl Responder {
     render(AdminDashboardTemplate { posts, pages })
 }
 
-#[get("/admin/{kind}/new")]
+#[get("/admin/{kind:posts|pages}/new")]
 pub async fn admin_new(
     state: web::Data<AppState>,
     req: HttpRequest,
     path: web::Path<String>,
 ) -> impl Responder {
     let kind = path.into_inner();
-    if kind != "posts" && kind != "pages" {
-        return HttpResponse::NotFound().body("Unknown kind");
-    }
 
     let templates = match current_user_id(&req) {
         Some(uid) => db::list_site_templates_for_user(&state.pool, uid)
@@ -295,7 +467,7 @@ pub struct AdminCreateForm {
     pub template: Option<String>,
 }
 
-#[post("/admin/{kind}")]
+#[post("/admin/{kind:posts|pages}")]
 pub async fn admin_create(
     state: web::Data<AppState>,
     req: HttpRequest,
@@ -763,7 +935,12 @@ pub async fn admin_preview(
 }
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
-    cfg.service(public_index)
+    cfg.service(login_form)
+        .service(login_submit)
+        .service(register_form)
+        .service(register_submit)
+        .service(logout)
+        .service(public_index)
         .service(public_post)
         .service(public_page)
         .service(admin_dashboard)

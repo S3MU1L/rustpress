@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Login - RustPress</title>
+    <link rel="stylesheet" href="/static/app.css" />
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container">
+        <a class="brand" href="/">RustPress</a>
+        <nav class="nav">
+          <a href="/">Home</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container" style="max-width: 560px;">
+      <h1>Admin login</h1>
+
+      {% if let Some(msg) = error %}
+        <div class="card" style="border-color:#b91c1c;">
+          <p style="color:#b91c1c; margin:0;">{{ msg }}</p>
+        </div>
+      {% endif %}
+
+      <form class="card" method="post" action="/login">
+        <label class="label">Email</label>
+        <input class="input" type="email" name="email" autocomplete="username" required />
+
+        <label class="label" style="margin-top: 12px;">Password</label>
+        <input class="input" type="password" name="password" autocomplete="current-password" required />
+
+        <div style="margin-top: 16px; display:flex; gap: 8px; align-items:center;">
+          <button class="button" type="submit">Login</button>
+          <span class="muted">Demo MVP: any existing user can log in.</span>
+        </div>
+      </form>
+
+      <p class="muted" style="margin-top: 12px;">
+        If you don't have a user yet, create one via SQL or we can add a simple /register.
+      </p>
+    </main>
+  </body>
+</html>

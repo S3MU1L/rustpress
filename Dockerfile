@@ -2,12 +2,14 @@ FROM rust:1.88-bookworm AS builder
 WORKDIR /app
 
 COPY Cargo.toml Cargo.lock ./
+COPY .sqlx ./.sqlx
 COPY src ./src
 COPY migrations ./migrations
 COPY templates ./templates
 COPY static ./static
 
-RUN cargo build --release
+ENV SQLX_OFFLINE=true
+RUN cargo build --release --features ssr
 
 
 FROM debian:bookworm-slim AS runtime
