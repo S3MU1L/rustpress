@@ -59,6 +59,23 @@ fn current_user_id(req: &HttpRequest) -> Option<Uuid> {
     })
 }
 
+fn require_user(req: &HttpRequest) -> Result<Uuid, HttpResponse> {
+    match current_user_id(req) {
+        Some(uid) => Ok(uid),
+        None => {
+            if is_htmx(req) {
+                Err(HttpResponse::Unauthorized()
+                    .insert_header(("HX-Redirect", "/login"))
+                    .finish())
+            } else {
+                Err(HttpResponse::SeeOther()
+                    .insert_header(("Location", "/login"))
+                    .finish())
+            }
+        }
+    }
+}
+
 #[derive(serde::Deserialize)]
 pub struct LoginForm {
     pub email: String,
@@ -969,11 +986,4 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(admin_template_create)
         .service(admin_template_edit)
         .service(admin_template_update);
-}
-
-pub fn configure(cfg: &mut web::ServiceConfig) {
-    cfg.service(public_index)
-        .service(public_post)
-        .service(public_page)
-        .configure(configure_admin);
 }
