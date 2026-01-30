@@ -24,6 +24,10 @@ leptos_meta = { version = "0.8" }
 console_error_panic_hook = "0.1"
 wasm-bindgen = "0.2.106"
 
+# SSR templates / utilities
+askama = { version = "0.12.1", optional = true }
+dotenvy = { version = "0.15.7", optional = true }
+
 # Web
 actix-web = { version = "4.4", optional = true }
 actix-files = { version = "0.6", optional = true }
@@ -61,6 +65,8 @@ ssr = [
     "dep:leptos_actix",
     "dep:actix-web",
     "dep:actix-files",
+    "dep:askama",
+    "dep:dotenvy",
     "tokio",
 ]
 

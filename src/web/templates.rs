@@ -61,3 +61,15 @@ pub struct AdminTemplateNewTemplate {
 pub struct AdminTemplateEditTemplate {
     pub template: SiteTemplate,
 }
+
+#[derive(Template)]
+#[template(path = "admin/login.html")]
+pub struct AdminLoginTemplate {
+    pub error: Option<String>,
+}
+
+#[derive(Template)]
+#[template(path = "admin/register_auth.html")]
+pub struct AdminRegisterTemplate {
+    pub error: Option<String>,
+}

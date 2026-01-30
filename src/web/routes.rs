@@ -1,15 +1,19 @@
 use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::cookie::{Cookie, SameSite};
 use askama::Template;
 use chrono::Utc;
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use rustpress::db;
-use rustpress::models::{ContentCreate, ContentKind, ContentStatus, ContentUpdate};
+use rustpress::models::{ContentCreate, ContentKind, ContentStatus, ContentUpdate, UserCreate, UserIden};
+use rustpress::services::PasswordManager;
 use crate::web::templates::{
     AdminDashboardTemplate, AdminEditTemplate, AdminNewTemplate, AdminTemplateEditTemplate,
     AdminTemplateNewTemplate, AdminTemplatesListTemplate, PublicContentTemplate, PublicIndexTemplate,
 };
+
+const AUTH_COOKIE: &str = "rp_uid";
 
 #[derive(Clone)]
 pub struct AppState {
@@ -25,7 +29,14 @@ fn is_htmx(req: &HttpRequest) -> bool {
 
 fn current_user_id(req: &HttpRequest) -> Option<Uuid> {
     // Temporary user identification mechanism until full auth/session exists.
-    // Priority: request header -> env var.
+    // Priority: cookie -> request header -> env var.
+    if let Some(c) = req.cookie(AUTH_COOKIE) {
+        let v = c.value().trim();
+        if let Ok(uid) = Uuid::parse_str(v) {
+            return Some(uid);
+        }
+    }
+
     let header_val = req
         .headers()
         .get("X-Rustpress-User-Id")
@@ -42,6 +53,15 @@ fn current_user_id(req: &HttpRequest) -> Option<Uuid> {
             .filter(|s| !s.is_empty())
             .and_then(|s| Uuid::parse_str(&s).ok())
     })
+}
+
+fn require_user(req: &HttpRequest) -> Result<Uuid, HttpResponse> {
+    match current_user_id(req) {
+        Some(uid) => Ok(uid),
+        None => Err(HttpResponse::SeeOther()
+            .insert_header(("Location", "/admin/login"))
+            .finish()),
+    }
 }
 
 fn render<T: Template>(t: T) -> HttpResponse {
@@ -249,13 +269,28 @@ pub async fn public_page(
 }
 
 #[get("/admin")]
-pub async fn admin_dashboard(state: web::Data<AppState>) -> impl Responder {
+pub async fn admin_dashboard(state: web::Data<AppState>, req: HttpRequest) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
     let posts = db::list_content(&state.pool, ContentKind::Post, true)
         .await
         .unwrap_or_default();
     let pages = db::list_content(&state.pool, ContentKind::Page, true)
         .await
         .unwrap_or_default();
+
+    // MVP scoping: show only content owned by this user or legacy NULL-owned content.
+    let posts = posts
+        .into_iter()
+        .filter(|c| c.owner_user_id.is_none() || c.owner_user_id == Some(uid))
+        .collect();
+    let pages = pages
+        .into_iter()
+        .filter(|c| c.owner_user_id.is_none() || c.owner_user_id == Some(uid))
+        .collect();
 
     render(AdminDashboardTemplate { posts, pages })
 }
@@ -266,19 +301,19 @@ pub async fn admin_new(
     req: HttpRequest,
     path: web::Path<String>,
 ) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
     let kind = path.into_inner();
     if kind != "posts" && kind != "pages" {
         return HttpResponse::NotFound().body("Unknown kind");
     }
 
-    let templates = match current_user_id(&req) {
-        Some(uid) => db::list_site_templates_for_user(&state.pool, uid)
-            .await
-            .unwrap_or_default(),
-        None => db::list_site_templates(&state.pool)
-            .await
-            .unwrap_or_default(),
-    };
+    let templates = db::list_site_templates_for_user(&state.pool, uid)
+        .await
+        .unwrap_or_default();
 
     render(AdminNewTemplate {
         kind,
@@ -302,6 +337,11 @@ pub async fn admin_create(
     path: web::Path<String>,
     form: web::Form<AdminCreateForm>,
 ) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
     let kind = match path.into_inner().as_str() {
         "posts" => ContentKind::Post,
         "pages" => ContentKind::Page,
@@ -309,7 +349,7 @@ pub async fn admin_create(
     };
 
     let data = ContentCreate {
-        owner_user_id: current_user_id(&req),
+        owner_user_id: Some(uid),
         kind,
         title: form.title.trim().to_string(),
         slug: form.slug.trim().to_string(),
@@ -346,6 +386,11 @@ pub async fn admin_edit(
     req: HttpRequest,
     path: web::Path<Uuid>,
 ) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
     let id = path.into_inner();
     let item = match db::get_content_by_id(&state.pool, id).await {
         Ok(Some(item)) => item,
@@ -353,14 +398,13 @@ pub async fn admin_edit(
         Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
     };
 
-    let templates = match item.owner_user_id.or_else(|| current_user_id(&req)) {
-        Some(uid) => db::list_site_templates_for_user(&state.pool, uid)
-            .await
-            .unwrap_or_default(),
-        None => db::list_site_templates(&state.pool)
-            .await
-            .unwrap_or_default(),
-    };
+    if item.owner_user_id.is_some_and(|owner| owner != uid) {
+        return HttpResponse::Forbidden().body("Forbidden");
+    }
+
+    let templates = db::list_site_templates_for_user(&state.pool, uid)
+        .await
+        .unwrap_or_default();
     render(AdminEditTemplate { item, templates })
 }
 
@@ -369,17 +413,14 @@ pub async fn admin_templates_list(
     state: web::Data<AppState>,
     req: HttpRequest,
 ) -> impl Responder {
-    let templates = match current_user_id(&req) {
-        Some(uid) => db::list_site_templates_for_user(&state.pool, uid)
-            .await
-            .unwrap_or_default(),
-        None => db::list_site_templates(&state.pool)
-            .await
-            .unwrap_or_default()
-            .into_iter()
-            .filter(|t| t.owner_user_id.is_none())
-            .collect(),
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
     };
+
+    let templates = db::list_site_templates_for_user(&state.pool, uid)
+        .await
+        .unwrap_or_default();
     render(AdminTemplatesListTemplate { templates })
 }
 
@@ -402,15 +443,9 @@ pub async fn admin_template_create(
     req: HttpRequest,
     form: web::Form<AdminTemplateCreateForm>,
 ) -> impl Responder {
-    let owner_user_id = match current_user_id(&req) {
-        Some(uid) => uid,
-        None => {
-            return HttpResponse::BadRequest()
-                .content_type("text/plain; charset=utf-8")
-                .body(
-                    "Missing user context. Set header X-Rustpress-User-Id or env RUSTPRESS_USER_ID (UUID).",
-                );
-        }
+    let owner_user_id = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
     };
 
     let data = rustpress::models::SiteTemplateCreate {
@@ -446,6 +481,11 @@ pub async fn admin_template_edit(
     req: HttpRequest,
     path: web::Path<Uuid>,
 ) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
     let id = path.into_inner();
     let template = match db::get_site_template_by_id(&state.pool, id).await {
         Ok(Some(t)) => t,
@@ -454,17 +494,6 @@ pub async fn admin_template_edit(
     };
 
     if !template.is_builtin {
-        let uid = match current_user_id(&req) {
-            Some(uid) => uid,
-            None => {
-                return HttpResponse::BadRequest()
-                    .content_type("text/plain; charset=utf-8")
-                    .body(
-                        "Missing user context. Set header X-Rustpress-User-Id or env RUSTPRESS_USER_ID (UUID).",
-                    );
-            }
-        };
-
         if template.owner_user_id != Some(uid) {
             return HttpResponse::Forbidden().body("Forbidden");
         }
@@ -488,6 +517,11 @@ pub async fn admin_template_update(
 ) -> impl Responder {
     let id = path.into_inner();
 
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
     let existing = match db::get_site_template_by_id(&state.pool, id).await {
         Ok(Some(t)) => t,
         Ok(None) => return HttpResponse::NotFound().body("Not found"),
@@ -497,17 +531,6 @@ pub async fn admin_template_update(
     if existing.is_builtin {
         return HttpResponse::Forbidden().body("Built-in templates are read-only");
     }
-
-    let uid = match current_user_id(&req) {
-        Some(uid) => uid,
-        None => {
-            return HttpResponse::BadRequest()
-                .content_type("text/plain; charset=utf-8")
-                .body(
-                    "Missing user context. Set header X-Rustpress-User-Id or env RUSTPRESS_USER_ID (UUID).",
-                );
-        }
-    };
 
     if existing.owner_user_id != Some(uid) {
         return HttpResponse::Forbidden().body("Forbidden");
@@ -553,6 +576,11 @@ pub async fn admin_update(
     path: web::Path<Uuid>,
     form: web::Form<AdminUpdateForm>,
 ) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
     let id = path.into_inner();
 
     let status = match form.status.as_deref().map(|s| s.trim()) {
@@ -582,15 +610,14 @@ pub async fn admin_update(
         }
     };
 
+    if updated.owner_user_id.is_some_and(|owner| owner != uid) {
+        return HttpResponse::Forbidden().body("Forbidden");
+    }
+
     if is_htmx(&req) {
-        let templates = match updated.owner_user_id.or_else(|| current_user_id(&req)) {
-            Some(uid) => db::list_site_templates_for_user(&state.pool, uid)
-                .await
-                .unwrap_or_default(),
-            None => db::list_site_templates(&state.pool)
-                .await
-                .unwrap_or_default(),
-        };
+        let templates = db::list_site_templates_for_user(&state.pool, uid)
+            .await
+            .unwrap_or_default();
         render(AdminEditTemplate {
             item: updated,
             templates,
@@ -608,6 +635,11 @@ pub async fn admin_publish(
     req: HttpRequest,
     path: web::Path<Uuid>,
 ) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
     let id = path.into_inner();
 
     let published = match db::publish_content(&state.pool, id).await {
@@ -620,15 +652,14 @@ pub async fn admin_publish(
         }
     };
 
+    if published.owner_user_id.is_some_and(|owner| owner != uid) {
+        return HttpResponse::Forbidden().body("Forbidden");
+    }
+
     if is_htmx(&req) {
-        let templates = match published.owner_user_id.or_else(|| current_user_id(&req)) {
-            Some(uid) => db::list_site_templates_for_user(&state.pool, uid)
-                .await
-                .unwrap_or_default(),
-            None => db::list_site_templates(&state.pool)
-                .await
-                .unwrap_or_default(),
-        };
+        let templates = db::list_site_templates_for_user(&state.pool, uid)
+            .await
+            .unwrap_or_default();
         render(AdminEditTemplate {
             item: published,
             templates,
@@ -762,10 +793,141 @@ pub async fn admin_preview(
         .body(iframe_srcdoc(&html))
 }
 
-pub fn configure(cfg: &mut web::ServiceConfig) {
-    cfg.service(public_index)
-        .service(public_post)
-        .service(public_page)
+#[derive(serde::Deserialize)]
+pub struct AdminLoginForm {
+    pub email: String,
+    pub password: String,
+}
+
+#[get("/admin/login")]
+pub async fn admin_login_page() -> impl Responder {
+    render(crate::web::templates::AdminLoginTemplate { error: None })
+}
+
+#[post("/admin/login")]
+pub async fn admin_login_post(
+    state: web::Data<AppState>,
+    form: web::Form<AdminLoginForm>,
+) -> impl Responder {
+    let mut database = rustpress::db::Database::from_pool(state.pool.clone());
+    let user = match database
+        .get_user(&UserIden::Email(form.email.trim().to_string()), false)
+        .await
+    {
+        Ok(u) => u,
+        Err(_) => {
+            return render(crate::web::templates::AdminLoginTemplate {
+                error: Some("Invalid email or password".to_string()),
+            });
+        }
+    };
+
+    let ok = PasswordManager::verify_password(form.password.as_str(), &user.password_hash)
+        .unwrap_or(false);
+    if !ok {
+        return render(crate::web::templates::AdminLoginTemplate {
+            error: Some("Invalid email or password".to_string()),
+        });
+    }
+
+    let cookie = Cookie::build(AUTH_COOKIE, user.id.to_string())
+        .path("/")
+        .http_only(true)
+        .same_site(SameSite::Lax)
+        .finish();
+
+    HttpResponse::SeeOther()
+        .insert_header(("Location", "/admin"))
+        .cookie(cookie)
+        .finish()
+}
+
+#[derive(serde::Deserialize)]
+pub struct AdminRegisterForm {
+    pub email: String,
+    pub password: String,
+}
+
+#[get("/admin/register")]
+pub async fn admin_register_page() -> impl Responder {
+    render(crate::web::templates::AdminRegisterTemplate { error: None })
+}
+
+#[post("/admin/register")]
+pub async fn admin_register_post(
+    state: web::Data<AppState>,
+    form: web::Form<AdminRegisterForm>,
+) -> impl Responder {
+    let email = form.email.trim().to_string();
+    if email.is_empty() || !email.contains('@') {
+        return render(crate::web::templates::AdminRegisterTemplate {
+            error: Some("Please enter a valid email".to_string()),
+        });
+    }
+    if form.password.len() < 6 {
+        return render(crate::web::templates::AdminRegisterTemplate {
+            error: Some("Password must be at least 6 characters".to_string()),
+        });
+    }
+
+    let password_hash = match PasswordManager::hash_password(form.password.as_str()) {
+        Ok(h) => h,
+        Err(_) => {
+            return render(crate::web::templates::AdminRegisterTemplate {
+                error: Some("Failed to hash password".to_string()),
+            });
+        }
+    };
+
+    let mut database = rustpress::db::Database::from_pool(state.pool.clone());
+    let user = match database
+        .add_user(&UserCreate {
+            email,
+            password_hash,
+        })
+        .await
+    {
+        Ok(u) => u,
+        Err(e) => {
+            return render(crate::web::templates::AdminRegisterTemplate {
+                error: Some(e.to_string()),
+            });
+        }
+    };
+
+    let cookie = Cookie::build(AUTH_COOKIE, user.id.to_string())
+        .path("/")
+        .http_only(true)
+        .same_site(SameSite::Lax)
+        .finish();
+
+    HttpResponse::SeeOther()
+        .insert_header(("Location", "/admin"))
+        .cookie(cookie)
+        .finish()
+}
+
+#[post("/admin/logout")]
+pub async fn admin_logout_post() -> impl Responder {
+    let cookie = Cookie::build(AUTH_COOKIE, "")
+        .path("/")
+        .http_only(true)
+        .same_site(SameSite::Lax)
+        .max_age(actix_web::cookie::time::Duration::seconds(0))
+        .finish();
+
+    HttpResponse::SeeOther()
+        .insert_header(("Location", "/"))
+        .cookie(cookie)
+        .finish()
+}
+
+pub fn configure_admin(cfg: &mut web::ServiceConfig) {
+    cfg.service(admin_login_page)
+        .service(admin_login_post)
+        .service(admin_register_page)
+        .service(admin_register_post)
+        .service(admin_logout_post)
         .service(admin_dashboard)
         .service(admin_new)
         .service(admin_create)
@@ -779,4 +941,11 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(admin_template_create)
         .service(admin_template_edit)
         .service(admin_template_update);
+}
+
+pub fn configure(cfg: &mut web::ServiceConfig) {
+    cfg.service(public_index)
+        .service(public_post)
+        .service(public_page)
+        .configure(configure_admin);
 }
