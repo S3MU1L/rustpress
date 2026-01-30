@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Admin register - RustPress</title>
+    <link rel="stylesheet" href="/static/app.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container">
+        <a class="brand" href="/">RustPress</a>
+        <nav class="nav">
+          <a href="/admin/login">Login</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="card-header">
+        <h1>Create admin account</h1>
+        <span class="badge">MVP</span>
+      </div>
+
+      <div class="card">
+        {% if let Some(msg) = error %}
+          <p class="muted">{{ msg }}</p>
+        {% endif %}
+
+        <form method="post" action="/admin/register">
+          <label>Email
+            <input name="email" type="email" required />
+          </label>
+
+          <label>Password
+            <input name="password" type="password" required minlength="6" />
+          </label>
+
+          <div class="actions">
+            <button class="button" type="submit">Create account</button>
+            <a class="button secondary" href="/admin/login">Back</a>
+          </div>
+        </form>
+
+        <p class="muted">Accounts are stored in the database. For MVP, this is a simple email+password login.</p>
+      </div>
+    </main>
+  </body>
+</html>
