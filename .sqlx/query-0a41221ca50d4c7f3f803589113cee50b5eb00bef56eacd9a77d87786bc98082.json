@@ -1,0 +1,54 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE users\n            SET\n                email = CASE\n                    WHEN deleted_at IS NULL THEN COALESCE($1, email)\n                    ELSE email\n                END,\n                password_hash = CASE\n                    WHEN deleted_at IS NULL THEN COALESCE($2, password_hash)\n                    ELSE password_hash\n                END,\n                edited_at = CASE\n                    WHEN deleted_at IS NULL THEN now()\n                    ELSE edited_at\n                END\n            WHERE id = $3\n            RETURNING *\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "password_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "edited_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "deleted_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "0a41221ca50d4c7f3f803589113cee50b5eb00bef56eacd9a77d87786bc98082"
+}

@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            WITH old_state AS (\n                SELECT id, edited_at FROM users\n                WHERE id = $1 OR email = $2\n            ),\n            updated_state AS (\n                UPDATE users\n                SET\n                    edited_at = CASE\n                        WHEN deleted_at IS NULL THEN now()\n                        ELSE edited_at\n                    END,\n                    deleted_at = CASE\n                        WHEN deleted_at IS NULL THEN now()\n                        ELSE deleted_at\n                    END\n                WHERE id = $1 OR email = $2\n                RETURNING *\n            )\n            SELECT\n                u.*,\n                os.edited_at AS \"old_edited_at\"\n            FROM updated_state u\n            JOIN old_state os ON u.id = os.id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "password_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "edited_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "deleted_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "old_edited_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "bdf75e9e2ea6c70ea4c6e96cfec6ce117478a2c16686975912a5ddd3d605401c"
+}
