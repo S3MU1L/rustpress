@@ -27,6 +27,7 @@ RustPress is a high-performance, concurrent Content Management System (CMS) deve
 - **[HTMX](https://htmx.org/)**: Modern, hypermedia-driven frontend
 - **[Serde](https://serde.rs/)**: Serialization/deserialization framework
 - **[Tokio](https://tokio.rs/)**: Asynchronous runtime
+- **[Leptos](https://leptos.dev/)**: Rust-based UI components (see `src/frontend/`)
 
 ## 📋 Prerequisites
 
@@ -43,36 +44,37 @@ git clone https://github.com/S3MU1L/rustpress.git
 cd rustpress
 ```
 
-2. Build the project:
+2. Run the SSR server (Actix + Askama + HTMX):
 ```bash
-cargo build --release
+cargo run --features ssr
 ```
 
-3. Run RustPress:
-```bash
-cargo run --release
-```
+3. Open your browser and navigate to:
+   - Website: `http://127.0.0.1:8082/` (or whatever you set in `BIND_ADDR`)
+   - Admin: `http://127.0.0.1:8082/admin`
+   - Auth: `http://127.0.0.1:8082/register`, `http://127.0.0.1:8082/login`
 
-4. Open your browser and navigate to:
-   - Website: `http://localhost:8080`
-   - Admin Console: `http://localhost:8080/admin`
+Note: `/login` and `/register` are rendered from Rust UI components in `src/frontend/` (Leptos), not from HTML template files.
 
 ## 🐳 Docker
 
 Run RustPress + Postgres locally:
 
 ```bash
-docker compose up --build
+docker compose up --build -d
 ```
 
 Then open:
-- Website: `http://localhost:8080`
-- Admin: `http://localhost:8080/admin`
+- Website: `http://localhost:8081/`
+- Admin: `http://localhost:8081/admin`
+- Auth: `http://localhost:8081/register`, `http://localhost:8081/login`
 
 The compose file provisions a Postgres database with:
 - user: `rustpress`
 - password: `rustpress`
 - db: `rustpress`
+
+Note: Docker builds use SQLx offline metadata stored in `.sqlx/`.
 
 If you want to run without Docker, copy `.env.example` to `.env` and adjust `DATABASE_URL`.
 
@@ -97,6 +99,14 @@ You can also create custom templates by adding HTML files to the `templates/` di
 
 ## 🛠️ Development
 
+### Frontend (Leptos)
+
+The Rust UI components live in `src/frontend/`.
+
+At the moment, the app is a hybrid:
+- Admin/content pages use Askama templates in `templates/`
+- Auth pages (`/login`, `/register`) are rendered from `src/frontend/` components
+
 ### Building from Source
 
 ```bash
@@ -104,16 +114,27 @@ You can also create custom templates by adding HTML files to the `templates/` di
 cargo build
 
 # Run in development mode
-cargo run
+cargo run --features ssr
 
 # Run tests
-cargo test
+cargo test --features ssr
 
 # Format code
 cargo fmt
 
 # Run linter
 cargo clippy
+```
+
+### SQLx offline metadata
+
+This repo uses SQLx compile-time queries, so `.sqlx/` is checked in. Local builds default to offline mode via `.cargo/config.toml`.
+
+If you change SQL queries or migrations, refresh the cache (requires a running Postgres matching `DATABASE_URL`):
+
+```bash
+docker compose up -d db
+SQLX_OFFLINE=false cargo sqlx prepare -- --tests --features ssr
 ```
 
 ### Project Structure

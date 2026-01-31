@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>New site - RustPress</title>
+    <link rel="stylesheet" href="/static/app.css" />
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container">
+        <a class="brand" href="/sites">Sites</a>
+        <nav class="nav">
+          <a href="/admin">Dashboard</a>
+          <a href="/themes">Themes</a>
+          <a href="/me/account">Account</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="card-header">
+        <h1>New site</h1>
+      </div>
+
+      {% if error.is_some() %}
+        <div class="card" style="border-left:4px solid #b42318;">
+          <p>{{ error.as_ref().unwrap() }}</p>
+        </div>
+      {% endif %}
+
+      <form class="card" method="post" action="/sites" hx-post="/sites" hx-trigger="submit" hx-swap="none">
+        <label>Name
+          <input name="name" required placeholder="My blog" />
+        </label>
+
+        <label>Slug
+          <input name="slug" required placeholder="my-blog" />
+        </label>
+
+        <div class="actions">
+          <button class="button" type="submit">Create</button>
+          <a class="button secondary" href="/sites">Cancel</a>
+        </div>
+      </form>
+
+      <p class="muted">MVP: slug is unique per user.</p>
+    </main>
+  </body>
+</html>

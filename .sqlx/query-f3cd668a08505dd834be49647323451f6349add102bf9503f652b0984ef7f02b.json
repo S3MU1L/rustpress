@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * FROM users WHERE id = $1 OR email = $2",
+  "query": "\n            INSERT INTO users (email, password_hash) VALUES ($1, $2)\n            ON CONFLICT (email) DO NOTHING\n            RETURNING\n                id,\n                email,\n                password_hash,\n                email_verified_at,\n                created_at,\n                edited_at,\n                deleted_at\n            ",
   "describe": {
     "columns": [
       {
@@ -20,23 +20,28 @@
       },
       {
         "ordinal": 3,
-        "name": "created_at",
+        "name": "email_verified_at",
         "type_info": "Timestamptz"
       },
       {
         "ordinal": 4,
-        "name": "edited_at",
+        "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
         "ordinal": 5,
+        "name": "edited_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
         "name": "deleted_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
+        "Text",
         "Text"
       ]
     },
@@ -44,10 +49,11 @@
       false,
       false,
       false,
+      true,
       false,
       false,
       true
     ]
   },
-  "hash": "384d8149fb04e4b1155d175b5d43a056ccfd7d4be8b5912b4af11f35b2e77518"
+  "hash": "f3cd668a08505dd834be49647323451f6349add102bf9503f652b0984ef7f02b"
 }

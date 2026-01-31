@@ -1,7 +1,6 @@
 use askama::Template;
 
-use rustpress::models::ContentItem;
-use rustpress::models::SiteTemplate;
+use rustpress::models::{ContentItem, Site, SiteTemplate, User};
 
 #[derive(Template)]
 #[template(path = "public/index.html")]
@@ -72,4 +71,51 @@ pub struct AdminTemplateNewTemplate {
 #[template(path = "admin/template_edit.html")]
 pub struct AdminTemplateEditTemplate {
     pub template: SiteTemplate,
+}
+
+#[derive(Template)]
+#[template(path = "admin/account.html")]
+pub struct MeAccountTemplate {
+    pub user: User,
+    pub error: Option<String>,
+    pub success: Option<String>,
+}
+
+#[derive(Template)]
+#[template(path = "admin/security.html")]
+pub struct MeSecurityTemplate {
+    pub user: User,
+    pub password_set: bool,
+    pub email_verified: bool,
+    pub error: Option<String>,
+    pub success: Option<String>,
+}
+
+#[derive(Template)]
+#[template(path = "admin/sites_list.html")]
+pub struct SitesListTemplate {
+    pub sites: Vec<Site>,
+    pub query: String,
+}
+
+#[derive(Template)]
+#[template(path = "admin/site_new.html")]
+pub struct SiteNewTemplate {
+    pub error: Option<String>,
+}
+
+#[derive(Template)]
+#[template(path = "admin/site_edit.html")]
+pub struct SiteEditTemplate {
+    pub site: Site,
+    pub error: Option<String>,
+    pub success: Option<String>,
+}
+
+#[derive(Template)]
+#[template(path = "admin/themes.html")]
+pub struct ThemesTemplate {
+    pub templates: Vec<SiteTemplate>,
+    pub query: String,
+    pub category: String,
 }

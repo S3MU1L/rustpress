@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Edit site - {{ site.name }} - RustPress</title>
+    <link rel="stylesheet" href="/static/app.css" />
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container">
+        <a class="brand" href="/sites">Sites</a>
+        <nav class="nav">
+          <a href="/admin">Dashboard</a>
+          <a href="/themes">Themes</a>
+          <a href="/me/account">Account</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="card-header">
+        <h1>Edit site</h1>
+        <span class="badge">{{ site.status }}</span>
+      </div>
+
+      {% if error.is_some() %}
+        <div class="card" style="border-left:4px solid #b42318;">
+          <p>{{ error.as_ref().unwrap() }}</p>
+        </div>
+      {% endif %}
+
+      {% if success.is_some() %}
+        <div class="card" style="border-left:4px solid #067647;">
+          <p>{{ success.as_ref().unwrap() }}</p>
+        </div>
+      {% endif %}
+
+      <form class="card" method="post" action="/sites/{{ site.id }}" hx-post="/sites/{{ site.id }}" hx-target="body" hx-swap="outerHTML">
+        <label>Name
+          <input name="name" value="{{ site.name }}" />
+        </label>
+
+        <label>Slug
+          <input name="slug" value="{{ site.slug }}" />
+        </label>
+
+        <div class="actions">
+          <button class="button" type="submit">Save</button>
+          <a class="button secondary" href="/sites">Back</a>
+        </div>
+      </form>
+
+      <form class="card" method="post" action="/sites/{{ site.id }}/publish" hx-post="/sites/{{ site.id }}/publish" hx-target="body" hx-swap="outerHTML">
+        <h2>Publishing</h2>
+        <p class="muted">Current status: <strong>{{ site.status }}</strong></p>
+        <div class="actions">
+          <button class="button" type="submit">Publish site</button>
+        </div>
+      </form>
+
+      <p class="muted">Note: publishing a site doesn’t yet affect public routing; next step is mapping content/templates to a selected site.</p>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Security - RustPress</title>
+    <link rel="stylesheet" href="/static/app.css" />
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container">
+        <a class="brand" href="/admin">Admin</a>
+        <nav class="nav">
+          <a href="/sites">Sites</a>
+          <a href="/themes">Themes</a>
+          <a href="/me/account">Account</a>
+          <a href="/me/security">Security</a>
+          <form method="post" action="/logout" style="display:inline; margin:0;">
+            <button class="button" type="submit" style="padding:6px 10px;">Logout</button>
+          </form>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="card-header">
+        <h1>Security</h1>
+      </div>
+
+      {% if error.is_some() %}
+        <div class="card" style="border-left:4px solid #b42318;">
+          <p>{{ error.as_ref().unwrap() }}</p>
+        </div>
+      {% endif %}
+
+      {% if success.is_some() %}
+        <div class="card" style="border-left:4px solid #067647;">
+          <p>{{ success.as_ref().unwrap() }}</p>
+        </div>
+      {% endif %}
+
+      <div class="card">
+        <h2>Checklist</h2>
+        <ul class="list">
+          <li class="list-item">
+            Password set
+            {% if password_set %}<span class="badge">ok</span>{% else %}<span class="badge">missing</span>{% endif %}
+          </li>
+          <li class="list-item">
+            Account email verified
+            {% if email_verified %}<span class="badge">ok</span>{% else %}<span class="badge">missing</span>{% endif %}
+          </li>
+        </ul>
+        <p class="muted">Note: email verification is currently a dev toggle.</p>
+      </div>
+
+      <form class="card" method="post" action="/me/security/password" hx-post="/me/security/password" hx-target="body" hx-swap="outerHTML">
+        <h2>Change password</h2>
+        <label>Current password
+          <input type="password" name="current_password" />
+        </label>
+        <label>New password
+          <input type="password" name="new_password" />
+        </label>
+        <div class="actions">
+          <button class="button" type="submit">Update password</button>
+        </div>
+      </form>
+
+      <form class="card" method="post" action="/me/security/verify-email" hx-post="/me/security/verify-email" hx-target="body" hx-swap="outerHTML">
+        <h2>Email verification (dev)</h2>
+        <p class="muted">Marks your account email as verified immediately.</p>
+        <div class="actions">
+          <button class="button" type="submit">Mark email verified</button>
+          <a class="button secondary" href="/admin">Back</a>
+        </div>
+      </form>
+    </main>
+  </body>
+</html>
