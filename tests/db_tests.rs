@@ -29,7 +29,7 @@ pub mod db_tests {
                 sqlx::query_as!(
                     User,
                     r#"
-                    SELECT id, email, password_hash, created_at, edited_at, deleted_at
+                    SELECT id, email, password_hash, email_verified_at, created_at, edited_at, deleted_at
                     FROM users
                     WHERE id = $1
                     "#,
@@ -662,7 +662,7 @@ pub mod db_tests {
         let result = sqlx::query_as!(
             User,
             r#"
-                SELECT id, email, password_hash, created_at, edited_at, deleted_at
+                SELECT id, email, password_hash, email_verified_at, created_at, edited_at, deleted_at
                 FROM users
                 WHERE id = $1
                 "#,
@@ -729,7 +729,7 @@ pub mod db_tests {
         let result = sqlx::query_as!(
             User,
             r#"
-                SELECT id, email, password_hash, created_at, edited_at, deleted_at
+                SELECT id, email, password_hash, email_verified_at, created_at, edited_at, deleted_at
                 FROM users
                 WHERE id = $1
                 "#,
@@ -794,7 +794,7 @@ pub mod db_tests {
         let result = sqlx::query_as!(
             User,
             r#"
-                SELECT id, email, password_hash, created_at, edited_at, deleted_at
+                SELECT id, email, password_hash, email_verified_at, created_at, edited_at, deleted_at
                 FROM users
                 WHERE id = $1
                 "#,
@@ -861,7 +861,7 @@ pub mod db_tests {
         let result = sqlx::query_as!(
             User,
             r#"
-                SELECT id, email, password_hash, created_at, edited_at, deleted_at
+                SELECT id, email, password_hash, email_verified_at, created_at, edited_at, deleted_at
                 FROM users
                 WHERE id = $1
                 "#,
@@ -926,7 +926,7 @@ pub mod db_tests {
         let result = sqlx::query_as!(
             User,
             r#"
-                SELECT id, email, password_hash, created_at, edited_at, deleted_at
+                SELECT id, email, password_hash, email_verified_at, created_at, edited_at, deleted_at
                 FROM users
                 WHERE id = $1
                 "#,
@@ -993,7 +993,7 @@ pub mod db_tests {
         let result = sqlx::query_as!(
             User,
             r#"
-                SELECT id, email, password_hash, created_at, edited_at, deleted_at
+                SELECT id, email, password_hash, email_verified_at, created_at, edited_at, deleted_at
                 FROM users
                 WHERE id = $1
                 "#,

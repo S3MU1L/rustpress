@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            WITH old_state AS (\n                SELECT id, edited_at FROM users\n                WHERE id = $1 OR email = $2\n            ),\n            updated_state AS (\n                UPDATE users\n                SET\n                    edited_at = CASE\n                        WHEN email NOT LIKE 'anon-%@deleted.local' THEN now()\n                        ELSE edited_at\n                    END,\n                    deleted_at = CASE\n                        WHEN email NOT LIKE 'anon-%@deleted.local' THEN now()\n                        ELSE deleted_at\n                    END,\n                    email = 'anon-' || id::text || '@deleted.local',\n                    password_hash = 'ANONYMIZED'\n                WHERE id = $1 OR email = $2\n                RETURNING\n                    id,\n                    email,\n                    password_hash,\n                    email_verified_at,\n                    created_at,\n                    edited_at,\n                    deleted_at\n            )\n            SELECT\n                u.id,\n                u.email,\n                u.password_hash,\n                u.email_verified_at,\n                u.created_at,\n                u.edited_at,\n                u.deleted_at,\n                os.edited_at AS \"old_edited_at\"\n            FROM updated_state AS u\n            JOIN old_state AS os ON u.id = os.id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "password_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "email_verified_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "edited_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "deleted_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "old_edited_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "1b335cb42277fa1e4c1a9705c590f6f87a51fda91f3f4447804601af4f0cc05b"
+}

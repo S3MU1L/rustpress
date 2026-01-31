@@ -1,28 +1,25 @@
 use leptos::prelude::*;
 
-use crate::api::Register;
 use crate::frontend::components::{
-    Button, ButtonVariant, EmailInput, ErrorAlert, PasswordInput, SuccessAlert, TextInput,
+    Button, ButtonVariant, EmailInput, ErrorAlert, PasswordInput, TextInput,
 };
 
 #[component]
-pub fn RegisterPage() -> impl IntoView {
-    let register_action = ServerAction::<Register>::new();
-
+pub fn RegisterPage(#[prop(optional, into)] error: String) -> impl IntoView {
     let (username, set_username) = signal(String::new());
     let (email, set_email) = signal(String::new());
     let (password, set_password) = signal(String::new());
 
-    let pending = register_action.pending();
-    let result = register_action.value();
-
-    let success_message = move || {
-        result
-            .get()
-            .and_then(|r| r.ok().map(|response| response.message))
+    let error_message = match error.as_str() {
+        "" => String::new(),
+        "missing" => "Email required and password must be at least 4 characters".to_string(),
+        "exists" => "Email already exists".to_string(),
+        "db" => "Database error".to_string(),
+        "internal" => "Internal server error".to_string(),
+        other => other.to_string(),
     };
 
-    let error_message = move || result.get().and_then(|r| r.err().map(|e| e.to_string()));
+    let show_error = !error_message.is_empty();
 
     view! {
         <div class="min-h-screen flex items-center justify-center px-6 py-12 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
@@ -34,19 +31,11 @@ pub fn RegisterPage() -> impl IntoView {
                         <p class="text-slate-400 mt-2">"Get started with RustPress"</p>
                     </div>
 
-                    <Show when=move || success_message().is_some()>
-                        <SuccessAlert message=success_message().unwrap_or_default()>
-                            <a href="/login" class="text-emerald-300 hover:text-emerald-200 font-medium">
-                                "Continue to login →"
-                            </a>
-                        </SuccessAlert>
+                    <Show when=move || show_error>
+                        <ErrorAlert message=error_message.clone() />
                     </Show>
 
-                    <Show when=move || error_message().is_some()>
-                        <ErrorAlert message=error_message().unwrap_or_default() />
-                    </Show>
-
-                    <ActionForm action=register_action attr:class="space-y-5">
+                    <form method="post" action="/register" class="space-y-5">
                         <TextInput
                             label="Username (optional)"
                             name="username"
@@ -64,12 +53,12 @@ pub fn RegisterPage() -> impl IntoView {
                         />
                         <Button
                             variant=ButtonVariant::Primary
-                            loading=pending.get()
-                            loading_text="Creating account..."
+                            loading=false
+                            loading_text=""
                         >
                             "Create Account"
                         </Button>
-                    </ActionForm>
+                    </form>
 
                     <p class="text-center text-slate-400 mt-6 text-sm">
                         "Already have an account? "

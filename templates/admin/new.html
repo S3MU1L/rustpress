@@ -12,6 +12,8 @@
       <div class="container">
         <a class="brand" href="/admin">Admin</a>
         <nav class="nav">
+          <a href="/sites">Sites</a>
+          <a href="/themes">Themes</a>
           <a href="/">View site</a>
         </nav>
       </div>
@@ -20,34 +22,84 @@
     <main class="container">
       <h1>New {{ kind }}</h1>
 
-      <form class="card" method="post" action="/admin/{{ kind }}" hx-post="/admin/{{ kind }}" hx-trigger="submit" hx-swap="none">
-        <label>Title
-          <input name="title" required />
-        </label>
+      <div class="editor-grid">
+        <form id="new-form" class="card" method="post" action="/admin/{{ kind }}" hx-post="/admin/{{ kind }}" hx-trigger="submit" hx-swap="none">
+          <input type="hidden" name="kind" value="{{ kind }}" />
 
-        <label>Slug
-          <input name="slug" required placeholder="hello-world" />
-        </label>
+          <label>Title
+            <input id="title" name="title" required />
+          </label>
 
-        <label>Template
-          <select name="template">
-            {% for t in templates %}
-              <option value="{{ t.name }}" {% if t.name == default_template %}selected{% endif %}>{{ t.name }}</option>
-            {% endfor %}
-          </select>
-        </label>
+          <label>Slug
+            <input id="slug" name="slug" required placeholder="hello-world" />
+          </label>
 
-        <label>Content
-          <textarea name="content" rows="14" placeholder="Write something..."></textarea>
-        </label>
+          <label>Template
+            <select name="template">
+              {% for t in templates %}
+                <option value="{{ t.name }}" {% if t.name == default_template %}selected{% endif %}>{{ t.name }}</option>
+              {% endfor %}
+            </select>
+          </label>
 
-        <div class="actions">
-          <button class="button" type="submit">Create draft</button>
-          <a class="button secondary" href="/admin">Cancel</a>
+          <div class="actions" style="margin-top: 6px;">
+            <button class="button secondary" type="button" data-insert="<h1>Your title</h1>\n">H1</button>
+            <button class="button secondary" type="button" data-insert="<h2>Section</h2>\n">H2</button>
+            <button class="button secondary" type="button" data-insert="<p>Paragraph…</p>\n">P</button>
+            <button class="button secondary" type="button" data-insert="<a href=\"https://example.com\">Link</a>">Link</button>
+            <button class="button secondary" type="button" data-insert="<img src=\"/static/your-image.png\" alt=\"\" />">Image</button>
+            <button class="button secondary" type="button" data-insert="<pre><code>// code</code></pre>\n">Code</button>
+          </div>
+
+          <label>Content
+            <textarea id="editor" name="content" rows="14" placeholder="Write something..."></textarea>
+          </label>
+
+          <div class="actions">
+            <button class="button" type="submit">Create draft</button>
+            <a class="button secondary" href="/admin">Cancel</a>
+          </div>
+        </form>
+
+        <div class="card">
+          <div class="card-header">
+            <h2>Live preview</h2>
+            <span class="badge">HTMX</span>
+          </div>
+          <div
+            id="preview"
+            hx-post="/admin/preview"
+            hx-trigger="load, keyup changed delay:450ms from:#editor, keyup changed delay:450ms from:#title, keyup changed delay:450ms from:#slug, change from:select[name='template']"
+            hx-include="#new-form"
+            hx-swap="innerHTML"
+          >
+            <p class="muted">Loading preview…</p>
+          </div>
+          <p class="muted">Tip: preview updates as you type; create saves a draft.</p>
         </div>
-      </form>
+      </div>
 
       <p class="muted">HTMX is enabled; on success you’ll be redirected to the editor.</p>
     </main>
+
+    <script>
+      (function () {
+        const editor = document.getElementById('editor');
+        if (!editor) return;
+        document.querySelectorAll('[data-insert]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const text = btn.getAttribute('data-insert') || '';
+            const start = editor.selectionStart || 0;
+            const end = editor.selectionEnd || 0;
+            const value = editor.value;
+            editor.value = value.slice(0, start) + text + value.slice(end);
+            const pos = start + text.length;
+            editor.selectionStart = editor.selectionEnd = pos;
+            editor.dispatchEvent(new Event('input', { bubbles: true }));
+            editor.focus();
+          });
+        });
+      })();
+    </script>
   </body>
 </html>

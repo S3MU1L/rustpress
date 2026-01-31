@@ -6,12 +6,14 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use rustpress::db;
+use rustpress::frontend;
 use rustpress::models::{ContentCreate, ContentKind, ContentStatus, ContentUpdate, User};
 use rustpress::services::PasswordManager;
 use crate::web::templates::{
     AdminDashboardTemplate, AdminEditTemplate, AdminNewTemplate, AdminTemplateEditTemplate,
-    AdminTemplateNewTemplate, AdminTemplatesListTemplate, AdminLoginTemplate, AdminRegisterTemplate,
-    PublicContentTemplate, PublicIndexTemplate,
+    AdminTemplateNewTemplate, AdminTemplatesListTemplate,
+    MeAccountTemplate, MeSecurityTemplate, PublicContentTemplate, PublicIndexTemplate,
+    SiteEditTemplate, SiteNewTemplate, SitesListTemplate, ThemesTemplate,
 };
 
 const AUTH_COOKIE: &str = "rp_uid";
@@ -82,9 +84,17 @@ pub struct LoginForm {
     pub password: String,
 }
 
+#[derive(serde::Deserialize)]
+pub struct AuthQuery {
+    pub error: Option<String>,
+}
+
 #[get("/login")]
-pub async fn login_form() -> impl Responder {
-    render(AdminLoginTemplate { error: None })
+pub async fn login_form(query: web::Query<AuthQuery>) -> impl Responder {
+    let html = frontend::render_login_page(query.error.clone());
+    HttpResponse::Ok()
+        .content_type("text/html; charset=utf-8")
+        .body(html)
 }
 
 #[derive(serde::Deserialize)]
@@ -94,8 +104,11 @@ pub struct RegisterForm {
 }
 
 #[get("/register")]
-pub async fn register_form() -> impl Responder {
-    render(AdminRegisterTemplate { error: None })
+pub async fn register_form(query: web::Query<AuthQuery>) -> impl Responder {
+    let html = frontend::render_register_page(query.error.clone());
+    HttpResponse::Ok()
+        .content_type("text/html; charset=utf-8")
+        .body(html)
 }
 
 #[post("/register")]
@@ -107,16 +120,18 @@ pub async fn register_submit(
     let password = form.password.to_string();
 
     if email.is_empty() || password.len() < 4 {
-        return render(AdminRegisterTemplate {
-            error: Some("Email required and password must be at least 4 characters".to_string()),
-        });
+        return HttpResponse::SeeOther()
+            .insert_header(("Location", "/register?error=missing"))
+            .finish();
     }
 
     let password_hash = match PasswordManager::hash_password(&password) {
         Ok(h) => h,
         Err(e) => {
-            return HttpResponse::InternalServerError()
-                .body(format!("Password hashing error: {e}"));
+            eprintln!("Password hashing error: {e}");
+            return HttpResponse::SeeOther()
+                .insert_header(("Location", "/register?error=internal"))
+                .finish();
         }
     };
 
@@ -136,13 +151,15 @@ pub async fn register_submit(
     let user = match user {
         Ok(Some(u)) => u,
         Ok(None) => {
-            return render(AdminRegisterTemplate {
-                error: Some("Email already exists".to_string()),
-            });
+            return HttpResponse::SeeOther()
+                .insert_header(("Location", "/register?error=exists"))
+                .finish();
         }
         Err(e) => {
-            return HttpResponse::InternalServerError()
-                .body(format!("Database error: {e}"));
+            eprintln!("Database error: {e}");
+            return HttpResponse::SeeOther()
+                .insert_header(("Location", "/register?error=db"))
+                .finish();
         }
     };
 
@@ -167,7 +184,9 @@ pub async fn login_submit(
     let password = form.password.to_string();
 
     if email.is_empty() || password.is_empty() {
-        return HttpResponse::BadRequest().body("Missing email/password");
+        return HttpResponse::SeeOther()
+            .insert_header(("Location", "/login?error=missing"))
+            .finish();
     }
 
     let user = sqlx::query_as::<_, User>(
@@ -180,28 +199,32 @@ pub async fn login_submit(
     let user = match user {
         Ok(Some(u)) => u,
         Ok(None) => {
-            return render(AdminLoginTemplate {
-                error: Some("Invalid credentials".to_string()),
-            });
+            return HttpResponse::SeeOther()
+                .insert_header(("Location", "/login?error=invalid"))
+                .finish();
         }
         Err(e) => {
-            return HttpResponse::InternalServerError()
-                .body(format!("Database error: {e}"));
+            eprintln!("Database error: {e}");
+            return HttpResponse::SeeOther()
+                .insert_header(("Location", "/login?error=db"))
+                .finish();
         }
     };
 
     let ok = match PasswordManager::verify_password(&password, &user.password_hash) {
         Ok(v) => v,
         Err(e) => {
-            return HttpResponse::InternalServerError()
-                .body(format!("Password verification error: {e}"));
+            eprintln!("Password verification error: {e}");
+            return HttpResponse::SeeOther()
+                .insert_header(("Location", "/login?error=internal"))
+                .finish();
         }
     };
 
     if !ok {
-        return render(AdminLoginTemplate {
-            error: Some("Invalid credentials".to_string()),
-        });
+        return HttpResponse::SeeOther()
+            .insert_header(("Location", "/login?error=invalid"))
+            .finish();
     }
 
     let cookie = Cookie::build("rp_uid", user.id.to_string())
@@ -238,6 +261,510 @@ pub async fn logout(req: HttpRequest) -> impl Responder {
     }
 }
 
+async fn load_user(pool: &PgPool, uid: Uuid) -> Result<User, HttpResponse> {
+    let user = sqlx::query_as::<_, User>(
+        r#"SELECT * FROM users WHERE id = $1"#,
+    )
+    .bind(uid)
+    .fetch_optional(pool)
+    .await;
+
+    match user {
+        Ok(Some(u)) => Ok(u),
+        Ok(None) => Err(HttpResponse::Unauthorized().body("User not found")),
+        Err(e) => Err(HttpResponse::InternalServerError().body(format!("Database error: {e}"))),
+    }
+}
+
+#[get("/me/account")]
+pub async fn me_account(state: web::Data<AppState>, req: HttpRequest) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let user = match load_user(&state.pool, uid).await {
+        Ok(u) => u,
+        Err(resp) => return resp,
+    };
+
+    render(MeAccountTemplate {
+        user,
+        error: None,
+        success: None,
+    })
+}
+
+#[derive(serde::Deserialize)]
+pub struct AccountEmailForm {
+    pub email: String,
+}
+
+#[post("/me/account/email")]
+pub async fn me_account_update_email(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    form: web::Form<AccountEmailForm>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let new_email = form.email.trim().to_string();
+    if new_email.is_empty() {
+        let user = match load_user(&state.pool, uid).await {
+            Ok(u) => u,
+            Err(resp) => return resp,
+        };
+        return render(MeAccountTemplate {
+            user,
+            error: Some("Email is required".to_string()),
+            success: None,
+        });
+    }
+
+    let updated = sqlx::query_as::<_, User>(
+        r#"
+        UPDATE users
+        SET email = $1, edited_at = now()
+        WHERE id = $2
+        RETURNING *
+        "#,
+    )
+    .bind(&new_email)
+    .bind(uid)
+    .fetch_one(&state.pool)
+    .await;
+
+    match updated {
+        Ok(user) => render(MeAccountTemplate {
+            user,
+            error: None,
+            success: Some("Email updated".to_string()),
+        }),
+        Err(e) => {
+            let user = load_user(&state.pool, uid)
+                .await
+                .unwrap_or_else(|_| User {
+                    id: uid,
+                    email: new_email,
+                    password_hash: "".into(),
+                    email_verified_at: None,
+                    created_at: Utc::now(),
+                    edited_at: Utc::now(),
+                    deleted_at: None,
+                });
+            render(MeAccountTemplate {
+                user,
+                error: Some(format!("Update failed: {e}")),
+                success: None,
+            })
+        }
+    }
+}
+
+#[get("/me/security")]
+pub async fn me_security(state: web::Data<AppState>, req: HttpRequest) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let user = match load_user(&state.pool, uid).await {
+        Ok(u) => u,
+        Err(resp) => return resp,
+    };
+
+    render(MeSecurityTemplate {
+        password_set: !user.password_hash.trim().is_empty(),
+        email_verified: user.email_verified_at.is_some(),
+        user,
+        error: None,
+        success: None,
+    })
+}
+
+#[derive(serde::Deserialize)]
+pub struct ChangePasswordForm {
+    pub current_password: String,
+    pub new_password: String,
+}
+
+#[post("/me/security/password")]
+pub async fn me_security_change_password(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    form: web::Form<ChangePasswordForm>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let user = match load_user(&state.pool, uid).await {
+        Ok(u) => u,
+        Err(resp) => return resp,
+    };
+
+    if form.new_password.trim().len() < 4 {
+        return render(MeSecurityTemplate {
+            password_set: !user.password_hash.trim().is_empty(),
+            email_verified: user.email_verified_at.is_some(),
+            user,
+            error: Some("New password must be at least 4 characters".to_string()),
+            success: None,
+        });
+    }
+
+    let ok = match PasswordManager::verify_password(&form.current_password, &user.password_hash) {
+        Ok(v) => v,
+        Err(e) => {
+            return render(MeSecurityTemplate {
+                password_set: !user.password_hash.trim().is_empty(),
+                email_verified: user.email_verified_at.is_some(),
+                user,
+                error: Some(format!("Password verification error: {e}")),
+                success: None,
+            });
+        }
+    };
+
+    if !ok {
+        return render(MeSecurityTemplate {
+            password_set: !user.password_hash.trim().is_empty(),
+            email_verified: user.email_verified_at.is_some(),
+            user,
+            error: Some("Current password is incorrect".to_string()),
+            success: None,
+        });
+    }
+
+    let new_hash = match PasswordManager::hash_password(&form.new_password) {
+        Ok(h) => h,
+        Err(e) => {
+            return render(MeSecurityTemplate {
+                password_set: !user.password_hash.trim().is_empty(),
+                email_verified: user.email_verified_at.is_some(),
+                user,
+                error: Some(format!("Password hashing error: {e}")),
+                success: None,
+            });
+        }
+    };
+
+    let updated = sqlx::query_as::<_, User>(
+        r#"
+        UPDATE users
+        SET password_hash = $1, edited_at = now()
+        WHERE id = $2
+        RETURNING *
+        "#,
+    )
+    .bind(new_hash)
+    .bind(uid)
+    .fetch_one(&state.pool)
+    .await;
+
+    match updated {
+        Ok(user) => render(MeSecurityTemplate {
+            password_set: !user.password_hash.trim().is_empty(),
+            email_verified: user.email_verified_at.is_some(),
+            user,
+            error: None,
+            success: Some("Password updated".to_string()),
+        }),
+        Err(e) => render(MeSecurityTemplate {
+            password_set: !user.password_hash.trim().is_empty(),
+            email_verified: user.email_verified_at.is_some(),
+            user,
+            error: Some(format!("Update failed: {e}")),
+            success: None,
+        }),
+    }
+}
+
+#[post("/me/security/verify-email")]
+pub async fn me_security_mark_email_verified(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let updated = sqlx::query_as::<_, User>(
+        r#"
+        UPDATE users
+        SET email_verified_at = COALESCE(email_verified_at, now()), edited_at = now()
+        WHERE id = $1
+        RETURNING *
+        "#,
+    )
+    .bind(uid)
+    .fetch_one(&state.pool)
+    .await;
+
+    match updated {
+        Ok(user) => render(MeSecurityTemplate {
+            password_set: !user.password_hash.trim().is_empty(),
+            email_verified: user.email_verified_at.is_some(),
+            user,
+            error: None,
+            success: Some("Email marked as verified (dev)".to_string()),
+        }),
+        Err(e) => HttpResponse::InternalServerError().body(format!("Database error: {e}")),
+    }
+}
+
+#[derive(serde::Deserialize)]
+pub struct SitesQuery {
+    pub q: Option<String>,
+}
+
+#[get("/sites")]
+pub async fn sites_list(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    query: web::Query<SitesQuery>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let q = query.q.clone().unwrap_or_default();
+    let sites = db::list_sites_for_user(&state.pool, uid, query.q.as_deref())
+        .await
+        .unwrap_or_default();
+
+    render(SitesListTemplate { sites, query: q })
+}
+
+#[get("/sites/new")]
+pub async fn sites_new(req: HttpRequest) -> impl Responder {
+    if let Err(resp) = require_user(&req) {
+        return resp;
+    }
+    render(SiteNewTemplate { error: None })
+}
+
+#[derive(serde::Deserialize)]
+pub struct SiteCreateForm {
+    pub name: String,
+    pub slug: String,
+}
+
+#[post("/sites")]
+pub async fn sites_create(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    form: web::Form<SiteCreateForm>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let name = form.name.trim().to_string();
+    let slug = form.slug.trim().to_string();
+    if name.is_empty() || slug.is_empty() {
+        return render(SiteNewTemplate {
+            error: Some("Name and slug are required".to_string()),
+        });
+    }
+
+    let created = db::create_site(
+        &state.pool,
+        &rustpress::models::SiteCreate {
+            owner_user_id: uid,
+            name,
+            slug,
+        },
+    )
+    .await;
+
+    match created {
+        Ok(site) => {
+            if is_htmx(&req) {
+                HttpResponse::Ok()
+                    .insert_header(("HX-Redirect", format!("/sites/{}", site.id)))
+                    .finish()
+            } else {
+                HttpResponse::SeeOther()
+                    .insert_header(("Location", format!("/sites/{}", site.id)))
+                    .finish()
+            }
+        }
+        Err(e) => render(SiteNewTemplate {
+            error: Some(format!("Create failed: {e}")),
+        }),
+    }
+}
+
+#[get("/sites/{id}")]
+pub async fn sites_edit(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<Uuid>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+    let id = path.into_inner();
+
+    let site = match db::get_site_by_id(&state.pool, id).await {
+        Ok(Some(s)) => s,
+        Ok(None) => return HttpResponse::NotFound().body("Not found"),
+        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+    };
+
+    if site.owner_user_id != uid {
+        return HttpResponse::Forbidden().body("Forbidden");
+    }
+
+    render(SiteEditTemplate {
+        site,
+        error: None,
+        success: None,
+    })
+}
+
+#[derive(serde::Deserialize)]
+pub struct SiteUpdateForm {
+    pub name: Option<String>,
+    pub slug: Option<String>,
+}
+
+#[post("/sites/{id}")]
+pub async fn sites_update(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<Uuid>,
+    form: web::Form<SiteUpdateForm>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+    let id = path.into_inner();
+
+    let existing = match db::get_site_by_id(&state.pool, id).await {
+        Ok(Some(s)) => s,
+        Ok(None) => return HttpResponse::NotFound().body("Not found"),
+        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+    };
+
+    if existing.owner_user_id != uid {
+        return HttpResponse::Forbidden().body("Forbidden");
+    }
+
+    let update = rustpress::models::SiteUpdate {
+        name: form.name.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
+        slug: form.slug.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
+        status: None,
+    };
+
+    let updated = match db::update_site(&state.pool, id, &update).await {
+        Ok(Some(s)) => s,
+        Ok(None) => return HttpResponse::NotFound().body("Not found"),
+        Err(e) => {
+            return render(SiteEditTemplate {
+                site: existing,
+                error: Some(format!("Update failed: {e}")),
+                success: None,
+            });
+        }
+    };
+
+    render(SiteEditTemplate {
+        site: updated,
+        error: None,
+        success: Some("Saved".to_string()),
+    })
+}
+
+#[post("/sites/{id}/publish")]
+pub async fn sites_publish(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<Uuid>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+    let id = path.into_inner();
+
+    let existing = match db::get_site_by_id(&state.pool, id).await {
+        Ok(Some(s)) => s,
+        Ok(None) => return HttpResponse::NotFound().body("Not found"),
+        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+    };
+    if existing.owner_user_id != uid {
+        return HttpResponse::Forbidden().body("Forbidden");
+    }
+
+    let published = match db::publish_site(&state.pool, id).await {
+        Ok(Some(s)) => s,
+        Ok(None) => return HttpResponse::NotFound().body("Not found"),
+        Err(e) => return HttpResponse::BadRequest().body(format!("Publish failed: {e}")),
+    };
+
+    render(SiteEditTemplate {
+        site: published,
+        error: None,
+        success: Some("Site published".to_string()),
+    })
+}
+
+#[derive(serde::Deserialize)]
+pub struct ThemesQuery {
+    pub q: Option<String>,
+    pub category: Option<String>,
+}
+
+#[get("/themes")]
+pub async fn themes_list(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    query: web::Query<ThemesQuery>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let q = query.q.clone().unwrap_or_default();
+    let category = query.category.clone().unwrap_or_else(|| "all".to_string());
+
+    let mut templates = db::list_site_templates_for_user(&state.pool, uid)
+        .await
+        .unwrap_or_default();
+
+    if !q.trim().is_empty() {
+        let needle = q.trim().to_lowercase();
+        templates.retain(|t| {
+            t.name.to_lowercase().contains(&needle)
+                || t.description.to_lowercase().contains(&needle)
+        });
+    }
+
+    match category.as_str() {
+        "builtin" => templates.retain(|t| t.is_builtin),
+        "custom" => templates.retain(|t| !t.is_builtin),
+        _ => {}
+    }
+
+    render(ThemesTemplate {
+        templates,
+        query: q,
+        category,
+    })
+}
+
 fn render<T: Template>(t: T) -> HttpResponse {
     match t.render() {
         Ok(body) => HttpResponse::Ok()
@@ -268,9 +795,21 @@ fn iframe_srcdoc(html: &str) -> String {
     // `srcdoc` is an attribute; escape enough to keep it valid.
     // Browsers will decode entities inside attributes.
     format!(
-        r#"<iframe class=\"preview-iframe\" sandbox=\"allow-same-origin\" referrerpolicy=\"no-referrer\" srcdoc=\"{}\"></iframe>"#,
+        r#"<iframe class="preview-iframe" sandbox="allow-same-origin" referrerpolicy="no-referrer" srcdoc="{}"></iframe>"#,
         escape_html(html)
     )
+}
+
+fn normalize_builtin_template_html(html: &str) -> std::borrow::Cow<'_, str> {
+    if !(html.contains("\\n") || html.contains("\\t")) {
+        return std::borrow::Cow::Borrowed(html);
+    }
+
+    // Older built-in templates were inserted via migrations using literal "\\n" sequences.
+    // Only normalize built-ins (call sites guard on `is_builtin`) to avoid surprising changes
+    // in user-authored templates.
+    let html = html.replace("\\n", "\n").replace("\\t", "\t");
+    std::borrow::Cow::Owned(html)
 }
 
 fn apply_site_template(template_html: &str, title: &str, content_html: &str, slug: &str, kind: &str) -> String {
@@ -353,13 +892,20 @@ pub async fn public_post(
             }
 
             let html = match tpl {
-                Some(tpl) => apply_site_template(
-                    &tpl.html,
-                    &item.title,
-                    &item.content,
-                    &item.slug,
-                    &item.kind,
-                ),
+                Some(tpl) => {
+                    let tpl_html = if tpl.is_builtin {
+                        normalize_builtin_template_html(&tpl.html)
+                    } else {
+                        std::borrow::Cow::Borrowed(tpl.html.as_str())
+                    };
+                    apply_site_template(
+                        tpl_html.as_ref(),
+                        &item.title,
+                        &item.content,
+                        &item.slug,
+                        &item.kind,
+                    )
+                }
                 None => apply_site_template(
                     "<!doctype html><html><head><meta charset=\"utf-8\"><title>{{title}}</title></head><body><h1>{{title}}</h1>{{content}}</body></html>",
                     &item.title,
@@ -420,13 +966,20 @@ pub async fn public_page(
             }
 
             let html = match tpl {
-                Some(tpl) => apply_site_template(
-                    &tpl.html,
-                    &item.title,
-                    &item.content,
-                    &item.slug,
-                    &item.kind,
-                ),
+                Some(tpl) => {
+                    let tpl_html = if tpl.is_builtin {
+                        normalize_builtin_template_html(&tpl.html)
+                    } else {
+                        std::borrow::Cow::Borrowed(tpl.html.as_str())
+                    };
+                    apply_site_template(
+                        tpl_html.as_ref(),
+                        &item.title,
+                        &item.content,
+                        &item.slug,
+                        &item.kind,
+                    )
+                }
                 None => apply_site_template(
                     "<!doctype html><html><head><meta charset=\"utf-8\"><title>{{title}}</title></head><body><h1>{{title}}</h1>{{content}}</body></html>",
                     &item.title,
@@ -853,10 +1406,26 @@ pub struct AdminLiveForm {
 #[post("/admin/edit/{id}/autosave")]
 pub async fn admin_autosave(
     state: web::Data<AppState>,
+    req: HttpRequest,
     path: web::Path<Uuid>,
     form: web::Form<AdminLiveForm>,
 ) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
     let id = path.into_inner();
+
+    let item = match db::get_content_by_id(&state.pool, id).await {
+        Ok(Some(item)) => item,
+        Ok(None) => return HttpResponse::NotFound().body("Not found"),
+        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+    };
+
+    if item.owner_user_id.is_some_and(|owner| owner != uid) {
+        return HttpResponse::Forbidden().body("Forbidden");
+    }
 
     // Autosave should never implicitly publish.
     let update = ContentUpdate {
@@ -887,15 +1456,25 @@ pub async fn admin_autosave(
 #[post("/admin/edit/{id}/preview")]
 pub async fn admin_preview(
     state: web::Data<AppState>,
+    req: HttpRequest,
     path: web::Path<Uuid>,
     form: web::Form<AdminLiveForm>,
 ) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
     let id = path.into_inner();
     let item = match db::get_content_by_id(&state.pool, id).await {
         Ok(Some(item)) => item,
         Ok(None) => return HttpResponse::NotFound().body("Not found"),
         Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
     };
+
+    if item.owner_user_id.is_some_and(|owner| owner != uid) {
+        return HttpResponse::Forbidden().body("Forbidden");
+    }
 
     let title = form
         .title
@@ -949,7 +1528,14 @@ pub async fn admin_preview(
     }
 
     let html = match tpl {
-        Some(tpl) => apply_site_template(&tpl.html, &title, &content, &slug, &item.kind),
+        Some(tpl) => {
+            let tpl_html = if tpl.is_builtin {
+                normalize_builtin_template_html(&tpl.html)
+            } else {
+                std::borrow::Cow::Borrowed(tpl.html.as_str())
+            };
+            apply_site_template(tpl_html.as_ref(), &title, &content, &slug, &item.kind)
+        }
         None => apply_site_template(
             "<!doctype html><html><head><meta charset=\"utf-8\"><title>{{title}}</title></head><body><h1>{{title}}</h1>{{content}}</body></html>",
             &title,
@@ -964,12 +1550,104 @@ pub async fn admin_preview(
         .body(iframe_srcdoc(&html))
 }
 
+#[derive(serde::Deserialize)]
+pub struct AdminNewPreviewForm {
+    pub kind: String,
+    pub title: Option<String>,
+    pub slug: Option<String>,
+    pub content: Option<String>,
+    pub template: Option<String>,
+}
+
+#[post("/admin/preview")]
+pub async fn admin_preview_new(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    form: web::Form<AdminNewPreviewForm>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let kind = match form.kind.trim() {
+        "posts" => "post",
+        "pages" => "page",
+        other => other,
+    };
+
+    let title = form
+        .title
+        .as_ref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "Untitled".to_string());
+    let slug = form
+        .slug
+        .as_ref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "untitled".to_string());
+    let content = form.content.clone().unwrap_or_default();
+    let template_name = form
+        .template
+        .as_ref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "default".to_string());
+
+    let mut tpl = db::get_site_template_by_name_for_user(&state.pool, uid, &template_name)
+        .await
+        .ok()
+        .flatten();
+    if tpl.is_none() {
+        tpl = db::get_site_template_by_name_for_user(&state.pool, uid, "default")
+            .await
+            .ok()
+            .flatten();
+    }
+
+    let html = match tpl {
+        Some(tpl) => {
+            let tpl_html = if tpl.is_builtin {
+                normalize_builtin_template_html(&tpl.html)
+            } else {
+                std::borrow::Cow::Borrowed(tpl.html.as_str())
+            };
+            apply_site_template(tpl_html.as_ref(), &title, &content, &slug, kind)
+        }
+        None => apply_site_template(
+            "<!doctype html><html><head><meta charset=\"utf-8\"><title>{{title}}</title></head><body><h1>{{title}}</h1>{{content}}</body></html>",
+            &title,
+            &content,
+            &slug,
+            kind,
+        ),
+    };
+
+    HttpResponse::Ok()
+        .content_type("text/html; charset=utf-8")
+        .body(iframe_srcdoc(&html))
+}
+
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(login_form)
         .service(login_submit)
         .service(register_form)
         .service(register_submit)
         .service(logout)
+        .service(me_account)
+        .service(me_account_update_email)
+        .service(me_security)
+        .service(me_security_change_password)
+        .service(me_security_mark_email_verified)
+        .service(sites_list)
+        .service(sites_new)
+        .service(sites_create)
+        .service(sites_edit)
+        .service(sites_update)
+        .service(sites_publish)
+        .service(themes_list)
         .service(public_index)
         .service(public_post)
         .service(public_page)
@@ -981,6 +1659,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(admin_publish)
         .service(admin_autosave)
         .service(admin_preview)
+        .service(admin_preview_new)
         .service(admin_templates_list)
         .service(admin_template_new)
         .service(admin_template_create)

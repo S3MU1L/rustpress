@@ -12,6 +12,8 @@
       <div class="container">
         <a class="brand" href="/admin">Admin</a>
         <nav class="nav">
+          <a href="/sites">Sites</a>
+          <a href="/themes">Themes</a>
           <a href="/">View site</a>
           {% if item.kind == "post" %}
             <a href="/post/{{ item.slug }}">View post</a>
@@ -55,6 +57,14 @@
           </label>
 
           <label>Content
+            <div class="actions" style="margin-top: 6px;">
+              <button class="button secondary" type="button" data-insert="<h1>Your title</h1>\n">H1</button>
+              <button class="button secondary" type="button" data-insert="<h2>Section</h2>\n">H2</button>
+              <button class="button secondary" type="button" data-insert="<p>Paragraph…</p>\n">P</button>
+              <button class="button secondary" type="button" data-insert="<a href=\"https://example.com\">Link</a>">Link</button>
+              <button class="button secondary" type="button" data-insert="<img src=\"/static/your-image.png\" alt=\"\" />">Image</button>
+              <button class="button secondary" type="button" data-insert="<pre><code>// code</code></pre>\n">Code</button>
+            </div>
             <textarea id="editor" name="content" rows="18">{{ item.content }}</textarea>
           </label>
 
@@ -94,5 +104,25 @@
 
       <p class="muted">Tip: publishing sets status to published and stamps published_at.</p>
     </main>
+
+    <script>
+      (function () {
+        const editor = document.getElementById('editor');
+        if (!editor) return;
+        document.querySelectorAll('[data-insert]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const text = btn.getAttribute('data-insert') || '';
+            const start = editor.selectionStart || 0;
+            const end = editor.selectionEnd || 0;
+            const value = editor.value;
+            editor.value = value.slice(0, start) + text + value.slice(end);
+            const pos = start + text.length;
+            editor.selectionStart = editor.selectionEnd = pos;
+            editor.dispatchEvent(new Event('input', { bubbles: true }));
+            editor.focus();
+          });
+        });
+      })();
+    </script>
   </body>
 </html>

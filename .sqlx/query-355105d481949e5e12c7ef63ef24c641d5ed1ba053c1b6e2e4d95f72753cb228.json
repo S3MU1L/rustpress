@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            DELETE FROM users\n            WHERE id = $1 OR email = $2\n            RETURNING\n                id,\n                email,\n                password_hash,\n                created_at,\n                now() as \"edited_at!\",\n                deleted_at\n            ",
+  "query": "\n            SELECT\n                id,\n                email,\n                password_hash,\n                email_verified_at,\n                created_at,\n                edited_at,\n                deleted_at\n            FROM users\n            WHERE id = $1 OR email = $2\n            ",
   "describe": {
     "columns": [
       {
@@ -20,16 +20,21 @@
       },
       {
         "ordinal": 3,
-        "name": "created_at",
+        "name": "email_verified_at",
         "type_info": "Timestamptz"
       },
       {
         "ordinal": 4,
-        "name": "edited_at!",
+        "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
         "ordinal": 5,
+        "name": "edited_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
         "name": "deleted_at",
         "type_info": "Timestamptz"
       }
@@ -44,10 +49,11 @@
       false,
       false,
       false,
+      true,
       false,
-      null,
+      false,
       true
     ]
   },
-  "hash": "6ec5feca364df12619a95dcd030d6b43557bf4b379da6b03ec799dc19baed672"
+  "hash": "355105d481949e5e12c7ef63ef24c641d5ed1ba053c1b6e2e4d95f72753cb228"
 }

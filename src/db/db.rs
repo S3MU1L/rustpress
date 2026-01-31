@@ -44,7 +44,14 @@ impl Database {
             r#"
             INSERT INTO users (email, password_hash) VALUES ($1, $2)
             ON CONFLICT (email) DO NOTHING
-            RETURNING *
+            RETURNING
+                id,
+                email,
+                password_hash,
+                email_verified_at,
+                created_at,
+                edited_at,
+                deleted_at
             "#,
             data.email,
             data.password_hash,
@@ -72,7 +79,18 @@ impl Database {
 
         let result = sqlx::query_as!(
             User,
-            r#"SELECT * FROM users WHERE id = $1 OR email = $2"#,
+            r#"
+            SELECT
+                id,
+                email,
+                password_hash,
+                email_verified_at,
+                created_at,
+                edited_at,
+                deleted_at
+            FROM users
+            WHERE id = $1 OR email = $2
+            "#,
             id,
             email
         )
@@ -223,7 +241,14 @@ impl Database {
                     ELSE edited_at
                 END
             WHERE id = $3
-            RETURNING *
+            RETURNING
+                id,
+                email,
+                password_hash,
+                email_verified_at,
+                created_at,
+                edited_at,
+                deleted_at
             "#,
             data.email,
             data.password_hash,
@@ -289,13 +314,26 @@ impl Database {
                         ELSE deleted_at
                     END
                 WHERE id = $1 OR email = $2
-                RETURNING *
+                RETURNING
+                    id,
+                    email,
+                    password_hash,
+                    email_verified_at,
+                    created_at,
+                    edited_at,
+                    deleted_at
             )
             SELECT
-                u.*,
+                u.id,
+                u.email,
+                u.password_hash,
+                u.email_verified_at,
+                u.created_at,
+                u.edited_at,
+                u.deleted_at,
                 os.edited_at AS "old_edited_at"
-            FROM updated_state u
-            JOIN old_state os ON u.id = os.id
+            FROM updated_state AS u
+            JOIN old_state AS os ON u.id = os.id
             "#,
             id,
             email
@@ -330,6 +368,7 @@ impl Database {
                 id,
                 email,
                 password_hash,
+                email_verified_at,
                 created_at,
                 now() as "edited_at!",
                 deleted_at
@@ -376,13 +415,26 @@ impl Database {
                     email = 'anon-' || id::text || '@deleted.local',
                     password_hash = 'ANONYMIZED'
                 WHERE id = $1 OR email = $2
-                RETURNING *
+                RETURNING
+                    id,
+                    email,
+                    password_hash,
+                    email_verified_at,
+                    created_at,
+                    edited_at,
+                    deleted_at
             )
             SELECT
-                u.*,
+                u.id,
+                u.email,
+                u.password_hash,
+                u.email_verified_at,
+                u.created_at,
+                u.edited_at,
+                u.deleted_at,
                 os.edited_at AS "old_edited_at"
-            FROM updated_state u
-            JOIN old_state os ON u.id = os.id
+            FROM updated_state AS u
+            JOIN old_state AS os ON u.id = os.id
             "#,
             id,
             email
@@ -430,13 +482,26 @@ impl Database {
                         ELSE deleted_at
                     END
                 WHERE id = $1 OR email = $2
-                RETURNING *
+                RETURNING
+                    id,
+                    email,
+                    password_hash,
+                    email_verified_at,
+                    created_at,
+                    edited_at,
+                    deleted_at
             )
             SELECT
-                u.*,
+                u.id,
+                u.email,
+                u.password_hash,
+                u.email_verified_at,
+                u.created_at,
+                u.edited_at,
+                u.deleted_at,
                 os.edited_at AS "old_edited_at"
-            FROM updated_state u
-            JOIN old_state os ON u.id = os.id
+            FROM updated_state AS u
+            JOIN old_state AS os ON u.id = os.id
             "#,
             id,
             email

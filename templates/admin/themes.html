@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Templates - RustPress</title>
+    <title>Themes - RustPress</title>
     <link rel="stylesheet" href="/static/app.css" />
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   </head>
@@ -12,21 +12,36 @@
       <div class="container">
         <a class="brand" href="/admin">Admin</a>
         <nav class="nav">
-          <a href="/admin">Dashboard</a>
           <a href="/sites">Sites</a>
           <a href="/themes">Themes</a>
-          <a href="/admin/templates/new">New template</a>
+          <a href="/admin/templates">Templates</a>
           <a href="/me/account">Account</a>
-          <a href="/">View site</a>
         </nav>
       </div>
     </header>
 
     <main class="container">
       <div class="card-header">
-        <h1>Templates</h1>
-        <a class="button" href="/admin/templates/new">+ New</a>
+        <h1>Themes</h1>
+        <a class="button" href="/admin/templates/new">+ New template</a>
       </div>
+
+      <form class="card" method="get" action="/themes">
+        <label>Search
+          <input name="q" value="{{ query }}" placeholder="template name" />
+        </label>
+        <div class="actions">
+          <button class="button" type="submit">Search</button>
+          <a class="button secondary" href="/themes">Clear</a>
+        </div>
+
+        <div class="actions">
+          <a class="button secondary" href="/themes?category=all{% if query.len() > 0 %}&q={{ query }}{% endif %}">All</a>
+          <a class="button secondary" href="/themes?category=builtin{% if query.len() > 0 %}&q={{ query }}{% endif %}">Built-in</a>
+          <a class="button secondary" href="/themes?category=custom{% if query.len() > 0 %}&q={{ query }}{% endif %}">Custom</a>
+          <span class="muted">Active: {{ category }}</span>
+        </div>
+      </form>
 
       <div class="card">
         {% if templates.len() == 0 %}
@@ -47,7 +62,7 @@
         {% endif %}
       </div>
 
-      <p class="muted">Placeholders supported: <code>{{"{{title}}"}}</code>, <code>{{"{{content}}"}}</code>, <code>{{"{{slug}}"}}</code>, <code>{{"{{kind}}"}}</code></p>
+      <p class="muted">Themes are currently the same thing as site templates.</p>
     </main>
   </body>
 </html>

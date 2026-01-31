@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Sites - RustPress</title>
+    <link rel="stylesheet" href="/static/app.css" />
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container">
+        <a class="brand" href="/admin">Admin</a>
+        <nav class="nav">
+          <a href="/sites">Sites</a>
+          <a href="/themes">Themes</a>
+          <a href="/me/account">Account</a>
+          <a href="/me/security">Security</a>
+          <form method="post" action="/logout" style="display:inline; margin:0;">
+            <button class="button" type="submit" style="padding:6px 10px;">Logout</button>
+          </form>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="card-header">
+        <h1>Sites</h1>
+        <a class="button" href="/sites/new">+ New site</a>
+      </div>
+
+      <form class="card" method="get" action="/sites">
+        <label>Search
+          <input name="q" value="{{ query }}" placeholder="site name or slug" />
+        </label>
+        <div class="actions">
+          <button class="button" type="submit">Search</button>
+          <a class="button secondary" href="/sites">Clear</a>
+        </div>
+      </form>
+
+      <div class="card">
+        {% if sites.len() == 0 %}
+          <p class="muted">No sites yet.</p>
+        {% else %}
+          <ul class="list">
+            {% for s in sites %}
+              <li class="list-item">
+                <a href="/sites/{{ s.id }}">{{ s.name }}</a>
+                <span class="badge">{{ s.status }}</span>
+                <span class="muted">/{{ s.slug }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+
+      <p class="muted">MVP: sites are managed separately from public routing for now.</p>
+    </main>
+  </body>
+</html>
