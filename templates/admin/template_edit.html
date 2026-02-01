@@ -36,7 +36,7 @@
         </label>
 
         <label>Description
-          <input name="description" value="{{ template.description }}" />
+          <input name="description" value="{{ template.description }}" {% if template.is_builtin %}disabled{% endif %} />
         </label>
 
         <label>HTML
@@ -44,10 +44,20 @@
         </label>
 
         <div class="actions">
-          <button class="button" type="submit">Save</button>
+          <button class="button" type="submit" {% if template.is_builtin %}disabled{% endif %}>Save</button>
           <a class="button secondary" href="/admin/templates">Back</a>
         </div>
       </form>
+
+      {% if template.is_builtin %}
+        <form method="post" action="/admin/templates/{{ template.id }}/duplicate" hx-post="/admin/templates/{{ template.id }}/duplicate" hx-swap="none" class="card">
+          <h2>Make a copy</h2>
+          <p class="muted">Built-in templates are read-only. Create a custom copy you can edit.</p>
+          <div class="actions">
+            <button class="button" type="submit">Copy as custom template</button>
+          </div>
+        </form>
+      {% endif %}
 
       {% if template.is_builtin %}
         <p class="muted">Built-in templates are read-only (copy it into a new custom template if needed).</p>

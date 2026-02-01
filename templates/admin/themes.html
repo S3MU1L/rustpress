@@ -27,6 +27,15 @@
       </div>
 
       <form class="card" method="get" action="/themes">
+        <label>Apply to site
+          <select name="site_id">
+            <option value="">(no site selected)</option>
+            {% for s in sites %}
+              <option value="{{ s.id }}" {% if selected_site_id.is_some() && selected_site_id.unwrap() == s.id %}selected{% endif %}>{{ s.name }} (/{{ s.slug }})</option>
+            {% endfor %}
+          </select>
+        </label>
+
         <label>Search
           <input name="q" value="{{ query }}" placeholder="template name" />
         </label>
@@ -36,10 +45,14 @@
         </div>
 
         <div class="actions">
-          <a class="button secondary" href="/themes?category=all{% if query.len() > 0 %}&q={{ query }}{% endif %}">All</a>
-          <a class="button secondary" href="/themes?category=builtin{% if query.len() > 0 %}&q={{ query }}{% endif %}">Built-in</a>
-          <a class="button secondary" href="/themes?category=custom{% if query.len() > 0 %}&q={{ query }}{% endif %}">Custom</a>
+          <a class="button secondary" href="/themes?category=all{% if query.len() > 0 %}&q={{ query }}{% endif %}{% if selected_site_id.is_some() %}&site_id={{ selected_site_id.unwrap() }}{% endif %}">All</a>
+          <a class="button secondary" href="/themes?category=builtin{% if query.len() > 0 %}&q={{ query }}{% endif %}{% if selected_site_id.is_some() %}&site_id={{ selected_site_id.unwrap() }}{% endif %}">Built-in</a>
+          <a class="button secondary" href="/themes?category=custom{% if query.len() > 0 %}&q={{ query }}{% endif %}{% if selected_site_id.is_some() %}&site_id={{ selected_site_id.unwrap() }}{% endif %}">Custom</a>
           <span class="muted">Active: {{ category }}</span>
+        </div>
+
+        <div class="actions">
+          <button class="button" type="submit">Update</button>
         </div>
       </form>
 
@@ -56,13 +69,20 @@
                 {% else %}
                   <span class="badge">custom</span>
                 {% endif %}
+
+                {% if selected_site_id.is_some() %}
+                  <form method="post" action="/sites/{{ selected_site_id.unwrap() }}/theme" hx-post="/sites/{{ selected_site_id.unwrap() }}/theme" hx-swap="none" style="display:inline; margin:0;">
+                    <input type="hidden" name="template" value="{{ t.name }}" />
+                    <button class="button secondary" type="submit">Apply</button>
+                  </form>
+                {% endif %}
               </li>
             {% endfor %}
           </ul>
         {% endif %}
       </div>
 
-      <p class="muted">Themes are currently the same thing as site templates.</p>
+      <p class="muted">Themes are currently the same thing as site templates. Select a site to apply a default theme.</p>
     </main>
   </body>
 </html>

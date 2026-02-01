@@ -58,12 +58,12 @@
 
           <label>Content
             <div class="actions" style="margin-top: 6px;">
-              <button class="button secondary" type="button" data-insert="<h1>Your title</h1>\n">H1</button>
-              <button class="button secondary" type="button" data-insert="<h2>Section</h2>\n">H2</button>
-              <button class="button secondary" type="button" data-insert="<p>Paragraph…</p>\n">P</button>
-              <button class="button secondary" type="button" data-insert="<a href=\"https://example.com\">Link</a>">Link</button>
-              <button class="button secondary" type="button" data-insert="<img src=\"/static/your-image.png\" alt=\"\" />">Image</button>
-              <button class="button secondary" type="button" data-insert="<pre><code>// code</code></pre>\n">Code</button>
+              <button class="button secondary" type="button" data-insert="<h1>Your title</h1>&#10;">H1</button>
+              <button class="button secondary" type="button" data-insert="<h2>Section</h2>&#10;">H2</button>
+              <button class="button secondary" type="button" data-insert="<p>Paragraph…</p>&#10;">P</button>
+              <button class="button secondary" type="button" data-insert="<a href='https://example.com' target='_blank' rel='noopener noreferrer'>Link</a>">Link</button>
+              <button class="button secondary" type="button" data-insert="<img src='/static/your-image.png' alt='' />">Image</button>
+              <button class="button secondary" type="button" data-insert="<pre><code>// code</code></pre>&#10;">Code</button>
             </div>
             <textarea id="editor" name="content" rows="18">{{ item.content }}</textarea>
           </label>
@@ -78,8 +78,9 @@
             id="autosave"
             class="muted"
             hx-post="/admin/edit/{{ item.id }}/autosave"
-            hx-trigger="keyup changed delay:1s from:#editor, keyup changed delay:1s from:#title, keyup changed delay:1s from:#slug, change delay:1s from:select[name='template']"
+            hx-trigger="input changed delay:1s from:#editor, input changed delay:1s from:#title, input changed delay:1s from:#slug, change delay:1s from:select[name='template']"
             hx-include="#edit-form"
+            hx-target="this"
             hx-swap="innerHTML"
           ></div>
         </form>
@@ -92,8 +93,9 @@
           <div
             id="preview"
             hx-post="/admin/edit/{{ item.id }}/preview"
-            hx-trigger="load, keyup changed delay:450ms from:#editor, keyup changed delay:450ms from:#title, keyup changed delay:450ms from:#slug, change from:select[name='template']"
+            hx-trigger="load, input changed delay:450ms from:#editor, input changed delay:450ms from:#title, input changed delay:450ms from:#slug, change from:select[name='template']"
             hx-include="#edit-form"
+            hx-target="this"
             hx-swap="innerHTML"
           >
             <p class="muted">Loading preview…</p>
