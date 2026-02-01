@@ -57,14 +57,15 @@ pub async fn get_site_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Site>, sql
 pub async fn create_site(pool: &PgPool, data: &SiteCreate) -> Result<Site, sqlx::Error> {
     sqlx::query_as::<_, Site>(
         r#"
-        INSERT INTO sites (owner_user_id, name, slug, status)
-        VALUES ($1, $2, $3, 'draft')
+        INSERT INTO sites (owner_user_id, name, slug, status, default_template)
+        VALUES ($1, $2, $3, 'draft', $4)
         RETURNING *
         "#,
     )
     .bind(data.owner_user_id)
     .bind(&data.name)
     .bind(&data.slug)
+    .bind(&data.default_template)
     .fetch_one(pool)
     .await
 }
@@ -77,14 +78,16 @@ pub async fn update_site(pool: &PgPool, id: Uuid, data: &SiteUpdate) -> Result<O
             name = COALESCE($1, name),
             slug = COALESCE($2, slug),
             status = COALESCE($3, status),
+            default_template = COALESCE($4, default_template),
             edited_at = now()
-        WHERE id = $4
+        WHERE id = $5
         RETURNING *
         "#,
     )
     .bind(data.name.as_deref())
     .bind(data.slug.as_deref())
     .bind(data.status.as_deref())
+    .bind(data.default_template.as_deref())
     .bind(id)
     .fetch_optional(pool)
     .await

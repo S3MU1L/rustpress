@@ -543,6 +543,644 @@ pub async fn sites_list(
 }
 
 #[get("/sites/new")]
+pub async fn sites_new(state: web::Data<AppState>, req: HttpRequest) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let templates = db::list_site_templates_for_user(&state.pool, uid)
+        .await
+        .unwrap_or_default();
+
+    render(SiteNewTemplate {
+        templates,
+        default_template: "default".to_string(),
+        error: None,
+    })
+}
+
+#[derive(serde::Deserialize)]
+pub struct SiteCreateForm {
+    pub name: String,
+    pub slug: String,
+    pub default_template: Option<String>,
+}
+
+#[post("/sites")]
+pub async fn sites_create(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    form: web::Form<SiteCreateForm>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let name = form.name.trim().to_string();
+    let slug = form.slug.trim().to_string();
+    if name.is_empty() || slug.is_empty() {
+        let templates = db::list_site_templates_for_user(&state.pool, uid)
+            .await
+            .unwrap_or_default();
+        return render(SiteNewTemplate {
+            templates,
+            default_template: form
+                .default_template
+                .clone()
+                .unwrap_or_else(|| "default".to_string()),
+            error: Some("Name and slug are required".to_string()),
+        });
+    }
+
+    let default_template = form
+        .default_template
+        .as_ref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "default".to_string());
+
+    let created = db::create_site(
+        &state.pool,
+        &rustpress::models::SiteCreate {
+            owner_user_id: uid,
+            name,
+            slug,
+            default_template,
+        },
+    )
+    .await;
+
+    match created {
+        Ok(site) => {
+            if is_htmx(&req) {
+                HttpResponse::Ok()
+                    .insert_header(("HX-Redirect", format!("/sites/{}", site.id)))
+                    .finish()
+            } else {
+                HttpResponse::SeeOther()
+                    .insert_header(("Location", format!("/sites/{}", site.id)))
+                    .finish()
+            }
+        }
+        Err(e) => {
+            let templates = db::list_site_templates_for_user(&state.pool, uid)
+                .await
+                .unwrap_or_default();
+            render(SiteNewTemplate {
+                templates,
+                default_template: form
+                    .default_template
+                    .clone()
+                    .unwrap_or_else(|| "default".to_string()),
+                error: Some(format!("Create failed: {e}")),
+            })
+        }
+    }
+}
+
+#[get("/sites/{id}")]
+pub async fn sites_edit(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<Uuid>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+    let id = path.into_inner();
+
+    let site = match db::get_site_by_id(&state.pool, id).await {
+        Ok(Some(s)) => s,
+        Ok(None) => return HttpResponse::NotFound().body("Not found"),
+        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+    };
+
+    if site.owner_user_id != uid {
+        return HttpResponse::Forbidden().body("Forbidden");
+    }
+
+    let templates = db::list_site_templates_for_user(&state.pool, uid)
+        .await
+        .unwrap_or_default();
+
+    render(SiteEditTemplate {
+        site,
+        templates,
+        error: None,
+        success: None,
+    })
+}
+
+#[derive(serde::Deserialize)]
+pub struct SiteUpdateForm {
+    pub name: Option<String>,
+    pub slug: Option<String>,
+    pub default_template: Option<String>,
+}
+
+#[post("/sites/{id}")]
+pub async fn sites_update(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<Uuid>,
+    form: web::Form<SiteUpdateForm>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+    let id = path.into_inner();
+
+    let existing = match db::get_site_by_id(&state.pool, id).await {
+        Ok(Some(s)) => s,
+        Ok(None) => return HttpResponse::NotFound().body("Not found"),
+        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+    };
+
+    if existing.owner_user_id != uid {
+        return HttpResponse::Forbidden().body("Forbidden");
+    }
+
+    let update = rustpress::models::SiteUpdate {
+        name: form.name.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
+        slug: form.slug.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
+        status: None,
+        default_template: form
+            .default_template
+            .as_ref()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty()),
+    };
+
+    let updated = match db::update_site(&state.pool, id, &update).await {
+        Ok(Some(s)) => s,
+        Ok(None) => return HttpResponse::NotFound().body("Not found"),
+        Err(e) => {
+            let templates = db::list_site_templates_for_user(&state.pool, uid)
+                .await
+                .unwrap_or_default();
+            return render(SiteEditTemplate {
+                site: existing,
+                templates,
+                error: Some(format!("Update failed: {e}")),
+                success: None,
+            });
+        }
+    };
+
+    let templates = db::list_site_templates_for_user(&state.pool, uid)
+        .await
+        .unwrap_or_default();
+
+    render(SiteEditTemplate {
+        site: updated,
+        templates,
+        error: None,
+        success: Some("Saved".to_string()),
+    })
+}
+
+#[post("/sites/{id}/publish")]
+pub async fn sites_publish(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<Uuid>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+    let id = path.into_inner();
+
+    let existing = match db::get_site_by_id(&state.pool, id).await {
+        Ok(Some(s)) => s,
+        Ok(None) => return HttpResponse::NotFound().body("Not found"),
+        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+    };
+    if existing.owner_user_id != uid {
+        return HttpResponse::Forbidden().body("Forbidden");
+    }
+
+    let published = match db::publish_site(&state.pool, id).await {
+        Ok(Some(s)) => s,
+        Ok(None) => return HttpResponse::NotFound().body("Not found"),
+        Err(e) => return HttpResponse::BadRequest().body(format!("Publish failed: {e}")),
+    };
+
+    render(SiteEditTemplate {
+        site: published,
+        templates: db::list_site_templates_for_user(&state.pool, uid)
+            .await
+            .unwrap_or_default(),
+        error: None,
+        success: Some("Site published".to_string()),
+    })
+}
+
+#[derive(serde::Deserialize)]
+pub struct ThemesQuery {
+    pub q: Option<String>,
+    pub category: Option<String>,
+    pub site_id: Option<Uuid>,
+}
+
+#[get("/themes")]
+pub async fn themes_list(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    query: web::Query<ThemesQuery>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let q = query.q.clone().unwrap_or_default();
+    let category = query.category.clone().unwrap_or_else(|| "all".to_string());
+    let selected_site_id = query.site_id;
+
+    let mut templates = db::list_site_templates_for_user(&state.pool, uid)
+        .await
+        .unwrap_or_default();
+
+    let sites = db::list_sites_for_user(&state.pool, uid, None)
+        .await
+        .unwrap_or_default();
+
+    if !q.trim().is_empty() {
+        let needle = q.trim().to_lowercase();
+        templates.retain(|t| {
+            t.name.to_lowercase().contains(&needle)
+                || t.description.to_lowercase().contains(&needle)
+        });
+    }
+
+    match category.as_str() {
+        "builtin" => templates.retain(|t| t.is_builtin),
+        "custom" => templates.retain(|t| !t.is_builtin),
+        _ => {}
+    }
+
+    render(ThemesTemplate {
+        templates,
+        sites,
+        selected_site_id,
+        query: q,
+        category,
+    })
+}
+
+#[derive(serde::Deserialize)]
+pub struct ApplyThemeForm {
+    pub template: String,
+}
+
+#[post("/sites/{id}/theme")]
+pub async fn sites_apply_theme(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<Uuid>,
+    form: web::Form<ApplyThemeForm>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let id = path.into_inner();
+    let existing = match db::get_site_by_id(&state.pool, id).await {
+        Ok(Some(s)) => s,
+        Ok(None) => return HttpResponse::NotFound().body("Not found"),
+        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+    };
+
+    if existing.owner_user_id != uid {
+        return HttpResponse::Forbidden().body("Forbidden");
+    }
+
+    let template_name = form.template.trim();
+    if template_name.is_empty() {
+        return HttpResponse::BadRequest().body("Template is required");
+    }
+
+    // Only allow selecting templates visible to this user.
+    let allowed = db::get_site_template_by_name_for_user(&state.pool, uid, template_name)
+        .await
+        .ok()
+        .flatten();
+    if allowed.is_none() {
+        return HttpResponse::BadRequest().body("Unknown template");
+    }
+
+    let update = rustpress::models::SiteUpdate {
+        name: None,
+        slug: None,
+        status: None,
+        default_template: Some(template_name.to_string()),
+    };
+
+    let updated = match db::update_site(&state.pool, id, &update).await {
+        Ok(Some(s)) => s,
+        Ok(None) => return HttpResponse::NotFound().body("Not found"),
+        Err(e) => return HttpResponse::BadRequest().body(format!("Update failed: {e}")),
+    };
+
+    if is_htmx(&req) {
+        HttpResponse::Ok()
+            .insert_header(("HX-Redirect", format!("/sites/{}", updated.id)))
+            .finish()
+    } else {
+        HttpResponse::SeeOther()
+            .insert_header(("Location", format!("/sites/{}", updated.id)))
+            .finish()
+    }
+}
+
+async fn load_user(pool: &PgPool, uid: Uuid) -> Result<User, HttpResponse> {
+    let user = sqlx::query_as::<_, User>(
+        r#"SELECT * FROM users WHERE id = $1"#,
+    )
+    .bind(uid)
+    .fetch_optional(pool)
+    .await;
+
+    match user {
+        Ok(Some(u)) => Ok(u),
+        Ok(None) => Err(HttpResponse::Unauthorized().body("User not found")),
+        Err(e) => Err(HttpResponse::InternalServerError().body(format!("Database error: {e}"))),
+    }
+}
+
+#[get("/me/account")]
+pub async fn me_account(state: web::Data<AppState>, req: HttpRequest) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let user = match load_user(&state.pool, uid).await {
+        Ok(u) => u,
+        Err(resp) => return resp,
+    };
+
+    render(MeAccountTemplate {
+        user,
+        error: None,
+        success: None,
+    })
+}
+
+#[derive(serde::Deserialize)]
+pub struct AccountEmailForm {
+    pub email: String,
+}
+
+#[post("/me/account/email")]
+pub async fn me_account_update_email(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    form: web::Form<AccountEmailForm>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let new_email = form.email.trim().to_string();
+    if new_email.is_empty() {
+        let user = match load_user(&state.pool, uid).await {
+            Ok(u) => u,
+            Err(resp) => return resp,
+        };
+        return render(MeAccountTemplate {
+            user,
+            error: Some("Email is required".to_string()),
+            success: None,
+        });
+    }
+
+    let updated = sqlx::query_as::<_, User>(
+        r#"
+        UPDATE users
+        SET email = $1, edited_at = now()
+        WHERE id = $2
+        RETURNING *
+        "#,
+    )
+    .bind(&new_email)
+    .bind(uid)
+    .fetch_one(&state.pool)
+    .await;
+
+    match updated {
+        Ok(user) => render(MeAccountTemplate {
+            user,
+            error: None,
+            success: Some("Email updated".to_string()),
+        }),
+        Err(e) => {
+            let user = load_user(&state.pool, uid)
+                .await
+                .unwrap_or_else(|_| User {
+                    id: uid,
+                    email: new_email,
+                    password_hash: "".into(),
+                    email_verified_at: None,
+                    created_at: Utc::now(),
+                    edited_at: Utc::now(),
+                    deleted_at: None,
+                });
+            render(MeAccountTemplate {
+                user,
+                error: Some(format!("Update failed: {e}")),
+                success: None,
+            })
+        }
+    }
+}
+
+#[get("/me/security")]
+pub async fn me_security(state: web::Data<AppState>, req: HttpRequest) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let user = match load_user(&state.pool, uid).await {
+        Ok(u) => u,
+        Err(resp) => return resp,
+    };
+
+    render(MeSecurityTemplate {
+        password_set: !user.password_hash.trim().is_empty(),
+        email_verified: user.email_verified_at.is_some(),
+        user,
+        error: None,
+        success: None,
+    })
+}
+
+#[derive(serde::Deserialize)]
+pub struct ChangePasswordForm {
+    pub current_password: String,
+    pub new_password: String,
+}
+
+#[post("/me/security/password")]
+pub async fn me_security_change_password(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    form: web::Form<ChangePasswordForm>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let user = match load_user(&state.pool, uid).await {
+        Ok(u) => u,
+        Err(resp) => return resp,
+    };
+
+    if form.new_password.trim().len() < 4 {
+        return render(MeSecurityTemplate {
+            password_set: !user.password_hash.trim().is_empty(),
+            email_verified: user.email_verified_at.is_some(),
+            user,
+            error: Some("New password must be at least 4 characters".to_string()),
+            success: None,
+        });
+    }
+
+    let ok = match PasswordManager::verify_password(&form.current_password, &user.password_hash) {
+        Ok(v) => v,
+        Err(e) => {
+            return render(MeSecurityTemplate {
+                password_set: !user.password_hash.trim().is_empty(),
+                email_verified: user.email_verified_at.is_some(),
+                user,
+                error: Some(format!("Password verification error: {e}")),
+                success: None,
+            });
+        }
+    };
+
+    if !ok {
+        return render(MeSecurityTemplate {
+            password_set: !user.password_hash.trim().is_empty(),
+            email_verified: user.email_verified_at.is_some(),
+            user,
+            error: Some("Current password is incorrect".to_string()),
+            success: None,
+        });
+    }
+
+    let new_hash = match PasswordManager::hash_password(&form.new_password) {
+        Ok(h) => h,
+        Err(e) => {
+            return render(MeSecurityTemplate {
+                password_set: !user.password_hash.trim().is_empty(),
+                email_verified: user.email_verified_at.is_some(),
+                user,
+                error: Some(format!("Password hashing error: {e}")),
+                success: None,
+            });
+        }
+    };
+
+    let updated = sqlx::query_as::<_, User>(
+        r#"
+        UPDATE users
+        SET password_hash = $1, edited_at = now()
+        WHERE id = $2
+        RETURNING *
+        "#,
+    )
+    .bind(new_hash)
+    .bind(uid)
+    .fetch_one(&state.pool)
+    .await;
+
+    match updated {
+        Ok(user) => render(MeSecurityTemplate {
+            password_set: !user.password_hash.trim().is_empty(),
+            email_verified: user.email_verified_at.is_some(),
+            user,
+            error: None,
+            success: Some("Password updated".to_string()),
+        }),
+        Err(e) => render(MeSecurityTemplate {
+            password_set: !user.password_hash.trim().is_empty(),
+            email_verified: user.email_verified_at.is_some(),
+            user,
+            error: Some(format!("Update failed: {e}")),
+            success: None,
+        }),
+    }
+}
+
+#[post("/me/security/verify-email")]
+pub async fn me_security_mark_email_verified(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let updated = sqlx::query_as::<_, User>(
+        r#"
+        UPDATE users
+        SET email_verified_at = COALESCE(email_verified_at, now()), edited_at = now()
+        WHERE id = $1
+        RETURNING *
+        "#,
+    )
+    .bind(uid)
+    .fetch_one(&state.pool)
+    .await;
+
+    match updated {
+        Ok(user) => render(MeSecurityTemplate {
+            password_set: !user.password_hash.trim().is_empty(),
+            email_verified: user.email_verified_at.is_some(),
+            user,
+            error: None,
+            success: Some("Email marked as verified (dev)".to_string()),
+        }),
+        Err(e) => HttpResponse::InternalServerError().body(format!("Database error: {e}")),
+    }
+}
+
+#[derive(serde::Deserialize)]
+pub struct SitesQuery {
+    pub q: Option<String>,
+}
+
+#[get("/sites")]
+pub async fn sites_list(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    query: web::Query<SitesQuery>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let q = query.q.clone().unwrap_or_default();
+    let sites = db::list_sites_for_user(&state.pool, uid, query.q.as_deref())
+        .await
+        .unwrap_or_default();
+
+    render(SitesListTemplate { sites, query: q })
+}
+
+#[get("/sites/new")]
 pub async fn sites_new(req: HttpRequest) -> impl Responder {
     if let Err(resp) = require_user(&req) {
         return resp;
@@ -789,6 +1427,13 @@ fn escape_html(input: &str) -> String {
         }
     }
     out
+}
+
+fn is_unique_violation(err: &sqlx::Error) -> bool {
+    match err {
+        sqlx::Error::Database(db_err) => db_err.code().as_deref() == Some("23505"),
+        _ => false,
+    }
 }
 
 fn iframe_srcdoc(html: &str) -> String {
@@ -1087,6 +1732,12 @@ pub async fn admin_create(
     let created = match db::create_content(&state.pool, &data).await {
         Ok(item) => item,
         Err(e) => {
+            if is_unique_violation(&e) {
+                return HttpResponse::Conflict()
+                    .content_type("text/plain; charset=utf-8")
+                    .body("Slug already exists for this content type".to_string());
+            }
+
             return HttpResponse::BadRequest()
                 .content_type("text/plain; charset=utf-8")
                 .body(format!("Create failed: {e}"));
@@ -1149,7 +1800,11 @@ pub async fn admin_templates_list(
 }
 
 #[get("/admin/templates/new")]
-pub async fn admin_template_new() -> impl Responder {
+pub async fn admin_template_new(req: HttpRequest) -> impl Responder {
+    if let Err(resp) = require_user(&req) {
+        return resp;
+    }
+
     let starter_html = "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\"/>\n    <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/>\n    <title>{{title}}</title>\n    <link rel=\"stylesheet\" href=\"/static/app.css\"/>\n  </head>\n  <body>\n    <header class=\"topbar\">\n      <div class=\"container\">\n        <a class=\"brand\" href=\"/\">RustPress</a>\n        <nav class=\"nav\"><a href=\"/admin\">Admin</a></nav>\n      </div>\n    </header>\n    <main class=\"container\">\n      <article class=\"card\">\n        <h1>{{title}}</h1>\n        <div class=\"prose\">{{content}}</div>\n      </article>\n    </main>\n  </body>\n</html>\n".to_string();
     render(AdminTemplateNewTemplate { starter_html })
 }
@@ -1182,6 +1837,11 @@ pub async fn admin_template_create(
     let created = match db::create_site_template(&state.pool, &data).await {
         Ok(t) => t,
         Err(e) => {
+            if is_unique_violation(&e) {
+                return HttpResponse::Conflict()
+                    .content_type("text/plain; charset=utf-8")
+                    .body("Template name already exists".to_string());
+            }
             return HttpResponse::BadRequest()
                 .content_type("text/plain; charset=utf-8")
                 .body(format!("Create failed: {e}"));
@@ -1269,6 +1929,11 @@ pub async fn admin_template_update(
         Ok(Some(t)) => t,
         Ok(None) => return HttpResponse::NotFound().body("Not found"),
         Err(e) => {
+            if is_unique_violation(&e) {
+                return HttpResponse::Conflict()
+                    .content_type("text/plain; charset=utf-8")
+                    .body("Template name already exists".to_string());
+            }
             return HttpResponse::BadRequest()
                 .content_type("text/plain; charset=utf-8")
                 .body(format!("Update failed: {e}"));
@@ -1282,6 +1947,66 @@ pub async fn admin_template_update(
             .insert_header(("Location", format!("/admin/templates/{}", id)))
             .finish()
     }
+}
+
+#[post("/admin/templates/{id}/duplicate")]
+pub async fn admin_template_duplicate(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<Uuid>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let id = path.into_inner();
+    let template = match db::get_site_template_by_id(&state.pool, id).await {
+        Ok(Some(t)) => t,
+        Ok(None) => return HttpResponse::NotFound().body("Not found"),
+        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+    };
+
+    if !template.is_builtin && template.owner_user_id != Some(uid) {
+        return HttpResponse::Forbidden().body("Forbidden");
+    }
+
+    // Try a few times to avoid rare name collisions.
+    let mut last_err: Option<sqlx::Error> = None;
+    for _ in 0..3 {
+        let suffix = Uuid::new_v4().to_string();
+        let short = &suffix[..8];
+        let name = format!("{}-copy-{}", template.name, short);
+
+        let data = rustpress::models::SiteTemplateCreate {
+            owner_user_id: uid,
+            name,
+            description: template.description.clone(),
+            html: template.html.clone(),
+        };
+
+        match db::create_site_template(&state.pool, &data).await {
+            Ok(created) => {
+                if is_htmx(&req) {
+                    return HttpResponse::Ok()
+                        .insert_header(("HX-Redirect", format!("/admin/templates/{}", created.id)))
+                        .finish();
+                }
+                return HttpResponse::SeeOther()
+                    .insert_header(("Location", format!("/admin/templates/{}", created.id)))
+                    .finish();
+            }
+            Err(e) => {
+                last_err = Some(e);
+            }
+        }
+    }
+
+    let msg = last_err
+        .as_ref()
+        .map(|e| e.to_string())
+        .unwrap_or_else(|| "Duplicate failed".to_string());
+    HttpResponse::BadRequest().body(msg)
 }
 
 #[derive(serde::Deserialize)]
@@ -1307,6 +2032,17 @@ pub async fn admin_update(
 
     let id = path.into_inner();
 
+    // Enforce ownership before mutating.
+    let existing = match db::get_content_by_id(&state.pool, id).await {
+        Ok(Some(item)) => item,
+        Ok(None) => return HttpResponse::NotFound().body("Not found"),
+        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+    };
+
+    if existing.owner_user_id.is_some_and(|owner| owner != uid) {
+        return HttpResponse::Forbidden().body("Forbidden");
+    }
+
     let status = match form.status.as_deref().map(|s| s.trim()) {
         Some("draft") => Some(ContentStatus::Draft),
         Some("published") => Some(ContentStatus::Published),
@@ -1328,15 +2064,16 @@ pub async fn admin_update(
         Ok(Some(item)) => item,
         Ok(None) => return HttpResponse::NotFound().body("Not found"),
         Err(e) => {
+            if is_unique_violation(&e) {
+                return HttpResponse::Conflict()
+                    .content_type("text/plain; charset=utf-8")
+                    .body("Slug already exists for this content type".to_string());
+            }
             return HttpResponse::BadRequest()
                 .content_type("text/plain; charset=utf-8")
                 .body(format!("Update failed: {e}"));
         }
     };
-
-    if updated.owner_user_id.is_some_and(|owner| owner != uid) {
-        return HttpResponse::Forbidden().body("Forbidden");
-    }
 
     if is_htmx(&req) {
         let templates = db::list_site_templates_for_user(&state.pool, uid)
@@ -1366,6 +2103,17 @@ pub async fn admin_publish(
 
     let id = path.into_inner();
 
+    // Enforce ownership before mutating.
+    let existing = match db::get_content_by_id(&state.pool, id).await {
+        Ok(Some(item)) => item,
+        Ok(None) => return HttpResponse::NotFound().body("Not found"),
+        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+    };
+
+    if existing.owner_user_id.is_some_and(|owner| owner != uid) {
+        return HttpResponse::Forbidden().body("Forbidden");
+    }
+
     let published = match db::publish_content(&state.pool, id).await {
         Ok(Some(item)) => item,
         Ok(None) => return HttpResponse::NotFound().body("Not found"),
@@ -1375,10 +2123,6 @@ pub async fn admin_publish(
                 .body(format!("Publish failed: {e}"));
         }
     };
-
-    if published.owner_user_id.is_some_and(|owner| owner != uid) {
-        return HttpResponse::Forbidden().body("Forbidden");
-    }
 
     if is_htmx(&req) {
         let templates = db::list_site_templates_for_user(&state.pool, uid)
@@ -1664,5 +2408,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(admin_template_new)
         .service(admin_template_create)
         .service(admin_template_edit)
-        .service(admin_template_update);
+        .service(admin_template_update)
+        .service(admin_template_duplicate)
+        .service(sites_apply_theme);
 }

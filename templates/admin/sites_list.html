@@ -49,6 +49,7 @@
                 <a href="/sites/{{ s.id }}">{{ s.name }}</a>
                 <span class="badge">{{ s.status }}</span>
                 <span class="muted">/{{ s.slug }}</span>
+                <span class="muted">theme: {{ s.default_template }}</span>
               </li>
             {% endfor %}
           </ul>

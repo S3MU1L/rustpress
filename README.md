@@ -21,6 +21,10 @@ RustPress is a high-performance, concurrent Content Management System (CMS) deve
 - **Dual Interface**: User-facing website and admin console (similar to WordPress)
 - **Extensible**: Modular architecture for easy customization and extension
 
+## ✅ Assignment Checklist
+
+See [CHECKLIST.md](CHECKLIST.md) for the submission-ready definition of done and a 5-minute demo script.
+
 ## 🏗️ Technology Stack
 
 - **[Actix-web](https://actix.rs/)**: Fast, pragmatic web framework
@@ -82,10 +86,12 @@ If you want to run without Docker, copy `.env.example` to `.env` and adjust `DAT
 
 ### Creating Content
 
-1. Navigate to the admin console at `http://localhost:8080/admin`
+1. Navigate to the admin console (for local run: `http://127.0.0.1:8082/admin`; for Docker compose: `http://localhost:8081/admin`)
 2. Create new pages or articles
 3. Choose from available templates or create custom ones
 4. Publish your content
+
+Tip: use the same host/port your server is bound to (see `BIND_ADDR`). With Docker compose, the app is exposed on `http://localhost:8081/`.
 
 ### Templates
 
