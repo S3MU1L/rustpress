@@ -412,6 +412,87 @@ pub async fn admin_preview(
         .body(iframe_srcdoc(&html))
 }
 
+/// Full-page preview in a new tab (does NOT publish)
+#[get("/admin/content/{id}/preview")]
+pub async fn admin_preview_fullpage(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<Uuid>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let id = path.into_inner();
+    let item = match db::get_content_by_id(&state.pool, id).await {
+        Ok(Some(item)) => item,
+        Ok(None) => return HttpResponse::NotFound().body("Not found"),
+        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+    };
+
+    if item.owner_user_id.is_some_and(|owner| owner != uid) {
+        return HttpResponse::Forbidden().body("Forbidden");
+    }
+
+    let template_name = &item.template;
+
+    let mut tpl = match item.owner_user_id {
+        Some(owner_id) => {
+            db::get_site_template_by_name_for_user(&state.pool, owner_id, template_name)
+                .await
+                .ok()
+                .flatten()
+        }
+        None => db::get_site_template_by_name(&state.pool, template_name)
+            .await
+            .ok()
+            .flatten(),
+    };
+    if tpl.is_none() {
+        tpl = match item.owner_user_id {
+            Some(owner_id) => {
+                db::get_site_template_by_name_for_user(&state.pool, owner_id, "default")
+                    .await
+                    .ok()
+                    .flatten()
+            }
+            None => db::get_site_template_by_name(&state.pool, "default")
+                .await
+                .ok()
+                .flatten(),
+        };
+    }
+
+    let html = match tpl {
+        Some(tpl) => {
+            let tpl_html = if tpl.is_builtin {
+                normalize_builtin_template_html(&tpl.html)
+            } else {
+                std::borrow::Cow::Borrowed(tpl.html.as_str())
+            };
+            apply_site_template(
+                tpl_html.as_ref(),
+                &item.title,
+                &item.content,
+                &item.slug,
+                item.kind.as_str(),
+            )
+        }
+        None => apply_site_template(
+            "<!doctype html><html><head><meta charset=\"utf-8\"><title>{{title}}</title></head><body><h1>{{title}}</h1>{{content}}</body></html>",
+            &item.title,
+            &item.content,
+            &item.slug,
+            item.kind.as_str(),
+        ),
+    };
+
+    HttpResponse::Ok()
+        .content_type("text/html; charset=utf-8")
+        .body(html)
+}
+
 #[post("/admin/preview")]
 pub async fn admin_preview_new(
     state: web::Data<AppState>,
@@ -492,5 +573,6 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(admin_publish)
         .service(admin_autosave)
         .service(admin_preview)
+        .service(admin_preview_fullpage)
         .service(admin_preview_new);
 }

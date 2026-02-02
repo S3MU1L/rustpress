@@ -110,7 +110,6 @@ pub struct SiteNewTemplate {
 pub struct SiteEditTemplate {
     pub site: Site,
     pub templates: Vec<SiteTemplate>,
-    pub pages: Vec<ContentItem>,  // For homepage selection
     pub error: Option<String>,
     pub success: Option<String>,
 }

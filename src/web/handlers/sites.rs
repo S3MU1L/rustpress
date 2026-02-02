@@ -145,14 +145,9 @@ pub async fn sites_edit(
         .await
         .unwrap_or_default();
 
-    let pages = db::list_content(&state.pool, ContentKind::Page, false)
-        .await
-        .unwrap_or_default();
-
     render(SiteEditTemplate {
         site,
         templates,
-        pages,
         error: None,
         success: None,
     })
@@ -207,11 +202,9 @@ pub async fn sites_update(
 
     if let Err(e) = update.validate_homepage() {
         let templates = db::list_site_templates_for_user(&state.pool, uid).await.unwrap_or_default();
-        let pages = db::list_content(&state.pool, ContentKind::Page, false).await.unwrap_or_default();
         return render(SiteEditTemplate {
             site: existing,
             templates,
-            pages,
             error: Some(e),
             success: None,
         });
@@ -224,13 +217,9 @@ pub async fn sites_update(
             let templates = db::list_site_templates_for_user(&state.pool, uid)
                 .await
                 .unwrap_or_default();
-            let pages = db::list_content(&state.pool, ContentKind::Page, false)
-                .await
-                .unwrap_or_default();
             return render(SiteEditTemplate {
                 site: existing,
                 templates,
-                pages,
                 error: Some(format!("Update failed: {e}")),
                 success: None,
             });
@@ -247,7 +236,6 @@ pub async fn sites_update(
     render(SiteEditTemplate {
         site: updated,
         templates,
-        pages,
         error: None,
         success: Some("Saved".to_string()),
     })
@@ -283,9 +271,6 @@ pub async fn sites_publish(
     render(SiteEditTemplate {
         site: published,
         templates: db::list_site_templates_for_user(&state.pool, uid)
-            .await
-            .unwrap_or_default(),
-        pages: db::list_content(&state.pool, ContentKind::Page, false)
             .await
             .unwrap_or_default(),
         error: None,
