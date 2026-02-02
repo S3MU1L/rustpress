@@ -15,6 +15,13 @@ pub struct PublicContentTemplate {
 }
 
 #[derive(Template)]
+#[template(path = "public/fallback.html")]
+pub struct PublicFallbackTemplate<'a> {
+    pub title: &'a str,
+    pub content: &'a str,
+}
+
+#[derive(Template)]
 #[template(path = "admin/dashboard.html")]
 pub struct AdminDashboardTemplate {
     pub posts: Vec<ContentItem>,
@@ -103,6 +110,7 @@ pub struct SiteNewTemplate {
 pub struct SiteEditTemplate {
     pub site: Site,
     pub templates: Vec<SiteTemplate>,
+    pub pages: Vec<ContentItem>,  // For homepage selection
     pub error: Option<String>,
     pub success: Option<String>,
 }

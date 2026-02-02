@@ -54,6 +54,20 @@ pub async fn get_site_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Site>, sql
     .await
 }
 
+pub async fn get_default_site(pool: &PgPool) -> Result<Option<Site>, sqlx::Error> {
+    sqlx::query_as::<_, Site>(
+        r#"
+        SELECT *
+        FROM sites
+        WHERE status = 'published'
+        ORDER BY created_at ASC
+        LIMIT 1
+        "#,
+    )
+    .fetch_optional(pool)
+    .await
+}
+
 pub async fn create_site(pool: &PgPool, data: &SiteCreate) -> Result<Site, sqlx::Error> {
     sqlx::query_as::<_, Site>(
         r#"
@@ -71,6 +85,9 @@ pub async fn create_site(pool: &PgPool, data: &SiteCreate) -> Result<Site, sqlx:
 }
 
 pub async fn update_site(pool: &PgPool, id: Uuid, data: &SiteUpdate) -> Result<Option<Site>, sqlx::Error> {
+    let update_homepage_page = data.homepage_page_id.is_some();
+    let homepage_page_value = data.homepage_page_id.flatten();
+
     sqlx::query_as::<_, Site>(
         r#"
         UPDATE sites
@@ -79,8 +96,10 @@ pub async fn update_site(pool: &PgPool, id: Uuid, data: &SiteUpdate) -> Result<O
             slug = COALESCE($2, slug),
             status = COALESCE($3, status),
             default_template = COALESCE($4, default_template),
+            homepage_type = COALESCE($5, homepage_type),
+            homepage_page_id = CASE WHEN $6 THEN $7 ELSE homepage_page_id END,
             edited_at = now()
-        WHERE id = $5
+        WHERE id = $8
         RETURNING *
         "#,
     )
@@ -88,6 +107,9 @@ pub async fn update_site(pool: &PgPool, id: Uuid, data: &SiteUpdate) -> Result<O
     .bind(data.slug.as_deref())
     .bind(data.status.as_deref())
     .bind(data.default_template.as_deref())
+    .bind(data.homepage_type)
+    .bind(update_homepage_page)
+    .bind(homepage_page_value)
     .bind(id)
     .fetch_optional(pool)
     .await

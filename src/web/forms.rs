@@ -46,6 +46,8 @@ pub struct SiteUpdateForm {
     pub name: Option<String>,
     pub slug: Option<String>,
     pub default_template: Option<String>,
+    pub homepage_type: Option<String>,
+    pub homepage_page_id: Option<String>,
 }
 
 #[derive(Deserialize)]
