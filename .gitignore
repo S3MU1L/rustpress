@@ -18,3 +18,4 @@ pkg
 **/mutants.out*/
 
 .idea/
+.env
