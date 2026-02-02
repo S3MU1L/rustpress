@@ -1,40 +1,50 @@
 {% extends "layouts/base.html" %}
 
-{% block title %}New template - RustPress{% endblock %}
+{% block title %}New Template - RustPress{% endblock %}
 
 {% block header %}
-<header class="sticky top-0 bg-rp-card/85 backdrop-blur-sm border-b border-rp-border">
-  <div class="max-w-5xl mx-auto px-6 py-3.5 flex items-center justify-between">
-    <a class="font-bold text-rp-text hover:no-underline" href="/admin/templates">Templates</a>
-    <nav class="flex gap-3.5">
-      <a class="text-rp-muted hover:text-rp-text" href="/admin">Dashboard</a>
-      <a class="text-rp-muted hover:text-rp-text" href="/">View site</a>
-    </nav>
-  </div>
-</header>
+{% include "partials/nav_admin.html" %}
 {% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">New template</h1>
-
-<form class="bg-rp-card/90 border border-rp-border rounded-xl p-4" method="post" action="/admin/templates" hx-post="/admin/templates" hx-trigger="submit" hx-swap="none">
-  <label>Name
-    <input name="name" required placeholder="landing" />
-  </label>
-
-  <label>Description
-    <input name="description" placeholder="Optional" />
-  </label>
-
-  <label>HTML
-    <textarea name="html" rows="18">{{ starter_html }}</textarea>
-  </label>
-
-  <div class="flex gap-2.5 flex-wrap mt-3.5">
-    <button class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105" type="submit">Create</button>
-    <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105 hover:no-underline" href="/admin/templates">Cancel</a>
+<div class="max-w-3xl">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="mb-2">New Template</h1>
+      <p class="text-rp-muted">Create a custom template for your sites.</p>
+    </div>
+    <a class="btn-secondary" href="/admin/templates">Back to Templates</a>
   </div>
-</form>
 
-<p class="text-rp-muted text-sm mt-3">Placeholders: <code class="bg-rp-bg px-1 rounded">{{"{{title}}"}}</code>, <code class="bg-rp-bg px-1 rounded">{{"{{content}}"}}</code>, <code class="bg-rp-bg px-1 rounded">{{"{{slug}}"}}</code>, <code class="bg-rp-bg px-1 rounded">{{"{{kind}}"}}</code></p>
+  <div class="card p-5">
+    <form method="post" action="/admin/templates" hx-post="/admin/templates" hx-trigger="submit" hx-swap="none">
+      <label>
+        Name
+        <input name="name" required placeholder="landing" />
+      </label>
+
+      <label>
+        Description
+        <input name="description" placeholder="Optional description..." />
+      </label>
+
+      <label>
+        HTML
+        <textarea name="html" rows="18" class="font-mono text-sm">{{ starter_html }}</textarea>
+      </label>
+
+      <div class="flex items-center gap-3 mt-6">
+        <button class="btn-primary" type="submit">Create Template</button>
+        <a class="btn-secondary" href="/admin/templates">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+  <p class="text-rp-muted text-sm mt-4">
+    Placeholders: <code class="bg-rp-bg px-1 rounded text-sm">{{"{{title}}"}}</code>,
+    <code class="bg-rp-bg px-1 rounded text-sm">{{"{{content}}"}}</code>,
+    <code class="bg-rp-bg px-1 rounded text-sm">{{"{{slug}}"}}</code>,
+    <code class="bg-rp-bg px-1 rounded text-sm">{{"{{kind}}"}}</code>
+  </p>
+</div>
 {% endblock %}

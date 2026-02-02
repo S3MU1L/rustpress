@@ -3,41 +3,49 @@
 {% block title %}Register - RustPress{% endblock %}
 
 {% block header %}
-<header class="sticky top-0 bg-rp-card/85 backdrop-blur-sm border-b border-rp-border">
-  <div class="max-w-5xl mx-auto px-6 py-3.5 flex items-center justify-between">
-    <a class="font-bold text-rp-text hover:no-underline" href="/">RustPress</a>
-    <nav class="flex gap-3.5">
-      <a class="text-rp-muted hover:text-rp-text" href="/admin/login">Login</a>
+<header class="admin-header">
+  <div class="max-w-6xl mx-auto px-5 py-3 flex items-center justify-between">
+    <a class="font-semibold text-base" href="/">RustPress</a>
+    <nav class="flex items-center gap-4 text-sm">
+      <a href="/admin/login">Log In</a>
     </nav>
   </div>
 </header>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-md mx-auto">
-  <h1 class="text-2xl font-bold mb-4">Create admin account</h1>
+<div class="max-w-sm mx-auto mt-8">
+  <div class="text-center mb-6">
+    <h1 class="mb-2">Create Account</h1>
+    <p class="text-rp-muted">Register for a new RustPress admin account.</p>
+  </div>
 
   {% if let Some(msg) = error %}
-    <div class="bg-rp-card/90 border border-rp-error rounded-xl p-4 mb-4">
-      <p class="text-rp-error m-0">{{ msg }}</p>
+    <div class="notice notice-error mb-4">
+      <p class="m-0 text-sm">{{ msg }}</p>
     </div>
   {% endif %}
 
-  <form class="bg-rp-card/90 border border-rp-border rounded-xl p-4" method="post" action="/admin/register">
-    <label>Email</label>
-    <input type="email" name="email" autocomplete="username" required />
+  <div class="card p-6">
+    <form method="post" action="/admin/register">
+      <label>
+        Email
+        <input type="email" name="email" autocomplete="username" required placeholder="you@example.com" />
+      </label>
 
-    <label class="mt-3">Password</label>
-    <input type="password" name="password" autocomplete="new-password" required />
+      <label>
+        Password
+        <input type="password" name="password" autocomplete="new-password" required placeholder="At least 4 characters" />
+      </label>
 
-    <div class="mt-4 flex gap-2 items-center">
-      <button class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105" type="submit">Create account</button>
-      <span class="text-rp-muted text-sm">MVP: first user is "admin".</span>
-    </div>
-  </form>
+      <div class="mt-6">
+        <button class="btn-primary w-full justify-center" type="submit">Create Account</button>
+      </div>
+    </form>
+  </div>
 
-  <p class="text-rp-muted text-sm mt-3">
-    Already have an account? <a href="/admin/login">Login here</a>.
+  <p class="text-center text-rp-muted text-sm mt-4">
+    Already have an account? <a href="/admin/login">Log in here</a>
   </p>
 </div>
 {% endblock %}

@@ -3,39 +3,39 @@
 {% block title %}Templates - RustPress{% endblock %}
 
 {% block header %}
-<header class="sticky top-0 bg-rp-card/85 backdrop-blur-sm border-b border-rp-border">
-  <div class="max-w-5xl mx-auto px-6 py-3.5 flex items-center justify-between">
-    <a class="font-bold text-rp-text hover:no-underline" href="/admin">Admin</a>
-    <nav class="flex gap-3.5">
-      <a class="text-rp-muted hover:text-rp-text" href="/admin">Dashboard</a>
-      <a class="text-rp-muted hover:text-rp-text" href="/admin/sites">Sites</a>
-      <a class="text-rp-muted hover:text-rp-text" href="/admin/themes">Themes</a>
-      <a class="text-rp-muted hover:text-rp-text" href="/admin/templates/new">New template</a>
-      <a class="text-rp-muted hover:text-rp-text" href="/admin/me/account">Account</a>
-      <a class="text-rp-muted hover:text-rp-text" href="/">View site</a>
-    </nav>
-  </div>
-</header>
+{% include "partials/nav_admin.html" %}
 {% endblock %}
 
 {% block content %}
-<div class="flex items-center gap-2.5 justify-between mb-2.5">
-  <h1 class="text-2xl font-bold">Templates</h1>
-  <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105 hover:no-underline" href="/admin/templates/new">+ New</a>
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="mb-2">Templates</h1>
+    <p class="text-rp-muted">Manage your site templates and themes.</p>
+  </div>
+  <a class="btn-primary" href="/admin/templates/new">Add New Template</a>
 </div>
 
-<div class="bg-rp-card/90 border border-rp-border rounded-xl p-4">
+<!-- Templates List -->
+<div class="card">
   {% if templates.len() == 0 %}
-    <p class="text-rp-muted">No templates found.</p>
+    <div class="p-8 text-center">
+      <p class="text-rp-muted mb-4">No templates found.</p>
+      <a class="btn-primary" href="/admin/templates/new">Create your first template</a>
+    </div>
   {% else %}
-    <ul class="list-none p-0 m-0">
+    <ul class="divide-y divide-rp-border">
       {% for t in templates %}
-        <li class="flex items-center justify-between py-2.5 border-b border-rp-border/60 last:border-b-0">
-          <a href="/admin/templates/{{ t.id }}">{{ t.name }}</a>
+        <li class="p-4 flex items-center justify-between hover:bg-rp-bg/50">
+          <div>
+            <a href="/admin/templates/{{ t.id }}" class="font-medium">{{ t.name }}</a>
+            {% if t.description.len() > 0 %}
+              <p class="text-rp-muted text-sm">{{ t.description }}</p>
+            {% endif %}
+          </div>
           {% if t.is_builtin %}
-            <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">built-in</span>
+            <span class="badge">Built-in</span>
           {% else %}
-            <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">custom</span>
+            <span class="badge badge-success">Custom</span>
           {% endif %}
         </li>
       {% endfor %}
@@ -43,5 +43,10 @@
   {% endif %}
 </div>
 
-<p class="text-rp-muted text-sm mt-3">Placeholders supported: <code class="bg-rp-bg px-1 rounded">{{"{{title}}"}}</code>, <code class="bg-rp-bg px-1 rounded">{{"{{content}}"}}</code>, <code class="bg-rp-bg px-1 rounded">{{"{{slug}}"}}</code>, <code class="bg-rp-bg px-1 rounded">{{"{{kind}}"}}</code></p>
+<p class="text-rp-muted text-sm mt-4">
+  Placeholders: <code class="bg-rp-bg px-1 rounded text-sm">{{"{{title}}"}}</code>,
+  <code class="bg-rp-bg px-1 rounded text-sm">{{"{{content}}"}}</code>,
+  <code class="bg-rp-bg px-1 rounded text-sm">{{"{{slug}}"}}</code>,
+  <code class="bg-rp-bg px-1 rounded text-sm">{{"{{kind}}"}}</code>
+</p>
 {% endblock %}

@@ -1,17 +1,20 @@
-<header class="sticky top-0 bg-rp-card/85 backdrop-blur-sm border-b border-rp-border">
-  <div class="max-w-5xl mx-auto px-6 py-3.5 flex items-center justify-between">
-    <a class="font-bold text-rp-text hover:no-underline" href="/admin">Admin</a>
-    <nav class="flex flex-wrap gap-3.5 items-center">
-      <a class="text-rp-muted hover:text-rp-text" href="/admin">Dashboard</a>
-      <a class="text-rp-muted hover:text-rp-text" href="/admin/sites">Sites</a>
-      <a class="text-rp-muted hover:text-rp-text" href="/admin/themes">Themes</a>
-      <a class="text-rp-muted hover:text-rp-text" href="/admin/templates">Templates</a>
-      <a class="text-rp-muted hover:text-rp-text" href="/admin/posts/new">New post</a>
-      <a class="text-rp-muted hover:text-rp-text" href="/admin/pages/new">New page</a>
-      <a class="text-rp-muted hover:text-rp-text" href="/admin/me/account">Account</a>
-      <a class="text-rp-muted hover:text-rp-text" href="/admin/me/security">Security</a>
+<header class="admin-header">
+  <div class="max-w-6xl mx-auto px-5 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-6">
+      <a class="font-semibold text-base" href="/admin">RustPress</a>
+      <nav class="hidden md:flex items-center gap-4 text-sm">
+        <a href="/admin">Dashboard</a>
+        <a href="/admin/posts/new">New Post</a>
+        <a href="/admin/pages/new">New Page</a>
+        <a href="/admin/templates">Templates</a>
+      </nav>
+    </div>
+    <nav class="flex items-center gap-4 text-sm">
+      <a href="/admin/sites">Sites</a>
+      <a href="/admin/themes">Themes</a>
+      <a href="/admin/me/account">Account</a>
       <form method="post" action="/admin/logout" class="inline m-0">
-        <button class="px-2.5 py-1.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text text-sm cursor-pointer hover:brightness-105" type="submit">Logout</button>
+        <button class="text-white/90 hover:text-white bg-transparent border-0 cursor-pointer text-sm" type="submit">Log out</button>
       </form>
     </nav>
   </div>

@@ -3,76 +3,89 @@
 {% block title %}Themes - RustPress{% endblock %}
 
 {% block header %}
-<header class="sticky top-0 bg-rp-card/85 backdrop-blur-sm border-b border-rp-border">
-  <div class="max-w-5xl mx-auto px-6 py-3.5 flex items-center justify-between">
-    <a class="font-bold text-rp-text hover:no-underline" href="/admin">Admin</a>
-    <nav class="flex gap-3.5">
-      <a class="text-rp-muted hover:text-rp-text" href="/admin/sites">Sites</a>
-      <a class="text-rp-muted hover:text-rp-text" href="/admin/themes">Themes</a>
-      <a class="text-rp-muted hover:text-rp-text" href="/admin/templates">Templates</a>
-      <a class="text-rp-muted hover:text-rp-text" href="/admin/me/account">Account</a>
-    </nav>
-  </div>
-</header>
+{% include "partials/nav_admin.html" %}
 {% endblock %}
 
 {% block content %}
-<div class="flex items-center gap-2.5 justify-between mb-2.5">
-  <h1 class="text-2xl font-bold">Themes</h1>
-  <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105 hover:no-underline" href="/admin/templates/new">+ New template</a>
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="mb-2">Themes</h1>
+    <p class="text-rp-muted">Browse and apply themes to your sites.</p>
+  </div>
+  <a class="btn-primary" href="/admin/templates/new">Create New Template</a>
 </div>
 
-<form class="bg-rp-card/90 border border-rp-border rounded-xl p-4 mb-3.5" method="get" action="/admin/themes">
-  <label>Apply to site
-    <select name="site_id">
-      <option value="">(no site selected)</option>
-      {% for s in sites %}
-        <option value="{{ s.id }}" {% if selected_site_id.is_some() && selected_site_id.unwrap() == s.id %}selected{% endif %}>{{ s.name }} (/{{ s.slug }})</option>
-      {% endfor %}
-    </select>
-  </label>
+<!-- Filters -->
+<div class="card p-4 mb-6">
+  <form method="get" action="/admin/themes" class="space-y-4">
+    <div class="grid md:grid-cols-2 gap-4">
+      <label class="mb-0">
+        Apply to Site
+        <select name="site_id">
+          <option value="">(Select a site)</option>
+          {% for s in sites %}
+            <option value="{{ s.id }}" {% if selected_site_id.is_some() && selected_site_id.unwrap() == s.id %}selected{% endif %}>{{ s.name }} (/{{ s.slug }})</option>
+          {% endfor %}
+        </select>
+      </label>
 
-  <label>Search
-    <input name="q" value="{{ query }}" placeholder="template name" />
-  </label>
-  <div class="flex gap-2.5 flex-wrap mt-3.5">
-    <button class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105" type="submit">Search</button>
-    <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105 hover:no-underline" href="/admin/themes">Clear</a>
-  </div>
+      <label class="mb-0">
+        Search
+        <input name="q" value="{{ query }}" placeholder="Search templates..." />
+      </label>
+    </div>
 
-  <div class="flex gap-2 flex-wrap mt-3.5">
-    <a class="inline-block px-2.5 py-1.5 rounded border border-rp-border bg-transparent text-rp-muted text-sm hover:no-underline" href="/admin/themes?category=all{% if query.len() > 0 %}&q={{ query }}{% endif %}{% if selected_site_id.is_some() %}&site_id={{ selected_site_id.unwrap() }}{% endif %}">All</a>
-    <a class="inline-block px-2.5 py-1.5 rounded border border-rp-border bg-transparent text-rp-muted text-sm hover:no-underline" href="/admin/themes?category=builtin{% if query.len() > 0 %}&q={{ query }}{% endif %}{% if selected_site_id.is_some() %}&site_id={{ selected_site_id.unwrap() }}{% endif %}">Built-in</a>
-    <a class="inline-block px-2.5 py-1.5 rounded border border-rp-border bg-transparent text-rp-muted text-sm hover:no-underline" href="/admin/themes?category=custom{% if query.len() > 0 %}&q={{ query }}{% endif %}{% if selected_site_id.is_some() %}&site_id={{ selected_site_id.unwrap() }}{% endif %}">Custom</a>
-    <span class="text-rp-muted text-sm">Active: {{ category }}</span>
-  </div>
-</form>
+    <div class="flex items-center gap-3">
+      <button class="btn-primary" type="submit">Filter</button>
+      <a class="btn-secondary" href="/admin/themes">Clear</a>
 
-<div class="bg-rp-card/90 border border-rp-border rounded-xl p-4">
+      <div class="flex items-center gap-2 ml-4">
+        <span class="text-rp-muted text-sm">Category:</span>
+        <a class="badge {% if category == "all" %}bg-rp-accent text-white{% endif %}" href="/admin/themes?category=all{% if query.len() > 0 %}&q={{ query }}{% endif %}{% if selected_site_id.is_some() %}&site_id={{ selected_site_id.unwrap() }}{% endif %}">All</a>
+        <a class="badge {% if category == "builtin" %}bg-rp-accent text-white{% endif %}" href="/admin/themes?category=builtin{% if query.len() > 0 %}&q={{ query }}{% endif %}{% if selected_site_id.is_some() %}&site_id={{ selected_site_id.unwrap() }}{% endif %}">Built-in</a>
+        <a class="badge {% if category == "custom" %}bg-rp-accent text-white{% endif %}" href="/admin/themes?category=custom{% if query.len() > 0 %}&q={{ query }}{% endif %}{% if selected_site_id.is_some() %}&site_id={{ selected_site_id.unwrap() }}{% endif %}">Custom</a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Templates Grid -->
+<div class="card">
   {% if templates.len() == 0 %}
-    <p class="text-rp-muted">No templates found.</p>
+    <div class="p-8 text-center">
+      <p class="text-rp-muted">No templates found.</p>
+    </div>
   {% else %}
-    <ul class="list-none p-0 m-0">
+    <ul class="divide-y divide-rp-border">
       {% for t in templates %}
-        <li class="flex items-center justify-between gap-2 py-2.5 border-b border-rp-border/60 last:border-b-0 flex-wrap">
-          <a href="/admin/templates/{{ t.id }}">{{ t.name }}</a>
-          {% if t.is_builtin %}
-            <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">built-in</span>
-          {% else %}
-            <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">custom</span>
-          {% endif %}
+        <li class="p-4 flex items-center justify-between hover:bg-rp-bg/50">
+          <div class="flex-1">
+            <a href="/admin/templates/{{ t.id }}" class="font-medium">{{ t.name }}</a>
+            {% if t.description.len() > 0 %}
+              <p class="text-rp-muted text-sm">{{ t.description }}</p>
+            {% endif %}
+          </div>
+          <div class="flex items-center gap-3">
+            {% if t.is_builtin %}
+              <span class="badge">Built-in</span>
+            {% else %}
+              <span class="badge badge-success">Custom</span>
+            {% endif %}
 
-          {% if selected_site_id.is_some() %}
-            <form method="post" action="/admin/sites/{{ selected_site_id.unwrap() }}/theme" hx-post="/admin/sites/{{ selected_site_id.unwrap() }}/theme" hx-swap="none" class="inline m-0">
-              <input type="hidden" name="template" value="{{ t.name }}" />
-              <button class="px-2.5 py-1.5 rounded border border-rp-border bg-transparent text-rp-muted text-sm cursor-pointer hover:brightness-105" type="submit">Apply</button>
-            </form>
-          {% endif %}
+            {% if selected_site_id.is_some() %}
+              <form method="post" action="/admin/sites/{{ selected_site_id.unwrap() }}/theme" hx-post="/admin/sites/{{ selected_site_id.unwrap() }}/theme" hx-swap="none" class="m-0">
+                <input type="hidden" name="template" value="{{ t.name }}" />
+                <button class="btn-primary text-sm" type="submit">Apply</button>
+              </form>
+            {% endif %}
+          </div>
         </li>
       {% endfor %}
     </ul>
   {% endif %}
 </div>
 
-<p class="text-rp-muted text-sm mt-3">Themes are currently the same thing as site templates. Select a site to apply a default theme.</p>
+<p class="text-rp-muted text-sm mt-4">
+  Select a site above to apply a theme directly.
+</p>
 {% endblock %}
