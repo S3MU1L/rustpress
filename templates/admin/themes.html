@@ -7,10 +7,10 @@
   <div class="max-w-5xl mx-auto px-6 py-3.5 flex items-center justify-between">
     <a class="font-bold text-rp-text hover:no-underline" href="/admin">Admin</a>
     <nav class="flex gap-3.5">
-      <a class="text-rp-muted hover:text-rp-text" href="/sites">Sites</a>
-      <a class="text-rp-muted hover:text-rp-text" href="/themes">Themes</a>
+      <a class="text-rp-muted hover:text-rp-text" href="/admin/sites">Sites</a>
+      <a class="text-rp-muted hover:text-rp-text" href="/admin/themes">Themes</a>
       <a class="text-rp-muted hover:text-rp-text" href="/admin/templates">Templates</a>
-      <a class="text-rp-muted hover:text-rp-text" href="/me/account">Account</a>
+      <a class="text-rp-muted hover:text-rp-text" href="/admin/me/account">Account</a>
     </nav>
   </div>
 </header>
@@ -22,7 +22,7 @@
   <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105 hover:no-underline" href="/admin/templates/new">+ New template</a>
 </div>
 
-<form class="bg-rp-card/90 border border-rp-border rounded-xl p-4 mb-3.5" method="get" action="/themes">
+<form class="bg-rp-card/90 border border-rp-border rounded-xl p-4 mb-3.5" method="get" action="/admin/themes">
   <label>Apply to site
     <select name="site_id">
       <option value="">(no site selected)</option>
@@ -37,13 +37,13 @@
   </label>
   <div class="flex gap-2.5 flex-wrap mt-3.5">
     <button class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105" type="submit">Search</button>
-    <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105 hover:no-underline" href="/themes">Clear</a>
+    <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105 hover:no-underline" href="/admin/themes">Clear</a>
   </div>
 
   <div class="flex gap-2 flex-wrap mt-3.5">
-    <a class="inline-block px-2.5 py-1.5 rounded border border-rp-border bg-transparent text-rp-muted text-sm hover:no-underline" href="/themes?category=all{% if query.len() > 0 %}&q={{ query }}{% endif %}{% if selected_site_id.is_some() %}&site_id={{ selected_site_id.unwrap() }}{% endif %}">All</a>
-    <a class="inline-block px-2.5 py-1.5 rounded border border-rp-border bg-transparent text-rp-muted text-sm hover:no-underline" href="/themes?category=builtin{% if query.len() > 0 %}&q={{ query }}{% endif %}{% if selected_site_id.is_some() %}&site_id={{ selected_site_id.unwrap() }}{% endif %}">Built-in</a>
-    <a class="inline-block px-2.5 py-1.5 rounded border border-rp-border bg-transparent text-rp-muted text-sm hover:no-underline" href="/themes?category=custom{% if query.len() > 0 %}&q={{ query }}{% endif %}{% if selected_site_id.is_some() %}&site_id={{ selected_site_id.unwrap() }}{% endif %}">Custom</a>
+    <a class="inline-block px-2.5 py-1.5 rounded border border-rp-border bg-transparent text-rp-muted text-sm hover:no-underline" href="/admin/themes?category=all{% if query.len() > 0 %}&q={{ query }}{% endif %}{% if selected_site_id.is_some() %}&site_id={{ selected_site_id.unwrap() }}{% endif %}">All</a>
+    <a class="inline-block px-2.5 py-1.5 rounded border border-rp-border bg-transparent text-rp-muted text-sm hover:no-underline" href="/admin/themes?category=builtin{% if query.len() > 0 %}&q={{ query }}{% endif %}{% if selected_site_id.is_some() %}&site_id={{ selected_site_id.unwrap() }}{% endif %}">Built-in</a>
+    <a class="inline-block px-2.5 py-1.5 rounded border border-rp-border bg-transparent text-rp-muted text-sm hover:no-underline" href="/admin/themes?category=custom{% if query.len() > 0 %}&q={{ query }}{% endif %}{% if selected_site_id.is_some() %}&site_id={{ selected_site_id.unwrap() }}{% endif %}">Custom</a>
     <span class="text-rp-muted text-sm">Active: {{ category }}</span>
   </div>
 </form>
@@ -63,7 +63,7 @@
           {% endif %}
 
           {% if selected_site_id.is_some() %}
-            <form method="post" action="/sites/{{ selected_site_id.unwrap() }}/theme" hx-post="/sites/{{ selected_site_id.unwrap() }}/theme" hx-swap="none" class="inline m-0">
+            <form method="post" action="/admin/sites/{{ selected_site_id.unwrap() }}/theme" hx-post="/admin/sites/{{ selected_site_id.unwrap() }}/theme" hx-swap="none" class="inline m-0">
               <input type="hidden" name="template" value="{{ t.name }}" />
               <button class="px-2.5 py-1.5 rounded border border-rp-border bg-transparent text-rp-muted text-sm cursor-pointer hover:brightness-105" type="submit">Apply</button>
             </form>

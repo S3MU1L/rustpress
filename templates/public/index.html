@@ -15,7 +15,7 @@
   <ul class="list-none p-0 m-0">
     {% for p in posts %}
       <li class="flex items-center justify-between py-2.5 border-b border-rp-border/60 last:border-b-0">
-        <a href="/post/{{ p.slug }}">{{ p.title }}</a>
+        <a href="/blog/{{ p.slug }}">{{ p.title }}</a>
         <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">{{ p.status }}</span>
       </li>
     {% endfor %}

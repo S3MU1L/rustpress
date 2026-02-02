@@ -38,7 +38,7 @@
   <p class="text-rp-muted text-sm mt-3">Note: email verification is currently a dev toggle.</p>
 </div>
 
-<form class="bg-rp-card/90 border border-rp-border rounded-xl p-4 mb-3.5" method="post" action="/me/security/password" hx-post="/me/security/password" hx-target="body" hx-swap="outerHTML">
+<form class="bg-rp-card/90 border border-rp-border rounded-xl p-4 mb-3.5" method="post" action="/admin/me/security/password" hx-post="/admin/me/security/password" hx-target="body" hx-swap="outerHTML">
   <h2 class="text-lg font-semibold mb-2">Change password</h2>
   <label>Current password
     <input type="password" name="current_password" />
@@ -51,7 +51,7 @@
   </div>
 </form>
 
-<form class="bg-rp-card/90 border border-rp-border rounded-xl p-4" method="post" action="/me/security/verify-email" hx-post="/me/security/verify-email" hx-target="body" hx-swap="outerHTML">
+<form class="bg-rp-card/90 border border-rp-border rounded-xl p-4" method="post" action="/admin/me/security/verify-email" hx-post="/admin/me/security/verify-email" hx-target="body" hx-swap="outerHTML">
   <h2 class="text-lg font-semibold mb-2">Email verification (dev)</h2>
   <p class="text-rp-muted text-sm">Marks your account email as verified immediately.</p>
   <div class="flex gap-2.5 flex-wrap mt-3.5">

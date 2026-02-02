@@ -7,7 +7,7 @@ use crate::web::helpers::{render, require_user};
 use crate::web::state::AppState;
 use crate::web::templates::ThemesTemplate;
 
-#[get("/themes")]
+#[get("/admin/themes")]
 pub async fn themes_list(
     state: web::Data<AppState>,
     req: HttpRequest,

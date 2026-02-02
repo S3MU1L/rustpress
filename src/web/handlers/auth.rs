@@ -9,14 +9,14 @@ use crate::web::helpers::{is_htmx, render};
 use crate::web::state::AppState;
 use crate::web::templates::{AdminLoginTemplate, AdminRegisterTemplate};
 
-#[get("/login")]
+#[get("/admin/login")]
 pub async fn login_form(query: web::Query<AuthQuery>) -> impl Responder {
     render(AdminLoginTemplate {
         error: query.error.clone(),
     })
 }
 
-#[post("/login")]
+#[post("/admin/login")]
 pub async fn login_submit(
     state: web::Data<AppState>,
     form: web::Form<LoginForm>,
@@ -26,7 +26,7 @@ pub async fn login_submit(
 
     if email.is_empty() || password.is_empty() {
         return HttpResponse::SeeOther()
-            .insert_header(("Location", "/login?error=missing"))
+            .insert_header(("Location", "/admin/login?error=missing"))
             .finish();
     }
 
@@ -39,13 +39,13 @@ pub async fn login_submit(
         Ok(Some(u)) => u,
         Ok(None) => {
             return HttpResponse::SeeOther()
-                .insert_header(("Location", "/login?error=invalid"))
+                .insert_header(("Location", "/admin/login?error=invalid"))
                 .finish();
         }
         Err(e) => {
             eprintln!("Database error: {e}");
             return HttpResponse::SeeOther()
-                .insert_header(("Location", "/login?error=db"))
+                .insert_header(("Location", "/admin/login?error=db"))
                 .finish();
         }
     };
@@ -55,14 +55,14 @@ pub async fn login_submit(
         Err(e) => {
             eprintln!("Password verification error: {e}");
             return HttpResponse::SeeOther()
-                .insert_header(("Location", "/login?error=internal"))
+                .insert_header(("Location", "/admin/login?error=internal"))
                 .finish();
         }
     };
 
     if !ok {
         return HttpResponse::SeeOther()
-            .insert_header(("Location", "/login?error=invalid"))
+            .insert_header(("Location", "/admin/login?error=invalid"))
             .finish();
     }
 
@@ -78,14 +78,14 @@ pub async fn login_submit(
         .finish()
 }
 
-#[get("/register")]
+#[get("/admin/register")]
 pub async fn register_form(query: web::Query<AuthQuery>) -> impl Responder {
     render(AdminRegisterTemplate {
         error: query.error.clone(),
     })
 }
 
-#[post("/register")]
+#[post("/admin/register")]
 pub async fn register_submit(
     state: web::Data<AppState>,
     form: web::Form<RegisterForm>,
@@ -95,7 +95,7 @@ pub async fn register_submit(
 
     if email.is_empty() || password.len() < 4 {
         return HttpResponse::SeeOther()
-            .insert_header(("Location", "/register?error=missing"))
+            .insert_header(("Location", "/admin/register?error=missing"))
             .finish();
     }
 
@@ -104,7 +104,7 @@ pub async fn register_submit(
         Err(e) => {
             eprintln!("Password hashing error: {e}");
             return HttpResponse::SeeOther()
-                .insert_header(("Location", "/register?error=internal"))
+                .insert_header(("Location", "/admin/register?error=internal"))
                 .finish();
         }
     };
@@ -126,13 +126,13 @@ pub async fn register_submit(
         Ok(Some(u)) => u,
         Ok(None) => {
             return HttpResponse::SeeOther()
-                .insert_header(("Location", "/register?error=exists"))
+                .insert_header(("Location", "/admin/register?error=exists"))
                 .finish();
         }
         Err(e) => {
             eprintln!("Database error: {e}");
             return HttpResponse::SeeOther()
-                .insert_header(("Location", "/register?error=db"))
+                .insert_header(("Location", "/admin/register?error=db"))
                 .finish();
         }
     };
@@ -149,7 +149,7 @@ pub async fn register_submit(
         .finish()
 }
 
-#[post("/logout")]
+#[post("/admin/logout")]
 pub async fn logout(req: HttpRequest) -> impl Responder {
     let mut cookie = Cookie::build("rp_uid", "")
         .path("/")
@@ -161,12 +161,12 @@ pub async fn logout(req: HttpRequest) -> impl Responder {
     if is_htmx(&req) {
         HttpResponse::Ok()
             .cookie(cookie)
-            .insert_header(("HX-Redirect", "/login"))
+            .insert_header(("HX-Redirect", "/admin/login"))
             .finish()
     } else {
         HttpResponse::SeeOther()
             .cookie(cookie)
-            .insert_header(("Location", "/login"))
+            .insert_header(("Location", "/admin/login"))
             .finish()
     }
 }

@@ -8,7 +8,7 @@ use crate::web::helpers::{is_htmx, render, require_user};
 use crate::web::state::AppState;
 use crate::web::templates::{SiteEditTemplate, SiteNewTemplate, SitesListTemplate};
 
-#[get("/sites")]
+#[get("/admin/sites")]
 pub async fn sites_list(
     state: web::Data<AppState>,
     req: HttpRequest,
@@ -27,7 +27,7 @@ pub async fn sites_list(
     render(SitesListTemplate { sites, query: q })
 }
 
-#[get("/sites/new")]
+#[get("/admin/sites/new")]
 pub async fn sites_new(state: web::Data<AppState>, req: HttpRequest) -> impl Responder {
     let uid = match require_user(&req) {
         Ok(uid) => uid,
@@ -45,7 +45,7 @@ pub async fn sites_new(state: web::Data<AppState>, req: HttpRequest) -> impl Res
     })
 }
 
-#[post("/sites")]
+#[post("/admin/sites")]
 pub async fn sites_create(
     state: web::Data<AppState>,
     req: HttpRequest,
@@ -94,11 +94,11 @@ pub async fn sites_create(
         Ok(site) => {
             if is_htmx(&req) {
                 HttpResponse::Ok()
-                    .insert_header(("HX-Redirect", format!("/sites/{}", site.id)))
+                    .insert_header(("HX-Redirect", format!("/admin/sites/{}", site.id)))
                     .finish()
             } else {
                 HttpResponse::SeeOther()
-                    .insert_header(("Location", format!("/sites/{}", site.id)))
+                    .insert_header(("Location", format!("/admin/sites/{}", site.id)))
                     .finish()
             }
         }
@@ -118,7 +118,7 @@ pub async fn sites_create(
     }
 }
 
-#[get("/sites/{id}")]
+#[get("/admin/sites/{id}")]
 pub async fn sites_edit(
     state: web::Data<AppState>,
     req: HttpRequest,
@@ -152,7 +152,7 @@ pub async fn sites_edit(
     })
 }
 
-#[post("/sites/{id}")]
+#[post("/admin/sites/{id}")]
 pub async fn sites_update(
     state: web::Data<AppState>,
     req: HttpRequest,
@@ -222,7 +222,7 @@ pub async fn sites_update(
     })
 }
 
-#[post("/sites/{id}/publish")]
+#[post("/admin/sites/{id}/publish")]
 pub async fn sites_publish(
     state: web::Data<AppState>,
     req: HttpRequest,
@@ -259,7 +259,7 @@ pub async fn sites_publish(
     })
 }
 
-#[post("/sites/{id}/theme")]
+#[post("/admin/sites/{id}/theme")]
 pub async fn sites_apply_theme(
     state: web::Data<AppState>,
     req: HttpRequest,
@@ -311,11 +311,11 @@ pub async fn sites_apply_theme(
 
     if is_htmx(&req) {
         HttpResponse::Ok()
-            .insert_header(("HX-Redirect", format!("/sites/{}", updated.id)))
+            .insert_header(("HX-Redirect", format!("/admin/sites/{}", updated.id)))
             .finish()
     } else {
         HttpResponse::SeeOther()
-            .insert_header(("Location", format!("/sites/{}", updated.id)))
+            .insert_header(("Location", format!("/admin/sites/{}", updated.id)))
             .finish()
     }
 }

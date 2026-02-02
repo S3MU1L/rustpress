@@ -9,7 +9,7 @@ use crate::web::helpers::{load_user, render, require_user};
 use crate::web::state::AppState;
 use crate::web::templates::{MeAccountTemplate, MeSecurityTemplate};
 
-#[get("/me/account")]
+#[get("/admin/me/account")]
 pub async fn me_account(state: web::Data<AppState>, req: HttpRequest) -> impl Responder {
     let uid = match require_user(&req) {
         Ok(uid) => uid,
@@ -28,7 +28,7 @@ pub async fn me_account(state: web::Data<AppState>, req: HttpRequest) -> impl Re
     })
 }
 
-#[post("/me/account/email")]
+#[post("/admin/me/account/email")]
 pub async fn me_account_update_email(
     state: web::Data<AppState>,
     req: HttpRequest,
@@ -90,7 +90,7 @@ pub async fn me_account_update_email(
     }
 }
 
-#[get("/me/security")]
+#[get("/admin/me/security")]
 pub async fn me_security(state: web::Data<AppState>, req: HttpRequest) -> impl Responder {
     let uid = match require_user(&req) {
         Ok(uid) => uid,
@@ -110,7 +110,7 @@ pub async fn me_security(state: web::Data<AppState>, req: HttpRequest) -> impl R
     })
 }
 
-#[post("/me/security/password")]
+#[post("/admin/me/security/password")]
 pub async fn me_security_change_password(
     state: web::Data<AppState>,
     req: HttpRequest,
@@ -197,7 +197,7 @@ pub async fn me_security_change_password(
     }
 }
 
-#[post("/me/security/verify-email")]
+#[post("/admin/me/security/verify-email")]
 pub async fn me_security_mark_email_verified(
     state: web::Data<AppState>,
     req: HttpRequest,

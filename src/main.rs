@@ -19,7 +19,10 @@ async fn main() -> std::io::Result<()> {
     ) -> Result<ServiceResponse<BoxBody>, Error> {
         let path = req.path();
 
-        if path.starts_with("/admin") {
+        if path.starts_with("/admin")
+            && !path.starts_with("/admin/login")
+            && !path.starts_with("/admin/register")
+        {
             let has_cookie = req.cookie("rp_uid").is_some();
             if !has_cookie {
                 let is_htmx = req
@@ -31,14 +34,14 @@ async fn main() -> std::io::Result<()> {
                 if is_htmx {
                     return Ok(req.into_response(
                         HttpResponse::Unauthorized()
-                            .insert_header(("HX-Redirect", "/login"))
+                            .insert_header(("HX-Redirect", "/admin/login"))
                             .finish(),
                     ));
                 }
 
                 return Ok(req.into_response(
                     HttpResponse::SeeOther()
-                        .insert_header((LOCATION, "/login"))
+                        .insert_header((LOCATION, "/admin/login"))
                         .finish(),
                 ));
             }
@@ -69,6 +72,8 @@ async fn main() -> std::io::Result<()> {
             .wrap(from_fn(admin_auth_guard))
             .service(Files::new("/static", "./static"))
             .configure(handlers::configure)
+            // Catch-all page route MUST be registered last
+            .configure(handlers::configure_catch_all)
     })
     .bind(bind_addr)?
     .run()
