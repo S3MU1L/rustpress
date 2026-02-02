@@ -15,10 +15,10 @@ pub struct PublicContentTemplate {
 }
 
 #[derive(Template)]
-#[template(path = "admin/layout.html")]
-pub struct AdminLayoutTemplate {
-    pub title: String,
-    pub body: String,
+#[template(path = "public/fallback.html")]
+pub struct PublicFallbackTemplate<'a> {
+    pub title: &'a str,
+    pub content: &'a str,
 }
 
 #[derive(Template)]
@@ -26,6 +26,20 @@ pub struct AdminLayoutTemplate {
 pub struct AdminDashboardTemplate {
     pub posts: Vec<ContentItem>,
     pub pages: Vec<ContentItem>,
+}
+
+#[derive(Template)]
+#[template(path = "admin/posts_list.html")]
+pub struct AdminPostsListTemplate {
+    pub posts: Vec<ContentItem>,
+    pub query: String,
+}
+
+#[derive(Template)]
+#[template(path = "admin/pages_list.html")]
+pub struct AdminPagesListTemplate {
+    pub pages: Vec<ContentItem>,
+    pub query: String,
 }
 
 #[derive(Template)]
@@ -84,7 +98,6 @@ pub struct MeAccountTemplate {
 #[derive(Template)]
 #[template(path = "admin/security.html")]
 pub struct MeSecurityTemplate {
-    pub user: User,
     pub password_set: bool,
     pub email_verified: bool,
     pub error: Option<String>,
@@ -123,4 +136,13 @@ pub struct ThemesTemplate {
     pub selected_site_id: Option<uuid::Uuid>,
     pub query: String,
     pub category: String,
+}
+
+#[derive(Template)]
+#[template(path = "admin/configuration.html")]
+pub struct ConfigurationTemplate {
+    pub site: Option<Site>,
+    pub pages: Vec<ContentItem>,
+    pub error: Option<String>,
+    pub success: Option<String>,
 }

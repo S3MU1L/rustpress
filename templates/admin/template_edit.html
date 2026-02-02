@@ -1,69 +1,77 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Edit template - {{ template.name }} - RustPress</title>
-    <link rel="stylesheet" href="/static/app.css" />
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  </head>
-  <body>
-    <header class="topbar">
-      <div class="container">
-        <a class="brand" href="/admin/templates">Templates</a>
-        <nav class="nav">
-          <a href="/admin">Dashboard</a>
-          <a href="/sites">Sites</a>
-          <a href="/themes">Themes</a>
-          <a href="/">View site</a>
-        </nav>
-      </div>
-    </header>
+{% extends "layouts/base.html" %}
 
-    <main class="container">
-      <div class="card-header">
-        <h1>Edit template</h1>
+{% block title %}Edit Template - {{ template.name }} - RustPress{% endblock %}
+
+{% block header %}
+{% include "partials/nav_admin.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="mb-1">Edit Template</h1>
+      <div class="flex items-center gap-2">
+        <span class="text-rp-muted">{{ template.name }}</span>
         {% if template.is_builtin %}
-          <span class="badge">built-in</span>
+          <span class="badge">Built-in</span>
         {% else %}
-          <span class="badge">custom</span>
+          <span class="badge badge-success">Custom</span>
         {% endif %}
       </div>
+    </div>
+    <a class="btn-secondary" href="/admin/templates">Back to Templates</a>
+  </div>
 
-      <form class="card" method="post" action="/admin/templates/{{ template.id }}" hx-post="/admin/templates/{{ template.id }}" hx-target="body" hx-swap="outerHTML">
-        <label>Name
-          <input name="name" value="{{ template.name }}" {% if template.is_builtin %}disabled{% endif %} />
-        </label>
+  {% if template.is_builtin %}
+    <div class="notice notice-warning mb-6">
+      <p class="m-0">Built-in templates are read-only. Create a copy to make changes.</p>
+    </div>
+  {% endif %}
 
-        <label>Description
-          <input name="description" value="{{ template.description }}" {% if template.is_builtin %}disabled{% endif %} />
-        </label>
+  <!-- Edit Form -->
+  <div class="card p-5 mb-6">
+    <h2 class="text-lg mb-4">Template Settings</h2>
+    <form method="post" action="/admin/templates/{{ template.id }}" hx-post="/admin/templates/{{ template.id }}" hx-target="body" hx-swap="outerHTML">
+      <label>
+        Name
+        <input name="name" value="{{ template.name }}" {% if template.is_builtin %}disabled{% endif %} />
+      </label>
 
-        <label>HTML
-          <textarea name="html" rows="18" {% if template.is_builtin %}disabled{% endif %}>{{ template.html }}</textarea>
-        </label>
+      <label>
+        Description
+        <input name="description" value="{{ template.description }}" {% if template.is_builtin %}disabled{% endif %} />
+      </label>
 
-        <div class="actions">
-          <button class="button" type="submit" {% if template.is_builtin %}disabled{% endif %}>Save</button>
-          <a class="button secondary" href="/admin/templates">Back</a>
-        </div>
+      <label>
+        HTML
+        <textarea name="html" rows="18" class="font-mono text-sm" {% if template.is_builtin %}disabled{% endif %}>{{ template.html }}</textarea>
+      </label>
+
+      <div class="mt-4">
+        <button class="btn-primary" type="submit" {% if template.is_builtin %}disabled{% endif %}>Save Changes</button>
+      </div>
+    </form>
+  </div>
+
+  {% if template.is_builtin %}
+    <!-- Duplicate Form -->
+    <div class="card p-5 mb-6">
+      <h2 class="text-lg mb-2">Make a Copy</h2>
+      <p class="text-rp-muted text-sm mb-4">Create a custom copy of this template that you can edit.</p>
+      <form method="post" action="/admin/templates/{{ template.id }}/duplicate" hx-post="/admin/templates/{{ template.id }}/duplicate" hx-swap="none">
+        <button class="btn-primary" type="submit">Copy as Custom Template</button>
       </form>
+    </div>
+  {% endif %}
 
-      {% if template.is_builtin %}
-        <form method="post" action="/admin/templates/{{ template.id }}/duplicate" hx-post="/admin/templates/{{ template.id }}/duplicate" hx-swap="none" class="card">
-          <h2>Make a copy</h2>
-          <p class="muted">Built-in templates are read-only. Create a custom copy you can edit.</p>
-          <div class="actions">
-            <button class="button" type="submit">Copy as custom template</button>
-          </div>
-        </form>
-      {% endif %}
-
-      {% if template.is_builtin %}
-        <p class="muted">Built-in templates are read-only (copy it into a new custom template if needed).</p>
-      {% else %}
-        <p class="muted">Placeholders: <code>{{"{{title}}"}}</code>, <code>{{"{{content}}"}}</code>, <code>{{"{{slug}}"}}</code>, <code>{{"{{kind}}"}}</code></p>
-      {% endif %}
-    </main>
-  </body>
-</html>
+  {% if !template.is_builtin %}
+    <p class="text-rp-muted text-sm">
+      Placeholders: <code class="bg-rp-bg px-1 rounded text-sm">{{"{{title}}"}}</code>,
+      <code class="bg-rp-bg px-1 rounded text-sm">{{"{{content}}"}}</code>,
+      <code class="bg-rp-bg px-1 rounded text-sm">{{"{{slug}}"}}</code>,
+      <code class="bg-rp-bg px-1 rounded text-sm">{{"{{kind}}"}}</code>
+    </p>
+  {% endif %}
+</div>
+{% endblock %}

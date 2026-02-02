@@ -1,0 +1,16 @@
+{
+  "name": "rustpress",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "css": "npx @tailwindcss/cli -i ./style/tailwind.css -o ./static/app.css",
+    "css:watch": "npx @tailwindcss/cli -i ./style/tailwind.css -o ./static/app.css --watch",
+    "css:prod": "npx @tailwindcss/cli -i ./style/tailwind.css -o ./static/app.css --minify",
+    "dev": "npm run css:watch",
+    "build": "npm run css:prod"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.0",
+    "tailwindcss": "^4.1.0"
+  }
+}

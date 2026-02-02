@@ -1,74 +1,79 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Admin - RustPress</title>
-    <link rel="stylesheet" href="/static/app.css" />
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  </head>
-  <body>
-    <header class="topbar">
-      <div class="container">
-        <a class="brand" href="/">RustPress</a>
-        <nav class="nav">
-          <a href="/admin">Dashboard</a>
-          <a href="/sites">Sites</a>
-          <a href="/themes">Themes</a>
-          <a href="/admin/templates">Templates</a>
-          <a href="/admin/posts/new">New post</a>
-          <a href="/admin/pages/new">New page</a>
-          <a href="/me/account">Account</a>
-          <a href="/me/security">Security</a>
-          <form method="post" action="/logout" style="display:inline; margin:0;">
-            <button class="button" type="submit" style="padding:6px 10px;">Logout</button>
-          </form>
-        </nav>
-      </div>
-    </header>
+{% extends "layouts/base.html" %}
 
-    <main class="container">
-      <h1>Admin</h1>
+{% block title %}Dashboard - RustPress{% endblock %}
 
-      <section class="grid">
-        <div class="card">
-          <div class="card-header">
-            <h2>Posts</h2>
-            <a class="button" href="/admin/posts/new">+ New</a>
-          </div>
-          {% if posts.len() == 0 %}
-            <p class="muted">No posts yet.</p>
-          {% else %}
-            <ul class="list">
-              {% for p in posts %}
-                <li class="list-item">
-                  <a href="/admin/edit/{{ p.id }}">{{ p.title }}</a>
-                  <span class="badge">{{ p.status }}</span>
-                </li>
-              {% endfor %}
-            </ul>
-          {% endif %}
-        </div>
+{% block header %}
+{% include "partials/nav_admin.html" %}
+{% endblock %}
 
-        <div class="card">
-          <div class="card-header">
-            <h2>Pages</h2>
-            <a class="button" href="/admin/pages/new">+ New</a>
-          </div>
-          {% if pages.len() == 0 %}
-            <p class="muted">No pages yet.</p>
-          {% else %}
-            <ul class="list">
-              {% for p in pages %}
-                <li class="list-item">
-                  <a href="/admin/edit/{{ p.id }}">{{ p.title }}</a>
-                  <span class="badge">{{ p.status }}</span>
-                </li>
-              {% endfor %}
-            </ul>
-          {% endif %}
-        </div>
-      </section>
-    </main>
-  </body>
-</html>
+{% block content %}
+<div class="mb-8">
+  <h1 class="mb-2">Dashboard</h1>
+  <p class="text-rp-muted">Welcome to your RustPress admin area.</p>
+</div>
+
+<div class="grid md:grid-cols-2 gap-6">
+  <!-- Posts Section -->
+  <div class="card p-5">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg">Posts</h2>
+      <a class="btn-primary" href="/admin/posts/new">Add New</a>
+    </div>
+    {% if posts.len() == 0 %}
+      <p class="text-rp-muted py-4">No posts yet. Create your first post to get started.</p>
+    {% else %}
+      <ul class="divide-y divide-rp-border">
+        {% for p in posts %}
+          <li class="py-3 flex items-center justify-between">
+            <a href="/admin/edit/{{ p.id }}" class="font-medium">{{ p.title }}</a>
+            <span class="badge {% if p.status == "published" %}badge-success{% endif %}">{{ p.status }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+
+  <!-- Pages Section -->
+  <div class="card p-5">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg">Pages</h2>
+      <a class="btn-primary" href="/admin/pages/new">Add New</a>
+    </div>
+    {% if pages.len() == 0 %}
+      <p class="text-rp-muted py-4">No pages yet. Create your first page to get started.</p>
+    {% else %}
+      <ul class="divide-y divide-rp-border">
+        {% for p in pages %}
+          <li class="py-3 flex items-center justify-between">
+            <a href="/admin/edit/{{ p.id }}" class="font-medium">{{ p.title }}</a>
+            <span class="badge {% if p.status == "published" %}badge-success{% endif %}">{{ p.status }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Quick Links -->
+<div class="mt-8 card p-5">
+  <h2 class="text-lg mb-4">Quick Links</h2>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <a href="/admin/posts" class="p-4 rounded bg-rp-bg hover:bg-rp-border/30 text-center transition-colors">
+      <div class="text-2xl mb-1">📝</div>
+      <div class="text-sm font-medium">All Posts</div>
+    </a>
+    <a href="/admin/pages" class="p-4 rounded bg-rp-bg hover:bg-rp-border/30 text-center transition-colors">
+      <div class="text-2xl mb-1">📄</div>
+      <div class="text-sm font-medium">All Pages</div>
+    </a>
+    <a href="/admin/themes" class="p-4 rounded bg-rp-bg hover:bg-rp-border/30 text-center transition-colors">
+      <div class="text-2xl mb-1">🎨</div>
+      <div class="text-sm font-medium">Themes</div>
+    </a>
+    <a href="/" class="p-4 rounded bg-rp-bg hover:bg-rp-border/30 text-center transition-colors" target="_blank">
+      <div class="text-2xl mb-1">👁️</div>
+      <div class="text-sm font-medium">View Site</div>
+    </a>
+  </div>
+</div>
+{% endblock %}

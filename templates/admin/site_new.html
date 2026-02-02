@@ -1,59 +1,51 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>New site - RustPress</title>
-    <link rel="stylesheet" href="/static/app.css" />
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  </head>
-  <body>
-    <header class="topbar">
-      <div class="container">
-        <a class="brand" href="/sites">Sites</a>
-        <nav class="nav">
-          <a href="/admin">Dashboard</a>
-          <a href="/themes">Themes</a>
-          <a href="/me/account">Account</a>
-        </nav>
+{% extends "layouts/base.html" %}
+
+{% block title %}New Site - RustPress{% endblock %}
+
+{% block header %}
+{% include "partials/nav_admin.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+  <div class="mb-6">
+    <h1 class="mb-2">Create New Site</h1>
+    <p class="text-rp-muted">Set up a new site with its own configuration.</p>
+  </div>
+
+  {% if error.is_some() %}
+    <div class="notice notice-error mb-4">
+      <p class="m-0">{{ error.as_ref().unwrap() }}</p>
+    </div>
+  {% endif %}
+
+  <div class="card p-5">
+    <form method="post" action="/admin/sites" hx-post="/admin/sites" hx-trigger="submit" hx-swap="none">
+      <label>
+        Site Name
+        <input name="name" required placeholder="My Blog" />
+      </label>
+
+      <label>
+        Slug
+        <input name="slug" required placeholder="my-blog" />
+        <p class="text-rp-muted text-sm mt-1">URL-friendly identifier for your site.</p>
+      </label>
+
+      <label>
+        Default Template
+        <select name="default_template">
+          {% for t in templates %}
+            <option value="{{ t.name }}" {% if t.name == default_template %}selected{% endif %}>{{ t.name }}{% if t.is_builtin %} (built-in){% endif %}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <div class="flex items-center gap-3 mt-6">
+        <button class="btn-primary" type="submit">Create Site</button>
+        <a class="btn-secondary" href="/admin/sites">Cancel</a>
       </div>
-    </header>
-
-    <main class="container">
-      <div class="card-header">
-        <h1>New site</h1>
-      </div>
-
-      {% if error.is_some() %}
-        <div class="card" style="border-left:4px solid #b42318;">
-          <p>{{ error.as_ref().unwrap() }}</p>
-        </div>
-      {% endif %}
-
-      <form class="card" method="post" action="/sites" hx-post="/sites" hx-trigger="submit" hx-swap="none">
-        <label>Name
-          <input name="name" required placeholder="My blog" />
-        </label>
-
-        <label>Slug
-          <input name="slug" required placeholder="my-blog" />
-        </label>
-
-        <label>Default theme
-          <select name="default_template">
-            {% for t in templates %}
-              <option value="{{ t.name }}" {% if t.name == default_template %}selected{% endif %}>{{ t.name }}{% if t.is_builtin %} (built-in){% endif %}</option>
-            {% endfor %}
-          </select>
-        </label>
-
-        <div class="actions">
-          <button class="button" type="submit">Create</button>
-          <a class="button secondary" href="/sites">Cancel</a>
-        </div>
-      </form>
-
-      <p class="muted">MVP: slug is unique per user.</p>
-    </main>
-  </body>
-</html>
+    </form>
+  </div>
+</div>
+{% endblock %}

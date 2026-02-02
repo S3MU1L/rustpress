@@ -1,7 +1,5 @@
-#[cfg(feature = "ssr")]
 mod web;
 
-#[cfg(feature = "ssr")]
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenvy::dotenv().ok();
@@ -13,7 +11,7 @@ async fn main() -> std::io::Result<()> {
     use actix_web::middleware::{from_fn, Next};
     use actix_web::{App, Error, HttpResponse, HttpServer};
     use rustpress::db::Database;
-    use crate::web::routes;
+    use crate::web::{handlers, AppState};
 
     async fn admin_auth_guard(
         req: ServiceRequest,
@@ -21,7 +19,10 @@ async fn main() -> std::io::Result<()> {
     ) -> Result<ServiceResponse<BoxBody>, Error> {
         let path = req.path();
 
-        if path.starts_with("/admin") {
+        if path.starts_with("/admin")
+            && !path.starts_with("/admin/login")
+            && !path.starts_with("/admin/register")
+        {
             let has_cookie = req.cookie("rp_uid").is_some();
             if !has_cookie {
                 let is_htmx = req
@@ -33,14 +34,14 @@ async fn main() -> std::io::Result<()> {
                 if is_htmx {
                     return Ok(req.into_response(
                         HttpResponse::Unauthorized()
-                            .insert_header(("HX-Redirect", "/login"))
+                            .insert_header(("HX-Redirect", "/admin/login"))
                             .finish(),
                     ));
                 }
 
                 return Ok(req.into_response(
                     HttpResponse::SeeOther()
-                        .insert_header((LOCATION, "/login"))
+                        .insert_header((LOCATION, "/admin/login"))
                         .finish(),
                 ));
             }
@@ -57,7 +58,7 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("Failed to initialize database");
 
-    let state = actix_web::web::Data::new(routes::AppState {
+    let state = actix_web::web::Data::new(AppState {
         pool: db.pool.clone(),
     });
 
@@ -70,15 +71,11 @@ async fn main() -> std::io::Result<()> {
             .app_data(state.clone())
             .wrap(from_fn(admin_auth_guard))
             .service(Files::new("/static", "./static"))
-            .configure(routes::configure)
+            .configure(handlers::configure)
+            // Catch-all page route MUST be registered last
+            .configure(handlers::configure_catch_all)
     })
     .bind(bind_addr)?
     .run()
     .await
-}
-
-#[cfg(not(feature = "ssr"))]
-fn main() {
-    // Client-side only - this shouldn't be called directly
-    // The hydrate function in lib.rs handles client-side initialization
 }

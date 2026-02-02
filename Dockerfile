@@ -1,3 +1,16 @@
+# Build Tailwind CSS
+FROM node:22-bookworm-slim AS tailwind
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY style ./style
+COPY templates ./templates
+COPY src ./src
+RUN npm run build
+
+# Build Rust binary
 FROM rust:1.88-bookworm AS builder
 WORKDIR /app
 
@@ -7,9 +20,10 @@ COPY src ./src
 COPY migrations ./migrations
 COPY templates ./templates
 COPY static ./static
+COPY --from=tailwind /app/static/app.css ./static/app.css
 
 ENV SQLX_OFFLINE=true
-RUN cargo build --release --features ssr
+RUN cargo build --release
 
 
 FROM debian:bookworm-slim AS runtime
@@ -20,7 +34,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/target/release/rustpress /app/rustpress
-COPY static /app/static
+COPY --from=builder /app/static /app/static
 
 ENV RUST_LOG=info
 EXPOSE 8080

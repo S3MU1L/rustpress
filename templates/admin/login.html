@@ -1,47 +1,51 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Login - RustPress</title>
-    <link rel="stylesheet" href="/static/app.css" />
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  </head>
-  <body>
-    <header class="topbar">
-      <div class="container">
-        <a class="brand" href="/">RustPress</a>
-        <nav class="nav">
-          <a href="/">Home</a>
-        </nav>
+{% extends "layouts/base.html" %}
+
+{% block title %}Log In - RustPress{% endblock %}
+
+{% block header %}
+<header class="admin-header">
+  <div class="max-w-6xl mx-auto px-5 py-3 flex items-center justify-between">
+    <a class="font-semibold text-base" href="/">RustPress</a>
+    <nav class="flex items-center gap-4 text-sm">
+      <a href="/admin/register">Register</a>
+    </nav>
+  </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-sm mx-auto mt-8">
+  <div class="text-center mb-6">
+    <h1 class="mb-2">Log In</h1>
+    <p class="text-rp-muted">Sign in to your RustPress admin account.</p>
+  </div>
+
+  {% if let Some(msg) = error %}
+    <div class="notice notice-error mb-4">
+      <p class="m-0 text-sm">{{ msg }}</p>
+    </div>
+  {% endif %}
+
+  <div class="card p-6">
+    <form method="post" action="/admin/login">
+      <label>
+        Email
+        <input type="email" name="email" autocomplete="username" required placeholder="you@example.com" />
+      </label>
+
+      <label>
+        Password
+        <input type="password" name="password" autocomplete="current-password" required />
+      </label>
+
+      <div class="mt-6">
+        <button class="btn-primary w-full justify-center" type="submit">Log In</button>
       </div>
-    </header>
+    </form>
+  </div>
 
-    <main class="container" style="max-width: 560px;">
-      <h1>Admin login</h1>
-
-      {% if let Some(msg) = error %}
-        <div class="card" style="border-color:#b91c1c;">
-          <p style="color:#b91c1c; margin:0;">{{ msg }}</p>
-        </div>
-      {% endif %}
-
-      <form class="card" method="post" action="/login">
-        <label class="label">Email</label>
-        <input class="input" type="email" name="email" autocomplete="username" required />
-
-        <label class="label" style="margin-top: 12px;">Password</label>
-        <input class="input" type="password" name="password" autocomplete="current-password" required />
-
-        <div style="margin-top: 16px; display:flex; gap: 8px; align-items:center;">
-          <button class="button" type="submit">Login</button>
-          <span class="muted">Demo MVP: any existing user can log in.</span>
-        </div>
-      </form>
-
-      <p class="muted" style="margin-top: 12px;">
-        If you don't have a user yet, create one via SQL or we can add a simple /register.
-      </p>
-    </main>
-  </body>
-</html>
+  <p class="text-center text-rp-muted text-sm mt-4">
+    Don't have an account? <a href="/admin/register">Register here</a>
+  </p>
+</div>
+{% endblock %}

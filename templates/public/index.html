@@ -1,37 +1,34 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>RustPress</title>
-    <link rel="stylesheet" href="/static/app.css" />
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  </head>
-  <body>
-    <header class="topbar">
-      <div class="container">
-        <a class="brand" href="/">RustPress</a>
-        <nav class="nav">
-          <a href="/admin">Admin</a>
-        </nav>
-      </div>
-    </header>
+{% extends "layouts/base.html" %}
 
-    <main class="container">
-      <h1>Latest posts</h1>
+{% block title %}Blog - RustPress{% endblock %}
 
-      {% if posts.len() == 0 %}
-        <p class="muted">No published posts yet.</p>
-      {% else %}
-        <ul class="list">
-          {% for p in posts %}
-            <li class="list-item">
-              <a href="/post/{{ p.slug }}">{{ p.title }}</a>
-              <span class="badge">{{ p.status }}</span>
-            </li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-    </main>
-  </body>
-</html>
+{% block header %}
+{% include "partials/nav_public.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <div class="mb-8">
+    <h1 class="mb-2">Blog</h1>
+    <p class="text-rp-muted">Latest posts from RustPress</p>
+  </div>
+
+  {% if posts.len() == 0 %}
+    <div class="card p-8 text-center">
+      <p class="text-rp-muted mb-4">No published posts yet.</p>
+      <a class="btn-primary" href="/admin/posts/new">Create your first post</a>
+    </div>
+  {% else %}
+    <div class="space-y-4">
+      {% for p in posts %}
+        <article class="card p-5 hover:border-rp-accent transition-colors">
+          <a href="/blog/{{ p.slug }}" class="block">
+            <h2 class="text-xl font-semibold mb-2 text-rp-text">{{ p.title }}</h2>
+            <p class="text-rp-muted text-sm">Read more →</p>
+          </a>
+        </article>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

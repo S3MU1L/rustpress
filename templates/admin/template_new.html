@@ -1,46 +1,50 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>New template - RustPress</title>
-    <link rel="stylesheet" href="/static/app.css" />
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  </head>
-  <body>
-    <header class="topbar">
-      <div class="container">
-        <a class="brand" href="/admin/templates">Templates</a>
-        <nav class="nav">
-          <a href="/admin">Dashboard</a>
-          <a href="/">View site</a>
-        </nav>
+{% extends "layouts/base.html" %}
+
+{% block title %}New Template - RustPress{% endblock %}
+
+{% block header %}
+{% include "partials/nav_admin.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="mb-2">New Template</h1>
+      <p class="text-rp-muted">Create a custom template for your sites.</p>
+    </div>
+    <a class="btn-secondary" href="/admin/templates">Back to Templates</a>
+  </div>
+
+  <div class="card p-5">
+    <form method="post" action="/admin/templates" hx-post="/admin/templates" hx-trigger="submit" hx-swap="none">
+      <label>
+        Name
+        <input name="name" required placeholder="landing" />
+      </label>
+
+      <label>
+        Description
+        <input name="description" placeholder="Optional description..." />
+      </label>
+
+      <label>
+        HTML
+        <textarea name="html" rows="18" class="font-mono text-sm">{{ starter_html }}</textarea>
+      </label>
+
+      <div class="flex items-center gap-3 mt-6">
+        <button class="btn-primary" type="submit">Create Template</button>
+        <a class="btn-secondary" href="/admin/templates">Cancel</a>
       </div>
-    </header>
+    </form>
+  </div>
 
-    <main class="container">
-      <h1>New template</h1>
-
-      <form class="card" method="post" action="/admin/templates" hx-post="/admin/templates" hx-trigger="submit" hx-swap="none">
-        <label>Name
-          <input name="name" required placeholder="landing" />
-        </label>
-
-        <label>Description
-          <input name="description" placeholder="Optional" />
-        </label>
-
-        <label>HTML
-          <textarea name="html" rows="18">{{ starter_html }}</textarea>
-        </label>
-
-        <div class="actions">
-          <button class="button" type="submit">Create</button>
-          <a class="button secondary" href="/admin/templates">Cancel</a>
-        </div>
-      </form>
-
-      <p class="muted">Placeholders: <code>{{"{{title}}"}}</code>, <code>{{"{{content}}"}}</code>, <code>{{"{{slug}}"}}</code>, <code>{{"{{kind}}"}}</code></p>
-    </main>
-  </body>
-</html>
+  <p class="text-rp-muted text-sm mt-4">
+    Placeholders: <code class="bg-rp-bg px-1 rounded text-sm">{{"{{title}}"}}</code>,
+    <code class="bg-rp-bg px-1 rounded text-sm">{{"{{content}}"}}</code>,
+    <code class="bg-rp-bg px-1 rounded text-sm">{{"{{slug}}"}}</code>,
+    <code class="bg-rp-bg px-1 rounded text-sm">{{"{{kind}}"}}</code>
+  </p>
+</div>
+{% endblock %}

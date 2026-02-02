@@ -3,11 +3,17 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>{{ title }}</title>
+    <title>{% block title %}RustPress{% endblock %}</title>
     <link rel="stylesheet" href="/static/app.css" />
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   </head>
-  <body>
-    {{ body|safe }}
+  <body class="min-h-screen">
+    {% block header %}{% endblock %}
+
+    <main class="max-w-6xl mx-auto px-5 py-8">
+      {% block content %}{% endblock %}
+    </main>
+
+    {% block scripts %}{% endblock %}
   </body>
 </html>

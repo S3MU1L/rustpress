@@ -1,5 +1,4 @@
 use thiserror::Error;
-use uuid::Uuid;
 
 use crate::models::UserIden;
 

@@ -1,130 +1,132 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Edit - {{ item.title }} - RustPress</title>
-    <link rel="stylesheet" href="/static/app.css" />
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  </head>
-  <body>
-    <header class="topbar">
-      <div class="container">
-        <a class="brand" href="/admin">Admin</a>
-        <nav class="nav">
-          <a href="/sites">Sites</a>
-          <a href="/themes">Themes</a>
-          <a href="/">View site</a>
-          {% if item.kind == "post" %}
-            <a href="/post/{{ item.slug }}">View post</a>
-          {% else %}
-            <a href="/p/{{ item.slug }}">View page</a>
-          {% endif %}
-        </nav>
+{% extends "layouts/base.html" %}
+
+{% block title %}Edit - {{ item.title }} - RustPress{% endblock %}
+
+{% block header %}
+{% include "partials/nav_admin.html" %}
+{% endblock %}
+
+{% block content %}
+<form id="edit-form" method="post" action="/admin/edit/{{ item.id }}" hx-post="/admin/edit/{{ item.id }}" hx-target="body" hx-swap="outerHTML">
+  <!-- Top Bar -->
+  <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center gap-4">
+      <a class="text-rp-muted hover:text-rp-text" href="/admin" title="Back to Dashboard">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+        </svg>
+      </a>
+      <div>
+        <h1 class="text-xl mb-0">{{ item.title }}</h1>
+        <div class="flex items-center gap-2 mt-1">
+          <span class="badge">{{ item.kind }}</span>
+          <span class="badge {% if item.status == "published" %}badge-success{% endif %}">{{ item.status }}</span>
+          <span id="autosave-status" class="text-rp-muted text-xs"></span>
+        </div>
       </div>
-    </header>
+    </div>
+    <div class="flex items-center gap-2">
+      <a class="btn-secondary text-sm" href="/admin/content/{{ item.id }}/preview" target="_blank">Preview</a>
+      {% if item.kind == "post" %}
+        <a class="btn-secondary text-sm" href="/blog/{{ item.slug }}" target="_blank">View Live</a>
+      {% else %}
+        <a class="btn-secondary text-sm" href="/{{ item.slug }}" target="_blank">View Live</a>
+      {% endif %}
+      <button class="btn-primary text-sm" type="submit">Save</button>
+      {% if item.status == "draft" %}
+        <button class="btn-primary text-sm bg-green-600 hover:bg-green-700" type="button" hx-post="/admin/publish/{{ item.id }}" hx-target="body" hx-swap="outerHTML">Publish</button>
+      {% endif %}
+    </div>
+  </div>
 
-    <main class="container">
-      <div class="card-header">
-        <h1>Edit</h1>
-        <span class="badge">{{ item.kind }}</span>
-        <span class="badge">{{ item.status }}</span>
+  <div class="grid lg:grid-cols-[1fr_320px] gap-6">
+    <!-- Main Editor Area -->
+    <div class="space-y-4">
+      <!-- Title -->
+      <div class="card p-4">
+        <input id="title" name="title" value="{{ item.title }}" placeholder="Enter title..." class="text-2xl font-semibold border-0 bg-transparent w-full focus:outline-none focus:ring-0 p-0" />
       </div>
 
-      <div class="editor-grid">
-        <form id="edit-form" class="card" method="post" action="/admin/edit/{{ item.id }}" hx-post="/admin/edit/{{ item.id }}" hx-target="body" hx-swap="outerHTML">
-          <label>Title
-            <input id="title" name="title" value="{{ item.title }}" />
-          </label>
+      <!-- Content Editor -->
+      <div class="card p-0 overflow-hidden">
+        {% include "partials/editor.html" %}
+        <textarea id="editor" name="content" hidden>{{ item.content }}</textarea>
+      </div>
+    </div>
 
-          <label>Slug
-            <input id="slug" name="slug" value="{{ item.slug }}" />
-          </label>
+    <!-- Sidebar -->
+    <div class="space-y-4">
+      <!-- Publish Settings -->
+      <div class="card p-4">
+        <h3 class="text-sm font-medium mb-3">Publish Settings</h3>
+        <label class="block mb-3">
+          <span class="text-sm text-rp-muted">Status</span>
+          <select name="status" class="mt-1">
+            <option value="draft" {% if item.status == "draft" %}selected{% endif %}>Draft</option>
+            <option value="published" {% if item.status == "published" %}selected{% endif %}>Published</option>
+          </select>
+        </label>
+        <label class="block">
+          <span class="text-sm text-rp-muted">Template</span>
+          <select name="template" class="mt-1">
+            {% for t in templates %}
+              <option value="{{ t.name }}" {% if t.name == item.template %}selected{% endif %}>{{ t.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
 
-          <label>Template
-            <select name="template">
-              {% for t in templates %}
-                <option value="{{ t.name }}" {% if t.name == item.template %}selected{% endif %}>{{ t.name }}</option>
-              {% endfor %}
-            </select>
-          </label>
+      <!-- URL Settings -->
+      <div class="card p-4">
+        <h3 class="text-sm font-medium mb-3">URL Settings</h3>
+        <label class="block">
+          <span class="text-sm text-rp-muted">Slug</span>
+          <input id="slug" name="slug" value="{{ item.slug }}" placeholder="url-friendly-slug" class="mt-1" />
+        </label>
+        <p class="text-xs text-rp-muted mt-2">
+          {% if item.kind == "post" %}/blog/{{ item.slug }}{% else %}/{{ item.slug }}{% endif %}
+        </p>
+      </div>
 
-          <label>Status
-            <select name="status">
-              <option value="draft" {% if item.status == "draft" %}selected{% endif %}>draft</option>
-              <option value="published" {% if item.status == "published" %}selected{% endif %}>published</option>
-            </select>
-          </label>
-
-          <label>Content
-            <div class="actions" style="margin-top: 6px;">
-              <button class="button secondary" type="button" data-insert="<h1>Your title</h1>&#10;">H1</button>
-              <button class="button secondary" type="button" data-insert="<h2>Section</h2>&#10;">H2</button>
-              <button class="button secondary" type="button" data-insert="<p>Paragraph…</p>&#10;">P</button>
-              <button class="button secondary" type="button" data-insert="<a href='https://example.com' target='_blank' rel='noopener noreferrer'>Link</a>">Link</button>
-              <button class="button secondary" type="button" data-insert="<img src='/static/your-image.png' alt='' />">Image</button>
-              <button class="button secondary" type="button" data-insert="<pre><code>// code</code></pre>&#10;">Code</button>
-            </div>
-            <textarea id="editor" name="content" rows="18">{{ item.content }}</textarea>
-          </label>
-
-          <div class="actions">
-            <button class="button" type="submit">Save</button>
-            <button class="button" type="button" hx-post="/admin/publish/{{ item.id }}" hx-target="body" hx-swap="outerHTML">Publish</button>
-            <a class="button secondary" href="/admin">Back</a>
-          </div>
-
-          <div
-            id="autosave"
-            class="muted"
-            hx-post="/admin/edit/{{ item.id }}/autosave"
-            hx-trigger="input changed delay:1s from:#editor, input changed delay:1s from:#title, input changed delay:1s from:#slug, change delay:1s from:select[name='template']"
-            hx-include="#edit-form"
-            hx-target="this"
-            hx-swap="innerHTML"
-          ></div>
-        </form>
-
-        <div class="card">
-          <div class="card-header">
-            <h2>Live preview</h2>
-            <span class="badge">HTMX</span>
-          </div>
-          <div
-            id="preview"
-            hx-post="/admin/edit/{{ item.id }}/preview"
-            hx-trigger="load, input changed delay:450ms from:#editor, input changed delay:450ms from:#title, input changed delay:450ms from:#slug, change from:select[name='template']"
-            hx-include="#edit-form"
-            hx-target="this"
-            hx-swap="innerHTML"
-          >
-            <p class="muted">Loading preview…</p>
-          </div>
-          <p class="muted">Tip: preview updates as you type; autosave runs in the background.</p>
+      <!-- Live Preview -->
+      <div class="card p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-medium">Live Preview</h3>
+          <span class="text-xs text-rp-muted">Auto-updates</span>
+        </div>
+        <div id="preview" class="border border-rp-border rounded overflow-hidden bg-white" hx-post="/admin/edit/{{ item.id }}/preview" hx-trigger="load, editor-change delay:500ms" hx-include="#edit-form" hx-target="this" hx-swap="innerHTML">
+          <p class="text-rp-muted text-sm p-4">Loading preview...</p>
         </div>
       </div>
 
-      <p class="muted">Tip: publishing sets status to published and stamps published_at.</p>
-    </main>
+      <!-- Info -->
+      <div class="card p-4">
+        <h3 class="text-sm font-medium mb-3">Info</h3>
+        <dl class="text-xs space-y-2">
+          <div class="flex justify-between">
+            <dt class="text-rp-muted">Created</dt>
+            <dd>{{ item.created_at.format("%b %d, %Y") }}</dd>
+          </div>
+          <div class="flex justify-between">
+            <dt class="text-rp-muted">Last edited</dt>
+            <dd>{{ item.edited_at.format("%b %d, %Y %H:%M") }}</dd>
+          </div>
+          {% if item.published_at.is_some() %}
+          <div class="flex justify-between">
+            <dt class="text-rp-muted">Published</dt>
+            <dd>{{ item.published_at.unwrap().format("%b %d, %Y") }}</dd>
+          </div>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+  </div>
 
-    <script>
-      (function () {
-        const editor = document.getElementById('editor');
-        if (!editor) return;
-        document.querySelectorAll('[data-insert]').forEach((btn) => {
-          btn.addEventListener('click', () => {
-            const text = btn.getAttribute('data-insert') || '';
-            const start = editor.selectionStart || 0;
-            const end = editor.selectionEnd || 0;
-            const value = editor.value;
-            editor.value = value.slice(0, start) + text + value.slice(end);
-            const pos = start + text.length;
-            editor.selectionStart = editor.selectionEnd = pos;
-            editor.dispatchEvent(new Event('input', { bubbles: true }));
-            editor.focus();
-          });
-        });
-      })();
-    </script>
-  </body>
-</html>
+  <!-- Autosave trigger -->
+  <div id="autosave" hx-post="/admin/edit/{{ item.id }}/autosave" hx-trigger="autosave-trigger" hx-include="#edit-form" hx-target="#autosave-status" hx-swap="innerHTML"></div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+{% include "partials/editor_scripts.html" %}
+{% endblock %}

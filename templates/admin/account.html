@@ -1,57 +1,54 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Account - RustPress</title>
-    <link rel="stylesheet" href="/static/app.css" />
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  </head>
-  <body>
-    <header class="topbar">
-      <div class="container">
-        <a class="brand" href="/admin">Admin</a>
-        <nav class="nav">
-          <a href="/sites">Sites</a>
-          <a href="/themes">Themes</a>
-          <a href="/me/account">Account</a>
-          <a href="/me/security">Security</a>
-          <form method="post" action="/logout" style="display:inline; margin:0;">
-            <button class="button" type="submit" style="padding:6px 10px;">Logout</button>
-          </form>
-        </nav>
+{% extends "layouts/base.html" %}
+
+{% block title %}Account - RustPress{% endblock %}
+
+{% block header %}
+{% include "partials/nav_admin.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+  <div class="mb-6">
+    <h1 class="mb-2">Account Settings</h1>
+    <p class="text-rp-muted">Manage your account information.</p>
+  </div>
+
+  {% if error.is_some() %}
+    <div class="notice notice-error mb-4">
+      <p class="m-0">{{ error.as_ref().unwrap() }}</p>
+    </div>
+  {% endif %}
+
+  {% if success.is_some() %}
+    <div class="notice notice-success mb-4">
+      <p class="m-0">{{ success.as_ref().unwrap() }}</p>
+    </div>
+  {% endif %}
+
+  <div class="card p-5">
+    <h2 class="text-lg mb-4">Email Address</h2>
+    <form method="post" action="/admin/me/account/email" hx-post="/admin/me/account/email" hx-target="body" hx-swap="outerHTML">
+      <label>
+        Email
+        <input name="email" type="email" value="{{ user.email }}" />
+      </label>
+
+      <div class="flex items-center gap-3 mt-4">
+        <button class="btn-primary" type="submit">Save Changes</button>
+        <a class="btn-secondary" href="/admin">Back to Dashboard</a>
       </div>
-    </header>
+    </form>
 
-    <main class="container">
-      <div class="card-header">
-        <h1>Account</h1>
-      </div>
-
-      {% if error.is_some() %}
-        <div class="card" style="border-left:4px solid #b42318;">
-          <p>{{ error.as_ref().unwrap() }}</p>
-        </div>
-      {% endif %}
-
-      {% if success.is_some() %}
-        <div class="card" style="border-left:4px solid #067647;">
-          <p>{{ success.as_ref().unwrap() }}</p>
-        </div>
-      {% endif %}
-
-      <form class="card" method="post" action="/me/account/email" hx-post="/me/account/email" hx-target="body" hx-swap="outerHTML">
-        <label>Email
-          <input name="email" value="{{ user.email }}" />
-        </label>
-
-        <div class="actions">
-          <button class="button" type="submit">Save</button>
-          <a class="button secondary" href="/admin">Back</a>
-        </div>
-
-        <p class="muted">Email verified: {% if user.email_verified_at.is_some() %}<span class="badge">yes</span>{% else %}<span class="badge">no</span>{% endif %}</p>
-      </form>
-    </main>
-  </body>
-</html>
+    <div class="mt-4 pt-4 border-t border-rp-border">
+      <p class="text-rp-muted text-sm">
+        Email verified:
+        {% if user.email_verified_at.is_some() %}
+          <span class="badge badge-success">Yes</span>
+        {% else %}
+          <span class="badge">No</span>
+        {% endif %}
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,47 +1,51 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Register - RustPress</title>
-    <link rel="stylesheet" href="/static/app.css" />
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  </head>
-  <body>
-    <header class="topbar">
-      <div class="container">
-        <a class="brand" href="/">RustPress</a>
-        <nav class="nav">
-          <a href="/login">Login</a>
-        </nav>
+{% extends "layouts/base.html" %}
+
+{% block title %}Register - RustPress{% endblock %}
+
+{% block header %}
+<header class="admin-header">
+  <div class="max-w-6xl mx-auto px-5 py-3 flex items-center justify-between">
+    <a class="font-semibold text-base" href="/">RustPress</a>
+    <nav class="flex items-center gap-4 text-sm">
+      <a href="/admin/login">Log In</a>
+    </nav>
+  </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-sm mx-auto mt-8">
+  <div class="text-center mb-6">
+    <h1 class="mb-2">Create Account</h1>
+    <p class="text-rp-muted">Register for a new RustPress admin account.</p>
+  </div>
+
+  {% if let Some(msg) = error %}
+    <div class="notice notice-error mb-4">
+      <p class="m-0 text-sm">{{ msg }}</p>
+    </div>
+  {% endif %}
+
+  <div class="card p-6">
+    <form method="post" action="/admin/register">
+      <label>
+        Email
+        <input type="email" name="email" autocomplete="username" required placeholder="you@example.com" />
+      </label>
+
+      <label>
+        Password
+        <input type="password" name="password" autocomplete="new-password" required placeholder="At least 4 characters" />
+      </label>
+
+      <div class="mt-6">
+        <button class="btn-primary w-full justify-center" type="submit">Create Account</button>
       </div>
-    </header>
+    </form>
+  </div>
 
-    <main class="container" style="max-width: 560px;">
-      <h1>Create admin account</h1>
-
-      {% if let Some(msg) = error %}
-        <div class="card" style="border-color:#b91c1c;">
-          <p style="color:#b91c1c; margin:0;">{{ msg }}</p>
-        </div>
-      {% endif %}
-
-      <form class="card" method="post" action="/register">
-        <label class="label">Email</label>
-        <input class="input" type="email" name="email" autocomplete="username" required />
-
-        <label class="label" style="margin-top: 12px;">Password</label>
-        <input class="input" type="password" name="password" autocomplete="new-password" required />
-
-        <div style="margin-top: 16px; display:flex; gap: 8px; align-items:center;">
-          <button class="button" type="submit">Create account</button>
-          <span class="muted">MVP: first user is "admin".</span>
-        </div>
-      </form>
-
-      <p class="muted" style="margin-top: 12px;">
-        This stores a hashed password and logs you in.
-      </p>
-    </main>
-  </body>
-</html>
+  <p class="text-center text-rp-muted text-sm mt-4">
+    Already have an account? <a href="/admin/login">Log in here</a>
+  </p>
+</div>
+{% endblock %}
