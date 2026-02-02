@@ -19,3 +19,7 @@ pkg
 
 .idea/
 .env
+node_modules/
+
+# Build artifacts
+static/app.css

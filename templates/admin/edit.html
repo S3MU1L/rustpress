@@ -8,31 +8,31 @@
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   </head>
   <body>
-    <header class="topbar">
-      <div class="container">
-        <a class="brand" href="/admin">Admin</a>
-        <nav class="nav">
-          <a href="/sites">Sites</a>
-          <a href="/themes">Themes</a>
-          <a href="/">View site</a>
+    <header class="sticky top-0 bg-rp-card/85 backdrop-blur-sm border-b border-rp-border">
+      <div class="max-w-5xl mx-auto px-6 py-3.5 flex items-center justify-between">
+        <a class="font-bold text-rp-text hover:no-underline" href="/admin">Admin</a>
+        <nav class="flex gap-3.5">
+          <a class="text-rp-muted hover:text-rp-text" href="/sites">Sites</a>
+          <a class="text-rp-muted hover:text-rp-text" href="/themes">Themes</a>
+          <a class="text-rp-muted hover:text-rp-text" href="/">View site</a>
           {% if item.kind == "post" %}
-            <a href="/post/{{ item.slug }}">View post</a>
+            <a class="text-rp-muted hover:text-rp-text" href="/post/{{ item.slug }}">View post</a>
           {% else %}
-            <a href="/p/{{ item.slug }}">View page</a>
+            <a class="text-rp-muted hover:text-rp-text" href="/p/{{ item.slug }}">View page</a>
           {% endif %}
         </nav>
       </div>
     </header>
 
-    <main class="container">
-      <div class="card-header">
-        <h1>Edit</h1>
-        <span class="badge">{{ item.kind }}</span>
-        <span class="badge">{{ item.status }}</span>
+    <main class="max-w-5xl mx-auto px-6 py-6">
+      <div class="flex items-center gap-2.5 justify-between mb-2.5">
+        <h1 class="text-2xl font-bold">Edit</h1>
+        <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">{{ item.kind }}</span>
+        <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">{{ item.status }}</span>
       </div>
 
-      <div class="editor-grid">
-        <form id="edit-form" class="card" method="post" action="/admin/edit/{{ item.id }}" hx-post="/admin/edit/{{ item.id }}" hx-target="body" hx-swap="outerHTML">
+      <div class="grid lg:grid-cols-2 gap-4 items-start">
+        <form id="edit-form" class="bg-rp-card/90 border border-rp-border rounded-xl p-4" method="post" action="/admin/edit/{{ item.id }}" hx-post="/admin/edit/{{ item.id }}" hx-target="body" hx-swap="outerHTML">
           <label>Title
             <input id="title" name="title" value="{{ item.title }}" />
           </label>
@@ -57,26 +57,26 @@
           </label>
 
           <label>Content
-            <div class="actions" style="margin-top: 6px;">
-              <button class="button secondary" type="button" data-insert="<h1>Your title</h1>&#10;">H1</button>
-              <button class="button secondary" type="button" data-insert="<h2>Section</h2>&#10;">H2</button>
-              <button class="button secondary" type="button" data-insert="<p>Paragraph…</p>&#10;">P</button>
-              <button class="button secondary" type="button" data-insert="<a href='https://example.com' target='_blank' rel='noopener noreferrer'>Link</a>">Link</button>
-              <button class="button secondary" type="button" data-insert="<img src='/static/your-image.png' alt='' />">Image</button>
-              <button class="button secondary" type="button" data-insert="<pre><code>// code</code></pre>&#10;">Code</button>
+            <div class="flex gap-2 flex-wrap mt-1.5">
+              <button class="px-2 py-1 text-xs rounded border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105" type="button" data-insert="<h1>Your title</h1>&#10;">H1</button>
+              <button class="px-2 py-1 text-xs rounded border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105" type="button" data-insert="<h2>Section</h2>&#10;">H2</button>
+              <button class="px-2 py-1 text-xs rounded border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105" type="button" data-insert="<p>Paragraph…</p>&#10;">P</button>
+              <button class="px-2 py-1 text-xs rounded border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105" type="button" data-insert="<a href='https://example.com' target='_blank' rel='noopener noreferrer'>Link</a>">Link</button>
+              <button class="px-2 py-1 text-xs rounded border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105" type="button" data-insert="<img src='/static/your-image.png' alt='' />">Image</button>
+              <button class="px-2 py-1 text-xs rounded border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105" type="button" data-insert="<pre><code>// code</code></pre>&#10;">Code</button>
             </div>
             <textarea id="editor" name="content" rows="18">{{ item.content }}</textarea>
           </label>
 
-          <div class="actions">
-            <button class="button" type="submit">Save</button>
-            <button class="button" type="button" hx-post="/admin/publish/{{ item.id }}" hx-target="body" hx-swap="outerHTML">Publish</button>
-            <a class="button secondary" href="/admin">Back</a>
+          <div class="flex gap-2.5 flex-wrap mt-3.5">
+            <button class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105" type="submit">Save</button>
+            <button class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105" type="button" hx-post="/admin/publish/{{ item.id }}" hx-target="body" hx-swap="outerHTML">Publish</button>
+            <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105 hover:no-underline" href="/admin">Back</a>
           </div>
 
           <div
             id="autosave"
-            class="muted"
+            class="text-rp-muted text-sm mt-2"
             hx-post="/admin/edit/{{ item.id }}/autosave"
             hx-trigger="input changed delay:1s from:#editor, input changed delay:1s from:#title, input changed delay:1s from:#slug, change delay:1s from:select[name='template']"
             hx-include="#edit-form"
@@ -85,10 +85,10 @@
           ></div>
         </form>
 
-        <div class="card">
-          <div class="card-header">
-            <h2>Live preview</h2>
-            <span class="badge">HTMX</span>
+        <div class="bg-rp-card/90 border border-rp-border rounded-xl p-4">
+          <div class="flex items-center gap-2.5 justify-between mb-2.5">
+            <h2 class="text-lg font-semibold">Live preview</h2>
+            <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">HTMX</span>
           </div>
           <div
             id="preview"
@@ -98,13 +98,13 @@
             hx-target="this"
             hx-swap="innerHTML"
           >
-            <p class="muted">Loading preview…</p>
+            <p class="text-rp-muted">Loading preview…</p>
           </div>
-          <p class="muted">Tip: preview updates as you type; autosave runs in the background.</p>
+          <p class="text-rp-muted text-sm mt-2">Tip: preview updates as you type; autosave runs in the background.</p>
         </div>
       </div>
 
-      <p class="muted">Tip: publishing sets status to published and stamps published_at.</p>
+      <p class="text-rp-muted text-sm mt-3">Tip: publishing sets status to published and stamps published_at.</p>
     </main>
 
     <script>

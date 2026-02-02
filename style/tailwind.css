@@ -1,57 +1,61 @@
 @import "tailwindcss";
 
+@source "../templates/**/*.html";
 @source "../src/**/*.rs";
 
 @theme {
-    --color-rust-50: #fef3e2;
-    --color-rust-100: #fde4c4;
-    --color-rust-200: #fbc889;
-    --color-rust-300: #f9a94d;
-    --color-rust-400: #f78c1f;
-    --color-rust-500: #e8700a;
-    --color-rust-600: #c95506;
-    --color-rust-700: #a13d09;
-    --color-rust-800: #84310f;
-    --color-rust-900: #6e2a10;
+  --color-rp-bg: #0b1020;
+  --color-rp-card: #111a33;
+  --color-rp-text: #e7ecff;
+  --color-rp-muted: #9aa7d1;
+  --color-rp-border: #23305d;
+  --color-rp-accent: #7aa2ff;
+  --color-rp-accent2: #7affc2;
+  --color-rp-error: #b91c1c;
+  --color-rp-success: #067647;
 
-    --font-mono: "JetBrains Mono", "Fira Code", monospace;
-    --font-sans: "Inter", system-ui, sans-serif;
+  /* Rust brand colors */
+  --color-rust-50: #fef3e2;
+  --color-rust-100: #fde4c4;
+  --color-rust-200: #fbc889;
+  --color-rust-300: #f9a94d;
+  --color-rust-400: #f78c1f;
+  --color-rust-500: #e8700a;
+  --color-rust-600: #c95506;
+  --color-rust-700: #a13d09;
+  --color-rust-800: #84310f;
+  --color-rust-900: #6e2a10;
 
-    --animate-blink: blink 1s step-end infinite;
-    --animate-fade-in: fade-in 0.5s ease-out;
-    --animate-slide-up: slide-up 0.5s ease-out;
+  /* Fonts */
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
 
-    @keyframes blink {
+/* Base dark theme styles */
+@layer base {
+  body {
+    @apply bg-gradient-to-b from-[#070a14] to-rp-bg text-rp-text antialiased;
+    font-family: var(--font-sans);
+  }
 
-        0%,
-        100% {
-            opacity: 1;
-        }
+  a {
+    @apply text-rp-accent hover:underline;
+  }
 
-        50% {
-            opacity: 0;
-        }
-    }
+  input, textarea, select {
+    @apply w-full mt-1.5 px-3 py-2.5 rounded-lg border border-rp-border bg-rp-bg text-rp-text;
+  }
 
-    @keyframes fade-in {
-        0% {
-            opacity: 0;
-        }
+  textarea {
+    font-family: var(--font-mono);
+  }
 
-        100% {
-            opacity: 1;
-        }
-    }
+  label {
+    @apply block my-2.5 text-rp-muted;
+  }
+}
 
-    @keyframes slide-up {
-        0% {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-
-        100% {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
+/* Preview iframe */
+.preview-iframe {
+  @apply w-full h-[72vh] border border-rp-border rounded-xl bg-white;
 }
