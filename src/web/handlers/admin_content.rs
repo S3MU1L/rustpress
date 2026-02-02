@@ -5,13 +5,18 @@ use uuid::Uuid;
 use rustpress::db;
 use rustpress::models::{ContentCreate, ContentKind, ContentStatus, ContentUpdate};
 
-use crate::web::forms::{AdminCreateForm, AdminLiveForm, AdminNewPreviewForm, AdminUpdateForm};
+use crate::web::forms::{
+    AdminCreateForm, AdminLiveForm, AdminNewPreviewForm, AdminUpdateForm, SitesQuery,
+};
 use crate::web::helpers::{
     apply_site_template, escape_html, iframe_srcdoc, is_htmx, is_unique_violation,
     normalize_builtin_template_html, render, require_user,
 };
 use crate::web::state::AppState;
-use crate::web::templates::{AdminDashboardTemplate, AdminEditTemplate, AdminNewTemplate};
+use crate::web::templates::{
+    AdminDashboardTemplate, AdminEditTemplate, AdminNewTemplate, AdminPagesListTemplate,
+    AdminPostsListTemplate,
+};
 
 #[get("/admin")]
 pub async fn admin_dashboard(state: web::Data<AppState>, req: HttpRequest) -> impl Responder {
@@ -38,6 +43,56 @@ pub async fn admin_dashboard(state: web::Data<AppState>, req: HttpRequest) -> im
         .collect();
 
     render(AdminDashboardTemplate { posts, pages })
+}
+
+#[get("/admin/posts")]
+pub async fn admin_posts_list(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    query: web::Query<SitesQuery>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let q = query.q.clone().unwrap_or_default();
+    let posts = db::list_content(&state.pool, ContentKind::Post, true)
+        .await
+        .unwrap_or_default();
+
+    let posts: Vec<_> = posts
+        .into_iter()
+        .filter(|c| c.owner_user_id.is_none() || c.owner_user_id == Some(uid))
+        .filter(|c| q.is_empty() || c.title.to_lowercase().contains(&q.to_lowercase()))
+        .collect();
+
+    render(AdminPostsListTemplate { posts, query: q })
+}
+
+#[get("/admin/pages")]
+pub async fn admin_pages_list(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    query: web::Query<SitesQuery>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let q = query.q.clone().unwrap_or_default();
+    let pages = db::list_content(&state.pool, ContentKind::Page, true)
+        .await
+        .unwrap_or_default();
+
+    let pages: Vec<_> = pages
+        .into_iter()
+        .filter(|c| c.owner_user_id.is_none() || c.owner_user_id == Some(uid))
+        .filter(|c| q.is_empty() || c.title.to_lowercase().contains(&q.to_lowercase()))
+        .collect();
+
+    render(AdminPagesListTemplate { pages, query: q })
 }
 
 #[get("/admin/{kind:posts|pages}/new")]
@@ -566,6 +621,8 @@ pub async fn admin_preview_new(
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(admin_dashboard)
+        .service(admin_posts_list)
+        .service(admin_pages_list)
         .service(admin_new)
         .service(admin_create)
         .service(admin_edit)

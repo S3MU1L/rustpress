@@ -2,7 +2,7 @@ use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use uuid::Uuid;
 
 use rustpress::db;
-use rustpress::models::{ContentKind, HomepageType};
+use rustpress::models::HomepageType;
 
 use crate::web::forms::{ApplyThemeForm, SiteCreateForm, SiteUpdateForm, SitesQuery};
 use crate::web::helpers::{is_htmx, render, require_user};
@@ -227,9 +227,6 @@ pub async fn sites_update(
     };
 
     let templates = db::list_site_templates_for_user(&state.pool, uid)
-        .await
-        .unwrap_or_default();
-    let pages = db::list_content(&state.pool, ContentKind::Page, false)
         .await
         .unwrap_or_default();
 

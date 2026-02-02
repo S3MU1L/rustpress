@@ -58,33 +58,9 @@
   </form>
 </div>
 
-<div class="card p-6 mt-6">
-  <h2 class="text-lg font-semibold mb-4">Current Site</h2>
-  <dl class="space-y-2 text-sm">
-    <div class="flex">
-      <dt class="text-rp-muted w-32">Name:</dt>
-      <dd>{{ s.name }}</dd>
-    </div>
-    <div class="flex">
-      <dt class="text-rp-muted w-32">Slug:</dt>
-      <dd>/{{ s.slug }}</dd>
-    </div>
-    <div class="flex">
-      <dt class="text-rp-muted w-32">Status:</dt>
-      <dd>{{ s.status }}</dd>
-    </div>
-    <div class="flex">
-      <dt class="text-rp-muted w-32">Template:</dt>
-      <dd>{{ s.default_template }}</dd>
-    </div>
-  </dl>
-  <p class="text-rp-muted text-sm mt-4">
-    <a href="/admin/sites/{{ s.id }}" class="text-rp-accent hover:underline">Edit full site settings</a>
-  </p>
-</div>
 {% when None %}
 <div class="card p-6">
-  <p class="text-rp-muted">No published site found. <a href="/admin/sites/new" class="text-rp-accent hover:underline">Create and publish a site</a> to configure it here.</p>
+  <p class="text-rp-muted">No site configuration found. Please contact the administrator.</p>
 </div>
 {% endmatch %}
 

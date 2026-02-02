@@ -29,6 +29,20 @@ pub struct AdminDashboardTemplate {
 }
 
 #[derive(Template)]
+#[template(path = "admin/posts_list.html")]
+pub struct AdminPostsListTemplate {
+    pub posts: Vec<ContentItem>,
+    pub query: String,
+}
+
+#[derive(Template)]
+#[template(path = "admin/pages_list.html")]
+pub struct AdminPagesListTemplate {
+    pub pages: Vec<ContentItem>,
+    pub query: String,
+}
+
+#[derive(Template)]
 #[template(path = "admin/edit.html")]
 pub struct AdminEditTemplate {
     pub item: ContentItem,

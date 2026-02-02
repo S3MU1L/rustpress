@@ -1,0 +1,51 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Pages - RustPress{% endblock %}
+
+{% block header %}
+{% include "partials/nav_admin.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="mb-2">Pages</h1>
+    <p class="text-rp-muted">Manage your static pages.</p>
+  </div>
+  <a class="btn-primary" href="/admin/pages/new">New Page</a>
+</div>
+
+<!-- Search -->
+<div class="card p-4 mb-6">
+  <form method="get" action="/admin/pages" class="flex gap-3 items-end">
+    <label class="flex-1 mb-0">
+      Search
+      <input name="q" value="{{ query }}" placeholder="Search by title..." />
+    </label>
+    <button class="btn-primary" type="submit">Search</button>
+    <a class="btn-secondary" href="/admin/pages">Clear</a>
+  </form>
+</div>
+
+<!-- Pages List -->
+<div class="card">
+  {% if pages.len() == 0 %}
+    <div class="p-8 text-center">
+      <p class="text-rp-muted mb-4">No pages found.</p>
+      <a class="btn-primary" href="/admin/pages/new">Create your first page</a>
+    </div>
+  {% else %}
+    <ul class="divide-y divide-rp-border">
+      {% for p in pages %}
+        <li class="p-4 flex items-center justify-between hover:bg-rp-bg/50">
+          <div>
+            <a href="/admin/edit/{{ p.id }}" class="font-medium">{{ p.title }}</a>
+            <p class="text-rp-muted text-sm">/{{ p.slug }}</p>
+          </div>
+          <span class="badge {% if p.status == "published" %}badge-success{% endif %}">{{ p.status }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>
+{% endblock %}
