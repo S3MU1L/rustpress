@@ -1,74 +1,51 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Admin - RustPress</title>
-    <link rel="stylesheet" href="/static/app.css" />
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  </head>
-  <body>
-    <header class="sticky top-0 bg-rp-card/85 backdrop-blur-sm border-b border-rp-border">
-      <div class="max-w-5xl mx-auto px-6 py-3.5 flex items-center justify-between">
-        <a class="font-bold text-rp-text hover:no-underline" href="/">RustPress</a>
-        <nav class="flex flex-wrap gap-3.5 items-center">
-          <a class="text-rp-muted hover:text-rp-text" href="/admin">Dashboard</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/sites">Sites</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/themes">Themes</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/admin/templates">Templates</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/admin/posts/new">New post</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/admin/pages/new">New page</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/me/account">Account</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/me/security">Security</a>
-          <form method="post" action="/logout" class="inline m-0">
-            <button class="px-2.5 py-1.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text text-sm cursor-pointer hover:brightness-105" type="submit">Logout</button>
-          </form>
-        </nav>
-      </div>
-    </header>
+{% extends "layouts/base.html" %}
 
-    <main class="max-w-5xl mx-auto px-6 py-6">
-      <h1 class="text-2xl font-bold mb-4">Admin</h1>
+{% block title %}Admin - RustPress{% endblock %}
 
-      <section class="grid md:grid-cols-2 gap-4">
-        <div class="bg-rp-card/90 border border-rp-border rounded-xl p-4">
-          <div class="flex items-center gap-2.5 justify-between mb-2.5">
-            <h2 class="text-lg font-semibold">Posts</h2>
-            <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105 hover:no-underline" href="/admin/posts/new">+ New</a>
-          </div>
-          {% if posts.len() == 0 %}
-            <p class="text-rp-muted">No posts yet.</p>
-          {% else %}
-            <ul class="list-none p-0 m-0">
-              {% for p in posts %}
-                <li class="flex items-center justify-between py-2.5 border-b border-rp-border/60 last:border-b-0">
-                  <a href="/admin/edit/{{ p.id }}">{{ p.title }}</a>
-                  <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">{{ p.status }}</span>
-                </li>
-              {% endfor %}
-            </ul>
-          {% endif %}
-        </div>
+{% block header %}
+{% include "partials/nav_admin.html" %}
+{% endblock %}
 
-        <div class="bg-rp-card/90 border border-rp-border rounded-xl p-4">
-          <div class="flex items-center gap-2.5 justify-between mb-2.5">
-            <h2 class="text-lg font-semibold">Pages</h2>
-            <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105 hover:no-underline" href="/admin/pages/new">+ New</a>
-          </div>
-          {% if pages.len() == 0 %}
-            <p class="text-rp-muted">No pages yet.</p>
-          {% else %}
-            <ul class="list-none p-0 m-0">
-              {% for p in pages %}
-                <li class="flex items-center justify-between py-2.5 border-b border-rp-border/60 last:border-b-0">
-                  <a href="/admin/edit/{{ p.id }}">{{ p.title }}</a>
-                  <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">{{ p.status }}</span>
-                </li>
-              {% endfor %}
-            </ul>
-          {% endif %}
-        </div>
-      </section>
-    </main>
-  </body>
-</html>
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Admin</h1>
+
+<section class="grid md:grid-cols-2 gap-4">
+  <div class="bg-rp-card/90 border border-rp-border rounded-xl p-4">
+    <div class="flex items-center gap-2.5 justify-between mb-2.5">
+      <h2 class="text-lg font-semibold">Posts</h2>
+      <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105 hover:no-underline" href="/admin/posts/new">+ New</a>
+    </div>
+    {% if posts.len() == 0 %}
+      <p class="text-rp-muted">No posts yet.</p>
+    {% else %}
+      <ul class="list-none p-0 m-0">
+        {% for p in posts %}
+          <li class="flex items-center justify-between py-2.5 border-b border-rp-border/60 last:border-b-0">
+            <a href="/admin/edit/{{ p.id }}">{{ p.title }}</a>
+            <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">{{ p.status }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+
+  <div class="bg-rp-card/90 border border-rp-border rounded-xl p-4">
+    <div class="flex items-center gap-2.5 justify-between mb-2.5">
+      <h2 class="text-lg font-semibold">Pages</h2>
+      <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105 hover:no-underline" href="/admin/pages/new">+ New</a>
+    </div>
+    {% if pages.len() == 0 %}
+      <p class="text-rp-muted">No pages yet.</p>
+    {% else %}
+      <ul class="list-none p-0 m-0">
+        {% for p in pages %}
+          <li class="flex items-center justify-between py-2.5 border-b border-rp-border/60 last:border-b-0">
+            <a href="/admin/edit/{{ p.id }}">{{ p.title }}</a>
+            <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">{{ p.status }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

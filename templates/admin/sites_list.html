@@ -1,62 +1,43 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Sites - RustPress</title>
-    <link rel="stylesheet" href="/static/app.css" />
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  </head>
-  <body>
-    <header class="sticky top-0 bg-rp-card/85 backdrop-blur-sm border-b border-rp-border">
-      <div class="max-w-5xl mx-auto px-6 py-3.5 flex items-center justify-between">
-        <a class="font-bold text-rp-text hover:no-underline" href="/admin">Admin</a>
-        <nav class="flex gap-3.5 items-center">
-          <a class="text-rp-muted hover:text-rp-text" href="/sites">Sites</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/themes">Themes</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/me/account">Account</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/me/security">Security</a>
-          <form method="post" action="/logout" class="inline m-0">
-            <button class="px-2.5 py-1.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text text-sm cursor-pointer hover:brightness-105" type="submit">Logout</button>
-          </form>
-        </nav>
-      </div>
-    </header>
+{% extends "layouts/base.html" %}
 
-    <main class="max-w-5xl mx-auto px-6 py-6">
-      <div class="flex items-center gap-2.5 justify-between mb-2.5">
-        <h1 class="text-2xl font-bold">Sites</h1>
-        <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105 hover:no-underline" href="/sites/new">+ New site</a>
-      </div>
+{% block title %}Sites - RustPress{% endblock %}
 
-      <form class="bg-rp-card/90 border border-rp-border rounded-xl p-4 mb-3.5" method="get" action="/sites">
-        <label>Search
-          <input name="q" value="{{ query }}" placeholder="site name or slug" />
-        </label>
-        <div class="flex gap-2.5 flex-wrap mt-3.5">
-          <button class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105" type="submit">Search</button>
-          <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105 hover:no-underline" href="/sites">Clear</a>
-        </div>
-      </form>
+{% block header %}
+{% include "partials/nav_admin.html" %}
+{% endblock %}
 
-      <div class="bg-rp-card/90 border border-rp-border rounded-xl p-4">
-        {% if sites.len() == 0 %}
-          <p class="text-rp-muted">No sites yet.</p>
-        {% else %}
-          <ul class="list-none p-0 m-0">
-            {% for s in sites %}
-              <li class="flex items-center justify-between gap-2 py-2.5 border-b border-rp-border/60 last:border-b-0 flex-wrap">
-                <a href="/sites/{{ s.id }}">{{ s.name }}</a>
-                <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">{{ s.status }}</span>
-                <span class="text-rp-muted text-sm">/{{ s.slug }}</span>
-                <span class="text-rp-muted text-sm">theme: {{ s.default_template }}</span>
-              </li>
-            {% endfor %}
-          </ul>
-        {% endif %}
-      </div>
+{% block content %}
+<div class="flex items-center gap-2.5 justify-between mb-2.5">
+  <h1 class="text-2xl font-bold">Sites</h1>
+  <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105 hover:no-underline" href="/sites/new">+ New site</a>
+</div>
 
-      <p class="text-rp-muted text-sm mt-3">MVP: sites are managed separately from public routing for now.</p>
-    </main>
-  </body>
-</html>
+<form class="bg-rp-card/90 border border-rp-border rounded-xl p-4 mb-3.5" method="get" action="/sites">
+  <label>Search
+    <input name="q" value="{{ query }}" placeholder="site name or slug" />
+  </label>
+  <div class="flex gap-2.5 flex-wrap mt-3.5">
+    <button class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105" type="submit">Search</button>
+    <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105 hover:no-underline" href="/sites">Clear</a>
+  </div>
+</form>
+
+<div class="bg-rp-card/90 border border-rp-border rounded-xl p-4">
+  {% if sites.len() == 0 %}
+    <p class="text-rp-muted">No sites yet.</p>
+  {% else %}
+    <ul class="list-none p-0 m-0">
+      {% for s in sites %}
+        <li class="flex items-center justify-between gap-2 py-2.5 border-b border-rp-border/60 last:border-b-0 flex-wrap">
+          <a href="/sites/{{ s.id }}">{{ s.name }}</a>
+          <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">{{ s.status }}</span>
+          <span class="text-rp-muted text-sm">/{{ s.slug }}</span>
+          <span class="text-rp-muted text-sm">theme: {{ s.default_template }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>
+
+<p class="text-rp-muted text-sm mt-3">MVP: sites are managed separately from public routing for now.</p>
+{% endblock %}

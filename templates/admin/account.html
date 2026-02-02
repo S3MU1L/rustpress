@@ -1,57 +1,38 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Account - RustPress</title>
-    <link rel="stylesheet" href="/static/app.css" />
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  </head>
-  <body>
-    <header class="sticky top-0 bg-rp-card/85 backdrop-blur-sm border-b border-rp-border">
-      <div class="max-w-5xl mx-auto px-6 py-3.5 flex items-center justify-between">
-        <a class="font-bold text-rp-text hover:no-underline" href="/admin">Admin</a>
-        <nav class="flex gap-3.5 items-center">
-          <a class="text-rp-muted hover:text-rp-text" href="/sites">Sites</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/themes">Themes</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/me/account">Account</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/me/security">Security</a>
-          <form method="post" action="/logout" class="inline m-0">
-            <button class="px-2.5 py-1.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text text-sm cursor-pointer hover:brightness-105" type="submit">Logout</button>
-          </form>
-        </nav>
-      </div>
-    </header>
+{% extends "layouts/base.html" %}
 
-    <main class="max-w-5xl mx-auto px-6 py-6">
-      <div class="flex items-center gap-2.5 mb-2.5">
-        <h1 class="text-2xl font-bold">Account</h1>
-      </div>
+{% block title %}Account - RustPress{% endblock %}
 
-      {% if error.is_some() %}
-        <div class="bg-rp-card/90 border-l-4 border-rp-error rounded-xl p-4 mb-3.5">
-          <p class="m-0">{{ error.as_ref().unwrap() }}</p>
-        </div>
-      {% endif %}
+{% block header %}
+{% include "partials/nav_admin.html" %}
+{% endblock %}
 
-      {% if success.is_some() %}
-        <div class="bg-rp-card/90 border-l-4 border-rp-success rounded-xl p-4 mb-3.5">
-          <p class="m-0">{{ success.as_ref().unwrap() }}</p>
-        </div>
-      {% endif %}
+{% block content %}
+<div class="flex items-center gap-2.5 mb-2.5">
+  <h1 class="text-2xl font-bold">Account</h1>
+</div>
 
-      <form class="bg-rp-card/90 border border-rp-border rounded-xl p-4" method="post" action="/me/account/email" hx-post="/me/account/email" hx-target="body" hx-swap="outerHTML">
-        <label>Email
-          <input name="email" value="{{ user.email }}" />
-        </label>
+{% if error.is_some() %}
+  <div class="bg-rp-card/90 border-l-4 border-rp-error rounded-xl p-4 mb-3.5">
+    <p class="m-0">{{ error.as_ref().unwrap() }}</p>
+  </div>
+{% endif %}
 
-        <div class="flex gap-2.5 flex-wrap mt-3.5">
-          <button class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105" type="submit">Save</button>
-          <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105 hover:no-underline" href="/admin">Back</a>
-        </div>
+{% if success.is_some() %}
+  <div class="bg-rp-card/90 border-l-4 border-rp-success rounded-xl p-4 mb-3.5">
+    <p class="m-0">{{ success.as_ref().unwrap() }}</p>
+  </div>
+{% endif %}
 
-        <p class="text-rp-muted text-sm mt-3">Email verified: {% if user.email_verified_at.is_some() %}<span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">yes</span>{% else %}<span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">no</span>{% endif %}</p>
-      </form>
-    </main>
-  </body>
-</html>
+<form class="bg-rp-card/90 border border-rp-border rounded-xl p-4" method="post" action="/me/account/email" hx-post="/me/account/email" hx-target="body" hx-swap="outerHTML">
+  <label>Email
+    <input name="email" value="{{ user.email }}" />
+  </label>
+
+  <div class="flex gap-2.5 flex-wrap mt-3.5">
+    <button class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105" type="submit">Save</button>
+    <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105 hover:no-underline" href="/admin">Back</a>
+  </div>
+
+  <p class="text-rp-muted text-sm mt-3">Email verified: {% if user.email_verified_at.is_some() %}<span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">yes</span>{% else %}<span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">no</span>{% endif %}</p>
+</form>
+{% endblock %}

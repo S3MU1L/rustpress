@@ -1,69 +1,63 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Edit template - {{ template.name }} - RustPress</title>
-    <link rel="stylesheet" href="/static/app.css" />
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  </head>
-  <body>
-    <header class="sticky top-0 bg-rp-card/85 backdrop-blur-sm border-b border-rp-border">
-      <div class="max-w-5xl mx-auto px-6 py-3.5 flex items-center justify-between">
-        <a class="font-bold text-rp-text hover:no-underline" href="/admin/templates">Templates</a>
-        <nav class="flex gap-3.5">
-          <a class="text-rp-muted hover:text-rp-text" href="/admin">Dashboard</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/sites">Sites</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/themes">Themes</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/">View site</a>
-        </nav>
-      </div>
-    </header>
+{% extends "layouts/base.html" %}
 
-    <main class="max-w-5xl mx-auto px-6 py-6">
-      <div class="flex items-center gap-2.5 mb-2.5">
-        <h1 class="text-2xl font-bold">Edit template</h1>
-        {% if template.is_builtin %}
-          <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">built-in</span>
-        {% else %}
-          <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">custom</span>
-        {% endif %}
-      </div>
+{% block title %}Edit template - {{ template.name }} - RustPress{% endblock %}
 
-      <form class="bg-rp-card/90 border border-rp-border rounded-xl p-4 mb-3.5" method="post" action="/admin/templates/{{ template.id }}" hx-post="/admin/templates/{{ template.id }}" hx-target="body" hx-swap="outerHTML">
-        <label>Name
-          <input name="name" value="{{ template.name }}" {% if template.is_builtin %}disabled{% endif %} />
-        </label>
+{% block header %}
+<header class="sticky top-0 bg-rp-card/85 backdrop-blur-sm border-b border-rp-border">
+  <div class="max-w-5xl mx-auto px-6 py-3.5 flex items-center justify-between">
+    <a class="font-bold text-rp-text hover:no-underline" href="/admin/templates">Templates</a>
+    <nav class="flex gap-3.5">
+      <a class="text-rp-muted hover:text-rp-text" href="/admin">Dashboard</a>
+      <a class="text-rp-muted hover:text-rp-text" href="/sites">Sites</a>
+      <a class="text-rp-muted hover:text-rp-text" href="/themes">Themes</a>
+      <a class="text-rp-muted hover:text-rp-text" href="/">View site</a>
+    </nav>
+  </div>
+</header>
+{% endblock %}
 
-        <label>Description
-          <input name="description" value="{{ template.description }}" {% if template.is_builtin %}disabled{% endif %} />
-        </label>
+{% block content %}
+<div class="flex items-center gap-2.5 mb-2.5">
+  <h1 class="text-2xl font-bold">Edit template</h1>
+  {% if template.is_builtin %}
+    <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">built-in</span>
+  {% else %}
+    <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">custom</span>
+  {% endif %}
+</div>
 
-        <label>HTML
-          <textarea name="html" rows="18" {% if template.is_builtin %}disabled{% endif %}>{{ template.html }}</textarea>
-        </label>
+<form class="bg-rp-card/90 border border-rp-border rounded-xl p-4 mb-3.5" method="post" action="/admin/templates/{{ template.id }}" hx-post="/admin/templates/{{ template.id }}" hx-target="body" hx-swap="outerHTML">
+  <label>Name
+    <input name="name" value="{{ template.name }}" {% if template.is_builtin %}disabled{% endif %} />
+  </label>
 
-        <div class="flex gap-2.5 flex-wrap mt-3.5">
-          <button class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed" type="submit" {% if template.is_builtin %}disabled{% endif %}>Save</button>
-          <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105 hover:no-underline" href="/admin/templates">Back</a>
-        </div>
-      </form>
+  <label>Description
+    <input name="description" value="{{ template.description }}" {% if template.is_builtin %}disabled{% endif %} />
+  </label>
 
-      {% if template.is_builtin %}
-        <form method="post" action="/admin/templates/{{ template.id }}/duplicate" hx-post="/admin/templates/{{ template.id }}/duplicate" hx-swap="none" class="bg-rp-card/90 border border-rp-border rounded-xl p-4 mb-3.5">
-          <h2 class="text-lg font-semibold mb-2">Make a copy</h2>
-          <p class="text-rp-muted text-sm">Built-in templates are read-only. Create a custom copy you can edit.</p>
-          <div class="flex gap-2.5 flex-wrap mt-3.5">
-            <button class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105" type="submit">Copy as custom template</button>
-          </div>
-        </form>
-      {% endif %}
+  <label>HTML
+    <textarea name="html" rows="18" {% if template.is_builtin %}disabled{% endif %}>{{ template.html }}</textarea>
+  </label>
 
-      {% if template.is_builtin %}
-        <p class="text-rp-muted text-sm">Built-in templates are read-only (copy it into a new custom template if needed).</p>
-      {% else %}
-        <p class="text-rp-muted text-sm">Placeholders: <code class="bg-rp-bg px-1 rounded">{{"{{title}}"}}</code>, <code class="bg-rp-bg px-1 rounded">{{"{{content}}"}}</code>, <code class="bg-rp-bg px-1 rounded">{{"{{slug}}"}}</code>, <code class="bg-rp-bg px-1 rounded">{{"{{kind}}"}}</code></p>
-      {% endif %}
-    </main>
-  </body>
-</html>
+  <div class="flex gap-2.5 flex-wrap mt-3.5">
+    <button class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed" type="submit" {% if template.is_builtin %}disabled{% endif %}>Save</button>
+    <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105 hover:no-underline" href="/admin/templates">Back</a>
+  </div>
+</form>
+
+{% if template.is_builtin %}
+  <form method="post" action="/admin/templates/{{ template.id }}/duplicate" hx-post="/admin/templates/{{ template.id }}/duplicate" hx-swap="none" class="bg-rp-card/90 border border-rp-border rounded-xl p-4 mb-3.5">
+    <h2 class="text-lg font-semibold mb-2">Make a copy</h2>
+    <p class="text-rp-muted text-sm">Built-in templates are read-only. Create a custom copy you can edit.</p>
+    <div class="flex gap-2.5 flex-wrap mt-3.5">
+      <button class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105" type="submit">Copy as custom template</button>
+    </div>
+  </form>
+{% endif %}
+
+{% if template.is_builtin %}
+  <p class="text-rp-muted text-sm">Built-in templates are read-only (copy it into a new custom template if needed).</p>
+{% else %}
+  <p class="text-rp-muted text-sm">Placeholders: <code class="bg-rp-bg px-1 rounded">{{"{{title}}"}}</code>, <code class="bg-rp-bg px-1 rounded">{{"{{content}}"}}</code>, <code class="bg-rp-bg px-1 rounded">{{"{{slug}}"}}</code>, <code class="bg-rp-bg px-1 rounded">{{"{{kind}}"}}</code></p>
+{% endif %}
+{% endblock %}

@@ -1,59 +1,53 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>New site - RustPress</title>
-    <link rel="stylesheet" href="/static/app.css" />
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  </head>
-  <body>
-    <header class="sticky top-0 bg-rp-card/85 backdrop-blur-sm border-b border-rp-border">
-      <div class="max-w-5xl mx-auto px-6 py-3.5 flex items-center justify-between">
-        <a class="font-bold text-rp-text hover:no-underline" href="/sites">Sites</a>
-        <nav class="flex gap-3.5">
-          <a class="text-rp-muted hover:text-rp-text" href="/admin">Dashboard</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/themes">Themes</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/me/account">Account</a>
-        </nav>
-      </div>
-    </header>
+{% extends "layouts/base.html" %}
 
-    <main class="max-w-5xl mx-auto px-6 py-6">
-      <div class="flex items-center gap-2.5 mb-2.5">
-        <h1 class="text-2xl font-bold">New site</h1>
-      </div>
+{% block title %}New site - RustPress{% endblock %}
 
-      {% if error.is_some() %}
-        <div class="bg-rp-card/90 border-l-4 border-rp-error rounded-xl p-4 mb-3.5">
-          <p class="m-0">{{ error.as_ref().unwrap() }}</p>
-        </div>
-      {% endif %}
+{% block header %}
+<header class="sticky top-0 bg-rp-card/85 backdrop-blur-sm border-b border-rp-border">
+  <div class="max-w-5xl mx-auto px-6 py-3.5 flex items-center justify-between">
+    <a class="font-bold text-rp-text hover:no-underline" href="/sites">Sites</a>
+    <nav class="flex gap-3.5">
+      <a class="text-rp-muted hover:text-rp-text" href="/admin">Dashboard</a>
+      <a class="text-rp-muted hover:text-rp-text" href="/themes">Themes</a>
+      <a class="text-rp-muted hover:text-rp-text" href="/me/account">Account</a>
+    </nav>
+  </div>
+</header>
+{% endblock %}
 
-      <form class="bg-rp-card/90 border border-rp-border rounded-xl p-4" method="post" action="/sites" hx-post="/sites" hx-trigger="submit" hx-swap="none">
-        <label>Name
-          <input name="name" required placeholder="My blog" />
-        </label>
+{% block content %}
+<div class="flex items-center gap-2.5 mb-2.5">
+  <h1 class="text-2xl font-bold">New site</h1>
+</div>
 
-        <label>Slug
-          <input name="slug" required placeholder="my-blog" />
-        </label>
+{% if error.is_some() %}
+  <div class="bg-rp-card/90 border-l-4 border-rp-error rounded-xl p-4 mb-3.5">
+    <p class="m-0">{{ error.as_ref().unwrap() }}</p>
+  </div>
+{% endif %}
 
-        <label>Default theme
-          <select name="default_template">
-            {% for t in templates %}
-              <option value="{{ t.name }}" {% if t.name == default_template %}selected{% endif %}>{{ t.name }}{% if t.is_builtin %} (built-in){% endif %}</option>
-            {% endfor %}
-          </select>
-        </label>
+<form class="bg-rp-card/90 border border-rp-border rounded-xl p-4" method="post" action="/sites" hx-post="/sites" hx-trigger="submit" hx-swap="none">
+  <label>Name
+    <input name="name" required placeholder="My blog" />
+  </label>
 
-        <div class="flex gap-2.5 flex-wrap mt-3.5">
-          <button class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105" type="submit">Create</button>
-          <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105 hover:no-underline" href="/sites">Cancel</a>
-        </div>
-      </form>
+  <label>Slug
+    <input name="slug" required placeholder="my-blog" />
+  </label>
 
-      <p class="text-rp-muted text-sm mt-3">MVP: slug is unique per user.</p>
-    </main>
-  </body>
-</html>
+  <label>Default theme
+    <select name="default_template">
+      {% for t in templates %}
+        <option value="{{ t.name }}" {% if t.name == default_template %}selected{% endif %}>{{ t.name }}{% if t.is_builtin %} (built-in){% endif %}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <div class="flex gap-2.5 flex-wrap mt-3.5">
+    <button class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105" type="submit">Create</button>
+    <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105 hover:no-underline" href="/sites">Cancel</a>
+  </div>
+</form>
+
+<p class="text-rp-muted text-sm mt-3">MVP: slug is unique per user.</p>
+{% endblock %}

@@ -1,53 +1,47 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Templates - RustPress</title>
-    <link rel="stylesheet" href="/static/app.css" />
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  </head>
-  <body>
-    <header class="sticky top-0 bg-rp-card/85 backdrop-blur-sm border-b border-rp-border">
-      <div class="max-w-5xl mx-auto px-6 py-3.5 flex items-center justify-between">
-        <a class="font-bold text-rp-text hover:no-underline" href="/admin">Admin</a>
-        <nav class="flex gap-3.5">
-          <a class="text-rp-muted hover:text-rp-text" href="/admin">Dashboard</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/sites">Sites</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/themes">Themes</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/admin/templates/new">New template</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/me/account">Account</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/">View site</a>
-        </nav>
-      </div>
-    </header>
+{% extends "layouts/base.html" %}
 
-    <main class="max-w-5xl mx-auto px-6 py-6">
-      <div class="flex items-center gap-2.5 justify-between mb-2.5">
-        <h1 class="text-2xl font-bold">Templates</h1>
-        <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105 hover:no-underline" href="/admin/templates/new">+ New</a>
-      </div>
+{% block title %}Templates - RustPress{% endblock %}
 
-      <div class="bg-rp-card/90 border border-rp-border rounded-xl p-4">
-        {% if templates.len() == 0 %}
-          <p class="text-rp-muted">No templates found.</p>
-        {% else %}
-          <ul class="list-none p-0 m-0">
-            {% for t in templates %}
-              <li class="flex items-center justify-between py-2.5 border-b border-rp-border/60 last:border-b-0">
-                <a href="/admin/templates/{{ t.id }}">{{ t.name }}</a>
-                {% if t.is_builtin %}
-                  <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">built-in</span>
-                {% else %}
-                  <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">custom</span>
-                {% endif %}
-              </li>
-            {% endfor %}
-          </ul>
-        {% endif %}
-      </div>
+{% block header %}
+<header class="sticky top-0 bg-rp-card/85 backdrop-blur-sm border-b border-rp-border">
+  <div class="max-w-5xl mx-auto px-6 py-3.5 flex items-center justify-between">
+    <a class="font-bold text-rp-text hover:no-underline" href="/admin">Admin</a>
+    <nav class="flex gap-3.5">
+      <a class="text-rp-muted hover:text-rp-text" href="/admin">Dashboard</a>
+      <a class="text-rp-muted hover:text-rp-text" href="/sites">Sites</a>
+      <a class="text-rp-muted hover:text-rp-text" href="/themes">Themes</a>
+      <a class="text-rp-muted hover:text-rp-text" href="/admin/templates/new">New template</a>
+      <a class="text-rp-muted hover:text-rp-text" href="/me/account">Account</a>
+      <a class="text-rp-muted hover:text-rp-text" href="/">View site</a>
+    </nav>
+  </div>
+</header>
+{% endblock %}
 
-      <p class="text-rp-muted text-sm mt-3">Placeholders supported: <code class="bg-rp-bg px-1 rounded">{{"{{title}}"}}</code>, <code class="bg-rp-bg px-1 rounded">{{"{{content}}"}}</code>, <code class="bg-rp-bg px-1 rounded">{{"{{slug}}"}}</code>, <code class="bg-rp-bg px-1 rounded">{{"{{kind}}"}}</code></p>
-    </main>
-  </body>
-</html>
+{% block content %}
+<div class="flex items-center gap-2.5 justify-between mb-2.5">
+  <h1 class="text-2xl font-bold">Templates</h1>
+  <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105 hover:no-underline" href="/admin/templates/new">+ New</a>
+</div>
+
+<div class="bg-rp-card/90 border border-rp-border rounded-xl p-4">
+  {% if templates.len() == 0 %}
+    <p class="text-rp-muted">No templates found.</p>
+  {% else %}
+    <ul class="list-none p-0 m-0">
+      {% for t in templates %}
+        <li class="flex items-center justify-between py-2.5 border-b border-rp-border/60 last:border-b-0">
+          <a href="/admin/templates/{{ t.id }}">{{ t.name }}</a>
+          {% if t.is_builtin %}
+            <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">built-in</span>
+          {% else %}
+            <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">custom</span>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>
+
+<p class="text-rp-muted text-sm mt-3">Placeholders supported: <code class="bg-rp-bg px-1 rounded">{{"{{title}}"}}</code>, <code class="bg-rp-bg px-1 rounded">{{"{{content}}"}}</code>, <code class="bg-rp-bg px-1 rounded">{{"{{slug}}"}}</code>, <code class="bg-rp-bg px-1 rounded">{{"{{kind}}"}}</code></p>
+{% endblock %}

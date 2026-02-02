@@ -1,130 +1,126 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Edit - {{ item.title }} - RustPress</title>
-    <link rel="stylesheet" href="/static/app.css" />
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  </head>
-  <body>
-    <header class="sticky top-0 bg-rp-card/85 backdrop-blur-sm border-b border-rp-border">
-      <div class="max-w-5xl mx-auto px-6 py-3.5 flex items-center justify-between">
-        <a class="font-bold text-rp-text hover:no-underline" href="/admin">Admin</a>
-        <nav class="flex gap-3.5">
-          <a class="text-rp-muted hover:text-rp-text" href="/sites">Sites</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/themes">Themes</a>
-          <a class="text-rp-muted hover:text-rp-text" href="/">View site</a>
-          {% if item.kind == "post" %}
-            <a class="text-rp-muted hover:text-rp-text" href="/post/{{ item.slug }}">View post</a>
-          {% else %}
-            <a class="text-rp-muted hover:text-rp-text" href="/p/{{ item.slug }}">View page</a>
-          {% endif %}
-        </nav>
+{% extends "layouts/base.html" %}
+
+{% block title %}Edit - {{ item.title }} - RustPress{% endblock %}
+
+{% block header %}
+<header class="sticky top-0 bg-rp-card/85 backdrop-blur-sm border-b border-rp-border">
+  <div class="max-w-5xl mx-auto px-6 py-3.5 flex items-center justify-between">
+    <a class="font-bold text-rp-text hover:no-underline" href="/admin">Admin</a>
+    <nav class="flex gap-3.5">
+      <a class="text-rp-muted hover:text-rp-text" href="/sites">Sites</a>
+      <a class="text-rp-muted hover:text-rp-text" href="/themes">Themes</a>
+      <a class="text-rp-muted hover:text-rp-text" href="/">View site</a>
+      {% if item.kind == "post" %}
+        <a class="text-rp-muted hover:text-rp-text" href="/post/{{ item.slug }}">View post</a>
+      {% else %}
+        <a class="text-rp-muted hover:text-rp-text" href="/p/{{ item.slug }}">View page</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="flex items-center gap-2.5 justify-between mb-2.5">
+  <h1 class="text-2xl font-bold">Edit</h1>
+  <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">{{ item.kind }}</span>
+  <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">{{ item.status }}</span>
+</div>
+
+<div class="grid lg:grid-cols-2 gap-4 items-start">
+  <form id="edit-form" class="bg-rp-card/90 border border-rp-border rounded-xl p-4" method="post" action="/admin/edit/{{ item.id }}" hx-post="/admin/edit/{{ item.id }}" hx-target="body" hx-swap="outerHTML">
+    <label>Title
+      <input id="title" name="title" value="{{ item.title }}" />
+    </label>
+
+    <label>Slug
+      <input id="slug" name="slug" value="{{ item.slug }}" />
+    </label>
+
+    <label>Template
+      <select name="template">
+        {% for t in templates %}
+          <option value="{{ t.name }}" {% if t.name == item.template %}selected{% endif %}>{{ t.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>Status
+      <select name="status">
+        <option value="draft" {% if item.status == "draft" %}selected{% endif %}>draft</option>
+        <option value="published" {% if item.status == "published" %}selected{% endif %}>published</option>
+      </select>
+    </label>
+
+    <label>Content
+      <div class="flex gap-2 flex-wrap mt-1.5">
+        <button class="px-2 py-1 text-xs rounded border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105" type="button" data-insert="<h1>Your title</h1>&#10;">H1</button>
+        <button class="px-2 py-1 text-xs rounded border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105" type="button" data-insert="<h2>Section</h2>&#10;">H2</button>
+        <button class="px-2 py-1 text-xs rounded border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105" type="button" data-insert="<p>Paragraph…</p>&#10;">P</button>
+        <button class="px-2 py-1 text-xs rounded border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105" type="button" data-insert="<a href='https://example.com' target='_blank' rel='noopener noreferrer'>Link</a>">Link</button>
+        <button class="px-2 py-1 text-xs rounded border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105" type="button" data-insert="<img src='/static/your-image.png' alt='' />">Image</button>
+        <button class="px-2 py-1 text-xs rounded border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105" type="button" data-insert="<pre><code>// code</code></pre>&#10;">Code</button>
       </div>
-    </header>
+      <textarea id="editor" name="content" rows="18">{{ item.content }}</textarea>
+    </label>
 
-    <main class="max-w-5xl mx-auto px-6 py-6">
-      <div class="flex items-center gap-2.5 justify-between mb-2.5">
-        <h1 class="text-2xl font-bold">Edit</h1>
-        <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">{{ item.kind }}</span>
-        <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">{{ item.status }}</span>
-      </div>
+    <div class="flex gap-2.5 flex-wrap mt-3.5">
+      <button class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105" type="submit">Save</button>
+      <button class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105" type="button" hx-post="/admin/publish/{{ item.id }}" hx-target="body" hx-swap="outerHTML">Publish</button>
+      <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105 hover:no-underline" href="/admin">Back</a>
+    </div>
 
-      <div class="grid lg:grid-cols-2 gap-4 items-start">
-        <form id="edit-form" class="bg-rp-card/90 border border-rp-border rounded-xl p-4" method="post" action="/admin/edit/{{ item.id }}" hx-post="/admin/edit/{{ item.id }}" hx-target="body" hx-swap="outerHTML">
-          <label>Title
-            <input id="title" name="title" value="{{ item.title }}" />
-          </label>
+    <div
+      id="autosave"
+      class="text-rp-muted text-sm mt-2"
+      hx-post="/admin/edit/{{ item.id }}/autosave"
+      hx-trigger="input changed delay:1s from:#editor, input changed delay:1s from:#title, input changed delay:1s from:#slug, change delay:1s from:select[name='template']"
+      hx-include="#edit-form"
+      hx-target="this"
+      hx-swap="innerHTML"
+    ></div>
+  </form>
 
-          <label>Slug
-            <input id="slug" name="slug" value="{{ item.slug }}" />
-          </label>
+  <div class="bg-rp-card/90 border border-rp-border rounded-xl p-4">
+    <div class="flex items-center gap-2.5 justify-between mb-2.5">
+      <h2 class="text-lg font-semibold">Live preview</h2>
+      <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">HTMX</span>
+    </div>
+    <div
+      id="preview"
+      hx-post="/admin/edit/{{ item.id }}/preview"
+      hx-trigger="load, input changed delay:450ms from:#editor, input changed delay:450ms from:#title, input changed delay:450ms from:#slug, change from:select[name='template']"
+      hx-include="#edit-form"
+      hx-target="this"
+      hx-swap="innerHTML"
+    >
+      <p class="text-rp-muted">Loading preview…</p>
+    </div>
+    <p class="text-rp-muted text-sm mt-2">Tip: preview updates as you type; autosave runs in the background.</p>
+  </div>
+</div>
 
-          <label>Template
-            <select name="template">
-              {% for t in templates %}
-                <option value="{{ t.name }}" {% if t.name == item.template %}selected{% endif %}>{{ t.name }}</option>
-              {% endfor %}
-            </select>
-          </label>
+<p class="text-rp-muted text-sm mt-3">Tip: publishing sets status to published and stamps published_at.</p>
+{% endblock %}
 
-          <label>Status
-            <select name="status">
-              <option value="draft" {% if item.status == "draft" %}selected{% endif %}>draft</option>
-              <option value="published" {% if item.status == "published" %}selected{% endif %}>published</option>
-            </select>
-          </label>
-
-          <label>Content
-            <div class="flex gap-2 flex-wrap mt-1.5">
-              <button class="px-2 py-1 text-xs rounded border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105" type="button" data-insert="<h1>Your title</h1>&#10;">H1</button>
-              <button class="px-2 py-1 text-xs rounded border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105" type="button" data-insert="<h2>Section</h2>&#10;">H2</button>
-              <button class="px-2 py-1 text-xs rounded border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105" type="button" data-insert="<p>Paragraph…</p>&#10;">P</button>
-              <button class="px-2 py-1 text-xs rounded border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105" type="button" data-insert="<a href='https://example.com' target='_blank' rel='noopener noreferrer'>Link</a>">Link</button>
-              <button class="px-2 py-1 text-xs rounded border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105" type="button" data-insert="<img src='/static/your-image.png' alt='' />">Image</button>
-              <button class="px-2 py-1 text-xs rounded border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105" type="button" data-insert="<pre><code>// code</code></pre>&#10;">Code</button>
-            </div>
-            <textarea id="editor" name="content" rows="18">{{ item.content }}</textarea>
-          </label>
-
-          <div class="flex gap-2.5 flex-wrap mt-3.5">
-            <button class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105" type="submit">Save</button>
-            <button class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-gradient-to-b from-[#1b2b5c] to-[#13214b] text-rp-text cursor-pointer hover:brightness-105" type="button" hx-post="/admin/publish/{{ item.id }}" hx-target="body" hx-swap="outerHTML">Publish</button>
-            <a class="inline-block px-3.5 py-2.5 rounded-lg border border-rp-border bg-transparent text-rp-muted cursor-pointer hover:brightness-105 hover:no-underline" href="/admin">Back</a>
-          </div>
-
-          <div
-            id="autosave"
-            class="text-rp-muted text-sm mt-2"
-            hx-post="/admin/edit/{{ item.id }}/autosave"
-            hx-trigger="input changed delay:1s from:#editor, input changed delay:1s from:#title, input changed delay:1s from:#slug, change delay:1s from:select[name='template']"
-            hx-include="#edit-form"
-            hx-target="this"
-            hx-swap="innerHTML"
-          ></div>
-        </form>
-
-        <div class="bg-rp-card/90 border border-rp-border rounded-xl p-4">
-          <div class="flex items-center gap-2.5 justify-between mb-2.5">
-            <h2 class="text-lg font-semibold">Live preview</h2>
-            <span class="text-xs px-2 py-0.5 border border-rp-border rounded-full text-rp-muted">HTMX</span>
-          </div>
-          <div
-            id="preview"
-            hx-post="/admin/edit/{{ item.id }}/preview"
-            hx-trigger="load, input changed delay:450ms from:#editor, input changed delay:450ms from:#title, input changed delay:450ms from:#slug, change from:select[name='template']"
-            hx-include="#edit-form"
-            hx-target="this"
-            hx-swap="innerHTML"
-          >
-            <p class="text-rp-muted">Loading preview…</p>
-          </div>
-          <p class="text-rp-muted text-sm mt-2">Tip: preview updates as you type; autosave runs in the background.</p>
-        </div>
-      </div>
-
-      <p class="text-rp-muted text-sm mt-3">Tip: publishing sets status to published and stamps published_at.</p>
-    </main>
-
-    <script>
-      (function () {
-        const editor = document.getElementById('editor');
-        if (!editor) return;
-        document.querySelectorAll('[data-insert]').forEach((btn) => {
-          btn.addEventListener('click', () => {
-            const text = btn.getAttribute('data-insert') || '';
-            const start = editor.selectionStart || 0;
-            const end = editor.selectionEnd || 0;
-            const value = editor.value;
-            editor.value = value.slice(0, start) + text + value.slice(end);
-            const pos = start + text.length;
-            editor.selectionStart = editor.selectionEnd = pos;
-            editor.dispatchEvent(new Event('input', { bubbles: true }));
-            editor.focus();
-          });
-        });
-      })();
-    </script>
-  </body>
-</html>
+{% block scripts %}
+<script>
+  (function () {
+    const editor = document.getElementById('editor');
+    if (!editor) return;
+    document.querySelectorAll('[data-insert]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const text = btn.getAttribute('data-insert') || '';
+        const start = editor.selectionStart || 0;
+        const end = editor.selectionEnd || 0;
+        const value = editor.value;
+        editor.value = value.slice(0, start) + text + value.slice(end);
+        const pos = start + text.length;
+        editor.selectionStart = editor.selectionEnd = pos;
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
+        editor.focus();
+      });
+    });
+  })();
+</script>
+{% endblock %}
