@@ -15,13 +15,6 @@ pub struct PublicContentTemplate {
 }
 
 #[derive(Template)]
-#[template(path = "admin/layout.html")]
-pub struct AdminLayoutTemplate {
-    pub title: String,
-    pub body: String,
-}
-
-#[derive(Template)]
 #[template(path = "admin/dashboard.html")]
 pub struct AdminDashboardTemplate {
     pub posts: Vec<ContentItem>,
@@ -84,7 +77,6 @@ pub struct MeAccountTemplate {
 #[derive(Template)]
 #[template(path = "admin/security.html")]
 pub struct MeSecurityTemplate {
-    pub user: User,
     pub password_set: bool,
     pub email_verified: bool,
     pub error: Option<String>,

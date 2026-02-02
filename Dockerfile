@@ -9,7 +9,7 @@ COPY templates ./templates
 COPY static ./static
 
 ENV SQLX_OFFLINE=true
-RUN cargo build --release --features ssr
+RUN cargo build --release
 
 
 FROM debian:bookworm-slim AS runtime

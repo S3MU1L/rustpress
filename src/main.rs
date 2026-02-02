@@ -1,7 +1,5 @@
-#[cfg(feature = "ssr")]
 mod web;
 
-#[cfg(feature = "ssr")]
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenvy::dotenv().ok();
@@ -75,10 +73,4 @@ async fn main() -> std::io::Result<()> {
     .bind(bind_addr)?
     .run()
     .await
-}
-
-#[cfg(not(feature = "ssr"))]
-fn main() {
-    // Client-side only - this shouldn't be called directly
-    // The hydrate function in lib.rs handles client-side initialization
 }
