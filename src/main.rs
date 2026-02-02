@@ -11,7 +11,7 @@ async fn main() -> std::io::Result<()> {
     use actix_web::middleware::{from_fn, Next};
     use actix_web::{App, Error, HttpResponse, HttpServer};
     use rustpress::db::Database;
-    use crate::web::routes;
+    use crate::web::{handlers, AppState};
 
     async fn admin_auth_guard(
         req: ServiceRequest,
@@ -55,7 +55,7 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("Failed to initialize database");
 
-    let state = actix_web::web::Data::new(routes::AppState {
+    let state = actix_web::web::Data::new(AppState {
         pool: db.pool.clone(),
     });
 
@@ -68,7 +68,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(state.clone())
             .wrap(from_fn(admin_auth_guard))
             .service(Files::new("/static", "./static"))
-            .configure(routes::configure)
+            .configure(handlers::configure)
     })
     .bind(bind_addr)?
     .run()
