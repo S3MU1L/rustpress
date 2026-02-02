@@ -1,0 +1,31 @@
+<!-- TipTap Editor Toolbar and Container -->
+
+<div class="tiptap-toolbar">
+  <button type="button" onclick="editorCmd.undo()" title="Undo">↶</button>
+  <button type="button" onclick="editorCmd.redo()" title="Redo">↷</button>
+  <div class="separator"></div>
+  <button type="button" onclick="editorCmd.paragraph()" title="Paragraph">P</button>
+  <button type="button" onclick="editorCmd.h1()" title="Heading 1">H1</button>
+  <button type="button" onclick="editorCmd.h2()" title="Heading 2">H2</button>
+  <button type="button" onclick="editorCmd.h3()" title="Heading 3">H3</button>
+  <div class="separator"></div>
+  <button type="button" onclick="editorCmd.bold()" title="Bold"><b>B</b></button>
+  <button type="button" onclick="editorCmd.italic()" title="Italic"><i>I</i></button>
+  <button type="button" onclick="editorCmd.underline()" title="Underline"><u>U</u></button>
+  <button type="button" onclick="editorCmd.strike()" title="Strikethrough"><s>S</s></button>
+  <div class="separator"></div>
+  <button type="button" onclick="editorCmd.alignLeft()" title="Align Left">≡</button>
+  <button type="button" onclick="editorCmd.alignCenter()" title="Align Center">≡</button>
+  <button type="button" onclick="editorCmd.alignRight()" title="Align Right">≡</button>
+  <div class="separator"></div>
+  <button type="button" onclick="editorCmd.bulletList()" title="Bullet List">•</button>
+  <button type="button" onclick="editorCmd.orderedList()" title="Numbered List">1.</button>
+  <button type="button" onclick="editorCmd.blockquote()" title="Quote">"</button>
+  <button type="button" onclick="editorCmd.codeBlock()" title="Code Block">&lt;/&gt;</button>
+  <div class="separator"></div>
+  <button type="button" onclick="editorCmd.link()" title="Insert Link">🔗</button>
+  <button type="button" onclick="editorCmd.unlink()" title="Remove Link">✂</button>
+  <button type="button" onclick="editorCmd.image()" title="Insert Image">🖼</button>
+  <button type="button" onclick="editorCmd.horizontalRule()" title="Horizontal Rule">―</button>
+</div>
+<div id="tiptap-editor"></div>
