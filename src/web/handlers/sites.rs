@@ -2,6 +2,7 @@ use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use uuid::Uuid;
 
 use rustpress::db;
+use rustpress::models::{ContentKind, HomepageType};
 
 use crate::web::forms::{ApplyThemeForm, SiteCreateForm, SiteUpdateForm, SitesQuery};
 use crate::web::helpers::{is_htmx, render, require_user};
@@ -144,9 +145,14 @@ pub async fn sites_edit(
         .await
         .unwrap_or_default();
 
+    let pages = db::list_content(&state.pool, ContentKind::Page, false)
+        .await
+        .unwrap_or_default();
+
     render(SiteEditTemplate {
         site,
         templates,
+        pages,
         error: None,
         success: None,
     })
@@ -175,24 +181,41 @@ pub async fn sites_update(
         return HttpResponse::Forbidden().body("Forbidden");
     }
 
-    let update = rustpress::models::SiteUpdate {
-        name: form
-            .name
+    let homepage_type: Option<HomepageType> = form
+        .homepage_type
+        .as_ref()
+        .and_then(|s| s.trim().parse().ok());
+
+    let homepage_page_id: Option<Option<Uuid>> = match homepage_type {
+        Some(HomepageType::Posts) => Some(None),
+        Some(HomepageType::Page) => form
+            .homepage_page_id
             .as_ref()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty()),
-        slug: form
-            .slug
-            .as_ref()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty()),
-        status: None,
-        default_template: form
-            .default_template
-            .as_ref()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty()),
+            .and_then(|s| s.trim().parse::<Uuid>().ok())
+            .map(Some),
+        None => None,
     };
+
+    let update = rustpress::models::SiteUpdate {
+        name: form.name.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
+        slug: form.slug.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
+        status: None,
+        default_template: form.default_template.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
+        homepage_type,
+        homepage_page_id,
+    };
+
+    if let Err(e) = update.validate_homepage() {
+        let templates = db::list_site_templates_for_user(&state.pool, uid).await.unwrap_or_default();
+        let pages = db::list_content(&state.pool, ContentKind::Page, false).await.unwrap_or_default();
+        return render(SiteEditTemplate {
+            site: existing,
+            templates,
+            pages,
+            error: Some(e),
+            success: None,
+        });
+    }
 
     let updated = match db::update_site(&state.pool, id, &update).await {
         Ok(Some(s)) => s,
@@ -201,9 +224,13 @@ pub async fn sites_update(
             let templates = db::list_site_templates_for_user(&state.pool, uid)
                 .await
                 .unwrap_or_default();
+            let pages = db::list_content(&state.pool, ContentKind::Page, false)
+                .await
+                .unwrap_or_default();
             return render(SiteEditTemplate {
                 site: existing,
                 templates,
+                pages,
                 error: Some(format!("Update failed: {e}")),
                 success: None,
             });
@@ -213,10 +240,14 @@ pub async fn sites_update(
     let templates = db::list_site_templates_for_user(&state.pool, uid)
         .await
         .unwrap_or_default();
+    let pages = db::list_content(&state.pool, ContentKind::Page, false)
+        .await
+        .unwrap_or_default();
 
     render(SiteEditTemplate {
         site: updated,
         templates,
+        pages,
         error: None,
         success: Some("Saved".to_string()),
     })
@@ -252,6 +283,9 @@ pub async fn sites_publish(
     render(SiteEditTemplate {
         site: published,
         templates: db::list_site_templates_for_user(&state.pool, uid)
+            .await
+            .unwrap_or_default(),
+        pages: db::list_content(&state.pool, ContentKind::Page, false)
             .await
             .unwrap_or_default(),
         error: None,
@@ -301,6 +335,8 @@ pub async fn sites_apply_theme(
         slug: None,
         status: None,
         default_template: Some(template_name.to_string()),
+        homepage_type: None,
+        homepage_page_id: None,
     };
 
     let updated = match db::update_site(&state.pool, id, &update).await {

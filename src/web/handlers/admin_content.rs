@@ -396,14 +396,14 @@ pub async fn admin_preview(
             } else {
                 std::borrow::Cow::Borrowed(tpl.html.as_str())
             };
-            apply_site_template(tpl_html.as_ref(), &title, &content, &slug, &item.kind)
+            apply_site_template(tpl_html.as_ref(), &title, &content, &slug, item.kind.as_str())
         }
         None => apply_site_template(
             "<!doctype html><html><head><meta charset=\"utf-8\"><title>{{title}}</title></head><body><h1>{{title}}</h1>{{content}}</body></html>",
             &title,
             &content,
             &slug,
-            &item.kind,
+            item.kind.as_str(),
         ),
     };
 
