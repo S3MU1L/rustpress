@@ -124,3 +124,12 @@ pub struct ThemesTemplate {
     pub query: String,
     pub category: String,
 }
+
+#[derive(Template)]
+#[template(path = "admin/configuration.html")]
+pub struct ConfigurationTemplate {
+    pub site: Option<Site>,
+    pub pages: Vec<ContentItem>,
+    pub error: Option<String>,
+    pub success: Option<String>,
+}

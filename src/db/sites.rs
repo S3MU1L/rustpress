@@ -84,7 +84,12 @@ pub async fn create_site(pool: &PgPool, data: &SiteCreate) -> Result<Site, sqlx:
     .await
 }
 
-pub async fn update_site(pool: &PgPool, id: Uuid, data: &SiteUpdate) -> Result<Option<Site>, sqlx::Error> {
+pub async fn update_site(
+    pool: &PgPool,
+    id: Uuid,
+    owner_user_id: Uuid,
+    data: &SiteUpdate,
+) -> Result<Option<Site>, sqlx::Error> {
     let update_homepage_page = data.homepage_page_id.is_some();
     let homepage_page_value = data.homepage_page_id.flatten();
 
@@ -99,7 +104,7 @@ pub async fn update_site(pool: &PgPool, id: Uuid, data: &SiteUpdate) -> Result<O
             homepage_type = COALESCE($5, homepage_type),
             homepage_page_id = CASE WHEN $6 THEN $7 ELSE homepage_page_id END,
             edited_at = now()
-        WHERE id = $8
+        WHERE id = $8 AND owner_user_id = $9
         RETURNING *
         "#,
     )
@@ -111,11 +116,16 @@ pub async fn update_site(pool: &PgPool, id: Uuid, data: &SiteUpdate) -> Result<O
     .bind(update_homepage_page)
     .bind(homepage_page_value)
     .bind(id)
+    .bind(owner_user_id)
     .fetch_optional(pool)
     .await
 }
 
-pub async fn publish_site(pool: &PgPool, id: Uuid) -> Result<Option<Site>, sqlx::Error> {
+pub async fn publish_site(
+    pool: &PgPool,
+    id: Uuid,
+    owner_user_id: Uuid,
+) -> Result<Option<Site>, sqlx::Error> {
     let now = Utc::now();
     sqlx::query_as::<_, Site>(
         r#"
@@ -124,12 +134,13 @@ pub async fn publish_site(pool: &PgPool, id: Uuid) -> Result<Option<Site>, sqlx:
             status = 'published',
             published_at = COALESCE(published_at, $1),
             edited_at = now()
-        WHERE id = $2
+        WHERE id = $2 AND owner_user_id = $3
         RETURNING *
         "#,
     )
     .bind(now)
     .bind(id)
+    .bind(owner_user_id)
     .fetch_optional(pool)
     .await
 }

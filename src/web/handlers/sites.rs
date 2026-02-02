@@ -217,7 +217,7 @@ pub async fn sites_update(
         });
     }
 
-    let updated = match db::update_site(&state.pool, id, &update).await {
+    let updated = match db::update_site(&state.pool, id, uid, &update).await {
         Ok(Some(s)) => s,
         Ok(None) => return HttpResponse::NotFound().body("Not found"),
         Err(e) => {
@@ -274,7 +274,7 @@ pub async fn sites_publish(
         return HttpResponse::Forbidden().body("Forbidden");
     }
 
-    let published = match db::publish_site(&state.pool, id).await {
+    let published = match db::publish_site(&state.pool, id, uid).await {
         Ok(Some(s)) => s,
         Ok(None) => return HttpResponse::NotFound().body("Not found"),
         Err(e) => return HttpResponse::BadRequest().body(format!("Publish failed: {e}")),
@@ -339,7 +339,7 @@ pub async fn sites_apply_theme(
         homepage_page_id: None,
     };
 
-    let updated = match db::update_site(&state.pool, id, &update).await {
+    let updated = match db::update_site(&state.pool, id, uid, &update).await {
         Ok(Some(s)) => s,
         Ok(None) => return HttpResponse::NotFound().body("Not found"),
         Err(e) => return HttpResponse::BadRequest().body(format!("Update failed: {e}")),

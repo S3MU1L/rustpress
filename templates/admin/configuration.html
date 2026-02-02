@@ -1,0 +1,102 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Configuration - RustPress{% endblock %}
+
+{% block header %}
+{% include "partials/nav_admin.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="mb-2">Configuration</h1>
+    <p class="text-rp-muted">Global site settings.</p>
+  </div>
+</div>
+
+{% if let Some(err) = error %}
+  <div class="card bg-red-500/10 border-red-500 p-4 mb-6">
+    <p class="text-red-400">{{ err }}</p>
+  </div>
+{% endif %}
+
+{% if let Some(msg) = success %}
+  <div class="card bg-green-500/10 border-green-500 p-4 mb-6">
+    <p class="text-green-400">{{ msg }}</p>
+  </div>
+{% endif %}
+
+{% match site %}
+{% when Some with (s) %}
+<div class="card p-6">
+  <h2 class="text-lg font-semibold mb-4">Homepage Settings</h2>
+
+  <form method="post" action="/admin/configuration">
+    <div class="space-y-4">
+      <label>
+        Homepage Type
+        <select name="homepage_type" id="homepage-type">
+          <option value="posts" {% if s.homepage_type.to_string() == "posts" %}selected{% endif %}>Latest Posts</option>
+          <option value="page" {% if s.homepage_type.to_string() == "page" %}selected{% endif %}>Static Page</option>
+        </select>
+      </label>
+
+      <label id="homepage-page-label" {% if s.homepage_type.to_string() == "posts" %}style="display: none;"{% endif %}>
+        Homepage Page
+        <select name="homepage_page_id">
+          <option value="">(Select a page)</option>
+          {% for page in pages %}
+            <option value="{{ page.id }}" {% if s.homepage_page_id.is_some() && s.homepage_page_id.unwrap() == page.id %}selected{% endif %}>{{ page.title }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <div class="pt-2">
+        <button type="submit" class="btn-primary">Save Configuration</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="card p-6 mt-6">
+  <h2 class="text-lg font-semibold mb-4">Current Site</h2>
+  <dl class="space-y-2 text-sm">
+    <div class="flex">
+      <dt class="text-rp-muted w-32">Name:</dt>
+      <dd>{{ s.name }}</dd>
+    </div>
+    <div class="flex">
+      <dt class="text-rp-muted w-32">Slug:</dt>
+      <dd>/{{ s.slug }}</dd>
+    </div>
+    <div class="flex">
+      <dt class="text-rp-muted w-32">Status:</dt>
+      <dd>{{ s.status }}</dd>
+    </div>
+    <div class="flex">
+      <dt class="text-rp-muted w-32">Template:</dt>
+      <dd>{{ s.default_template }}</dd>
+    </div>
+  </dl>
+  <p class="text-rp-muted text-sm mt-4">
+    <a href="/admin/sites/{{ s.id }}" class="text-rp-accent hover:underline">Edit full site settings</a>
+  </p>
+</div>
+{% when None %}
+<div class="card p-6">
+  <p class="text-rp-muted">No published site found. <a href="/admin/sites/new" class="text-rp-accent hover:underline">Create and publish a site</a> to configure it here.</p>
+</div>
+{% endmatch %}
+
+<script>
+(function() {
+  const homepageType = document.getElementById('homepage-type');
+  const homepagePageLabel = document.getElementById('homepage-page-label');
+  if (homepageType && homepagePageLabel) {
+    homepageType.addEventListener('change', function() {
+      homepagePageLabel.style.display = this.value === 'page' ? '' : 'none';
+    });
+  }
+})();
+</script>
+{% endblock %}
