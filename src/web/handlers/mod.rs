@@ -1,5 +1,8 @@
 pub mod account;
+pub mod admin_collaborators;
 pub mod admin_content;
+pub mod admin_history;
+pub mod admin_roles;
 pub mod admin_templates;
 pub mod auth;
 pub mod configuration;
@@ -15,6 +18,9 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     public::configure(cfg);
     auth::configure(cfg);
     admin_content::configure(cfg);
+    admin_history::configure(cfg);
+    admin_collaborators::configure(cfg);
+    admin_roles::configure(cfg);
     admin_templates::configure(cfg);
     account::configure(cfg);
     configuration::configure(cfg);

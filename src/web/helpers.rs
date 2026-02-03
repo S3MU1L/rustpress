@@ -49,11 +49,11 @@ pub fn require_user(req: &HttpRequest) -> Result<Uuid, HttpResponse> {
         None => {
             if is_htmx(req) {
                 Err(HttpResponse::Unauthorized()
-                    .insert_header(("HX-Redirect", "/login"))
+                    .insert_header(("HX-Redirect", "/admin/login"))
                     .finish())
             } else {
                 Err(HttpResponse::SeeOther()
-                    .insert_header(("Location", "/login"))
+                    .insert_header(("Location", "/admin/login"))
                     .finish())
             }
         }

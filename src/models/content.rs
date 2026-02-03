@@ -15,6 +15,7 @@ pub struct ContentItem {
     pub slug: String,
     pub content: String,
     pub template: String,
+    pub current_rev: i32,
     pub created_at: DateTime<Utc>,
     pub edited_at: DateTime<Utc>,
     pub published_at: Option<DateTime<Utc>>,
