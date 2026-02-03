@@ -25,22 +25,12 @@ pub async fn admin_dashboard(state: web::Data<AppState>, req: HttpRequest) -> im
         Err(resp) => return resp,
     };
 
-    let posts = db::list_content(&state.pool, ContentKind::Post, true)
+    let posts = db::list_content_for_user(&state.pool, ContentKind::Post, true, uid)
         .await
         .unwrap_or_default();
-    let pages = db::list_content(&state.pool, ContentKind::Page, true)
+    let pages = db::list_content_for_user(&state.pool, ContentKind::Page, true, uid)
         .await
         .unwrap_or_default();
-
-    // MVP scoping: show only content owned by this user or legacy NULL-owned content.
-    let posts = posts
-        .into_iter()
-        .filter(|c| c.owner_user_id.is_none() || c.owner_user_id == Some(uid))
-        .collect();
-    let pages = pages
-        .into_iter()
-        .filter(|c| c.owner_user_id.is_none() || c.owner_user_id == Some(uid))
-        .collect();
 
     render(AdminDashboardTemplate { posts, pages })
 }
@@ -57,13 +47,12 @@ pub async fn admin_posts_list(
     };
 
     let q = query.q.clone().unwrap_or_default();
-    let posts = db::list_content(&state.pool, ContentKind::Post, true)
+    let posts = db::list_content_for_user(&state.pool, ContentKind::Post, true, uid)
         .await
         .unwrap_or_default();
 
     let posts: Vec<_> = posts
         .into_iter()
-        .filter(|c| c.owner_user_id.is_none() || c.owner_user_id == Some(uid))
         .filter(|c| q.is_empty() || c.title.to_lowercase().contains(&q.to_lowercase()))
         .collect();
 
@@ -82,13 +71,12 @@ pub async fn admin_pages_list(
     };
 
     let q = query.q.clone().unwrap_or_default();
-    let pages = db::list_content(&state.pool, ContentKind::Page, true)
+    let pages = db::list_content_for_user(&state.pool, ContentKind::Page, true, uid)
         .await
         .unwrap_or_default();
 
     let pages: Vec<_> = pages
         .into_iter()
-        .filter(|c| c.owner_user_id.is_none() || c.owner_user_id == Some(uid))
         .filter(|c| q.is_empty() || c.title.to_lowercase().contains(&q.to_lowercase()))
         .collect();
 
@@ -164,6 +152,11 @@ pub async fn admin_create(
         }
     };
 
+    // Seed history immediately so undo/redo works from the moment the item exists.
+    if let Err(e) = db::ensure_initial_revision(&state.pool, created.id, Some(uid)).await {
+        return HttpResponse::InternalServerError().body(e.to_string());
+    }
+
     if is_htmx(&req) {
         HttpResponse::Ok()
             .insert_header(("HX-Redirect", format!("/admin/edit/{}", created.id)))
@@ -193,8 +186,18 @@ pub async fn admin_edit(
         Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
     };
 
-    if item.owner_user_id.is_some_and(|owner| owner != uid) {
+    let can_view = match db::can_view_content(&state.pool, &item, uid).await {
+        Ok(v) => v,
+        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+    };
+
+    if !can_view {
         return HttpResponse::Forbidden().body("Forbidden");
+    }
+
+    // Ensure legacy items have a baseline revision.
+    if let Err(e) = db::ensure_initial_revision(&state.pool, item.id, Some(uid)).await {
+        return HttpResponse::InternalServerError().body(e.to_string());
     }
 
     let templates = db::list_site_templates_for_user(&state.pool, uid)
@@ -224,7 +227,12 @@ pub async fn admin_update(
         Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
     };
 
-    if existing.owner_user_id.is_some_and(|owner| owner != uid) {
+    let can_edit = match db::can_edit_content(&state.pool, &existing, uid).await {
+        Ok(v) => v,
+        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+    };
+
+    if !can_edit {
         return HttpResponse::Forbidden().body("Forbidden");
     }
 
@@ -259,6 +267,14 @@ pub async fn admin_update(
                 .body(format!("Update failed: {e}"));
         }
     };
+
+    // Record a new revision for explicit saves.
+    if let Err(e) = db::ensure_initial_revision(&state.pool, id, Some(uid)).await {
+        return HttpResponse::InternalServerError().body(e.to_string());
+    }
+    if let Err(e) = db::record_revision(&state.pool, &updated, Some(uid)).await {
+        return HttpResponse::InternalServerError().body(e.to_string());
+    }
 
     if is_htmx(&req) {
         let templates = db::list_site_templates_for_user(&state.pool, uid)
@@ -295,7 +311,12 @@ pub async fn admin_publish(
         Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
     };
 
-    if existing.owner_user_id.is_some_and(|owner| owner != uid) {
+    let can_edit = match db::can_edit_content(&state.pool, &existing, uid).await {
+        Ok(v) => v,
+        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+    };
+
+    if !can_edit {
         return HttpResponse::Forbidden().body("Forbidden");
     }
 
@@ -308,6 +329,13 @@ pub async fn admin_publish(
                 .body(format!("Publish failed: {e}"));
         }
     };
+
+    if let Err(e) = db::ensure_initial_revision(&state.pool, id, Some(uid)).await {
+        return HttpResponse::InternalServerError().body(e.to_string());
+    }
+    if let Err(e) = db::record_revision(&state.pool, &published, Some(uid)).await {
+        return HttpResponse::InternalServerError().body(e.to_string());
+    }
 
     if is_htmx(&req) {
         let templates = db::list_site_templates_for_user(&state.pool, uid)
@@ -344,7 +372,12 @@ pub async fn admin_autosave(
         Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
     };
 
-    if item.owner_user_id.is_some_and(|owner| owner != uid) {
+    let can_edit = match db::can_edit_content(&state.pool, &item, uid).await {
+        Ok(v) => v,
+        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+    };
+
+    if !can_edit {
         return HttpResponse::Forbidden().body("Forbidden");
     }
 
@@ -358,12 +391,31 @@ pub async fn admin_autosave(
     };
 
     match db::update_content(&state.pool, id, &update).await {
-        Ok(Some(_)) => HttpResponse::Ok()
-            .content_type("text/html; charset=utf-8")
-            .body(format!(
-                "<span class=\"muted\">Autosaved at {}</span>",
-                Utc::now().format("%H:%M:%S")
-            )),
+        Ok(Some(updated)) => {
+            if let Err(e) = db::ensure_initial_revision(&state.pool, id, Some(uid)).await {
+                return HttpResponse::BadRequest()
+                    .content_type("text/html; charset=utf-8")
+                    .body(format!(
+                        "<span class=\"muted\">Autosave failed: {}</span>",
+                        escape_html(&e.to_string())
+                    ));
+            }
+            if let Err(e) = db::record_revision(&state.pool, &updated, Some(uid)).await {
+                return HttpResponse::BadRequest()
+                    .content_type("text/html; charset=utf-8")
+                    .body(format!(
+                        "<span class=\"muted\">Autosave failed: {}</span>",
+                        escape_html(&e.to_string())
+                    ));
+            }
+
+            HttpResponse::Ok()
+                .content_type("text/html; charset=utf-8")
+                .body(format!(
+                    "<span class=\"muted\">Autosaved at {}</span>",
+                    Utc::now().format("%H:%M:%S")
+                ))
+        }
         Ok(None) => HttpResponse::NotFound().body("Not found"),
         Err(e) => HttpResponse::BadRequest()
             .content_type("text/html; charset=utf-8")
@@ -393,7 +445,12 @@ pub async fn admin_preview(
         Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
     };
 
-    if item.owner_user_id.is_some_and(|owner| owner != uid) {
+    let can_view = match db::can_view_content(&state.pool, &item, uid).await {
+        Ok(v) => v,
+        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+    };
+
+    if !can_view {
         return HttpResponse::Forbidden().body("Forbidden");
     }
 
@@ -486,7 +543,12 @@ pub async fn admin_preview_fullpage(
         Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
     };
 
-    if item.owner_user_id.is_some_and(|owner| owner != uid) {
+    let can_view = match db::can_view_content(&state.pool, &item, uid).await {
+        Ok(v) => v,
+        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+    };
+
+    if !can_view {
         return HttpResponse::Forbidden().body("Forbidden");
     }
 
