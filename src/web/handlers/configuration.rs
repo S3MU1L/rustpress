@@ -8,6 +8,7 @@ use rustpress::db;
 use rustpress::models::{ContentKind, HomepageType};
 
 use crate::web::helpers::{get_is_admin, render, require_user};
+
 use crate::web::state::AppState;
 use crate::web::templates::ConfigurationTemplate;
 

@@ -12,6 +12,7 @@ use super::super::forms::{AdminCreateUserForm, AdminUpdateUserForm};
 use super::super::helpers::{
     get_is_admin, load_user, render, require_user,
 };
+use super::super::security::{PasswordValidator, validate_email, generic_error_message};
 use super::super::state::AppState;
 use super::super::templates::{
     AdminUserEditTemplate, AdminUserNewTemplate,
@@ -87,24 +88,24 @@ pub async fn users_create(
     }
 
     let is_admin = get_is_admin(&req);
-    let email = form.email.trim().to_string();
-
-    if email.is_empty() || form.password.len() < 4 {
+    
+    // Validate form before password hashing
+    if let Err(e) = form.validate() {
         return render(AdminUserNewTemplate {
             is_admin,
-            error: Some(
-                "Email and password (min 4 characters) are required"
-                    .into(),
-            ),
+            error: Some(e.to_string()),
         });
     }
+
+    let email = form.email.trim().to_string();
 
     let hash = match PasswordManager::hash_password(&form.password) {
         Ok(h) => h,
         Err(e) => {
+            log::error!("Password hashing error: {}", e);
             return render(AdminUserNewTemplate {
                 is_admin,
-                error: Some(format!("Password hashing error: {e}")),
+                error: Some(generic_error_message("user creation")),
             });
         }
     };
@@ -121,9 +122,10 @@ pub async fn users_create(
             });
         }
         Err(e) => {
+            log::error!("Database error creating user: {}", e);
             return render(AdminUserNewTemplate {
                 is_admin,
-                error: Some(format!("Database error: {e}")),
+                error: Some(generic_error_message("user creation")),
             });
         }
     };
@@ -131,7 +133,7 @@ pub async fn users_create(
     if let Err(e) =
         db::set_user_role(&state.pool, user.id, form.role).await
     {
-        eprintln!("Failed to set user role: {e}");
+        log::error!("Failed to set user role: {}", e);
     }
 
     HttpResponse::SeeOther()
@@ -182,12 +184,12 @@ pub async fn users_update(
     };
 
     let email = form.email.trim().to_string();
-    if email.is_empty() {
+    if !validate_email(&email) {
         return render_edit(
             &state.pool,
             target_user,
             is_admin,
-            Some("Email is required".into()),
+            Some("Invalid email address".into()),
             None,
         )
         .await;
@@ -196,11 +198,12 @@ pub async fn users_update(
     if let Err(e) =
         db::update_user_email(&state.pool, target_id, &email).await
     {
+        log::error!("Failed to update user email: {}", e);
         return render_edit(
             &state.pool,
             target_user,
             is_admin,
-            Some(format!("Update failed: {e}")),
+            Some(generic_error_message("email update")),
             None,
         )
         .await;
@@ -213,7 +216,7 @@ pub async fn users_update(
     if let Some(pw) = &form.new_password {
         let pw = pw.trim();
         if !pw.is_empty() {
-            if pw.len() < 4 {
+            if let Err(msg) = PasswordValidator::validate(pw) {
                 let user = load_user(&state.pool, target_id)
                     .await
                     .unwrap_or(target_user);
@@ -221,10 +224,7 @@ pub async fn users_update(
                     &state.pool,
                     user,
                     is_admin,
-                    Some(
-                        "Password must be at least 4 characters"
-                            .into(),
-                    ),
+                    Some(msg),
                     None,
                 )
                 .await;
@@ -238,6 +238,7 @@ pub async fn users_update(
                     )
                     .await
                     {
+                        log::error!("Password update failed: {}", e);
                         let user = load_user(&state.pool, target_id)
                             .await
                             .unwrap_or(target_user);
@@ -245,15 +246,14 @@ pub async fn users_update(
                             &state.pool,
                             user,
                             is_admin,
-                            Some(format!(
-                                "Password update failed: {e}"
-                            )),
+                            Some(generic_error_message("password update")),
                             None,
                         )
                         .await;
                     }
                 }
                 Err(e) => {
+                    log::error!("Password hashing error: {}", e);
                     let user = load_user(&state.pool, target_id)
                         .await
                         .unwrap_or(target_user);
@@ -261,7 +261,7 @@ pub async fn users_update(
                         &state.pool,
                         user,
                         is_admin,
-                        Some(format!("Password hashing error: {e}")),
+                        Some(generic_error_message("password hashing")),
                         None,
                     )
                     .await;
@@ -325,10 +325,11 @@ pub async fn users_delete(
 
     if let Err(e) = db::soft_delete_user(&state.pool, target_id).await
     {
+        log::error!("Failed to delete user: {}", e);
         return render_list(
             &state.pool,
             is_admin,
-            Some(format!("Delete failed: {e}")),
+            Some(generic_error_message("user deletion")),
             None,
         )
         .await;
