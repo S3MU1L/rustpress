@@ -43,6 +43,12 @@ pub async fn create_user_with_role(
 ) -> Result<Option<User>, sqlx::Error> {
     let mut tx = pool.begin().await?;
 
+    // Acquire advisory lock to serialize admin role assignment
+    // Lock key is arbitrary but consistent (using a hash of "admin_role_assignment")
+    sqlx::query("SELECT pg_advisory_xact_lock(1234567890)")
+        .execute(&mut *tx)
+        .await?;
+
     // Insert user
     let user_opt = sqlx::query_as::<_, User>(
         r#"
@@ -66,14 +72,13 @@ pub async fn create_user_with_role(
         }
     };
 
-    // Check if any admin exists (using FOR UPDATE to lock the rows)
+    // Check if any admin exists
     let admin_count = sqlx::query_scalar::<_, i64>(
         r#"
         SELECT COUNT(DISTINCT ur.user_id)
         FROM user_roles ur
         JOIN roles r ON r.id = ur.role_id
         WHERE r.name = 'admin'
-        FOR UPDATE
         "#,
     )
     .fetch_one(&mut *tx)
@@ -99,6 +104,7 @@ pub async fn create_user_with_role(
     .await?;
 
     tx.commit().await?;
+    // Advisory lock is automatically released when transaction commits
     Ok(Some(user))
 }
 
