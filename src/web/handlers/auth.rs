@@ -4,7 +4,7 @@ use actix_web::{
 };
 
 use rustpress::db;
-use rustpress::models::{RoleName, SiteCreate, User};
+use rustpress::models::{SiteCreate, User};
 use rustpress::services::PasswordManager;
 
 use crate::web::forms::{AuthQuery, LoginForm, RegisterForm};
@@ -155,8 +155,10 @@ pub async fn register_submit(
             }
         };
 
+    // Create user with role assigned atomically in a transaction to prevent race conditions.
+    // The first user (when no admins exist) gets admin role, subsequent users get editor.
     let user =
-        match db::create_user(&state.pool, &email, &password_hash)
+        match db::create_user_with_role(&state.pool, &email, &password_hash)
             .await
         {
             Ok(Some(u)) => u,
@@ -178,19 +180,6 @@ pub async fn register_submit(
                     .finish();
             }
         };
-
-    // Set role: first user gets admin, subsequent users get editor.
-    let user_count = db::count_users(&state.pool).await.unwrap_or(1);
-    let role = if user_count <= 1 {
-        RoleName::Admin
-    } else {
-        RoleName::Editor
-    };
-    if let Err(e) =
-        db::set_user_role(&state.pool, user.id, role).await
-    {
-        eprintln!("Failed to set user role: {e}");
-    }
 
     // Create default site if none exists
     if db::get_default_site(&state.pool)

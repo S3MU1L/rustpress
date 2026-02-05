@@ -33,6 +33,75 @@ pub async fn create_user(
     .await
 }
 
+/// Creates a user and assigns them a role atomically within a transaction.
+/// The first user (when no admins exist) gets the admin role, subsequent users get editor role.
+/// This prevents race conditions where multiple simultaneous registrations could both get admin.
+pub async fn create_user_with_role(
+    pool: &PgPool,
+    email: &str,
+    password_hash: &str,
+) -> Result<Option<User>, sqlx::Error> {
+    let mut tx = pool.begin().await?;
+
+    // Insert user
+    let user_opt = sqlx::query_as::<_, User>(
+        r#"
+        INSERT INTO users (email, password_hash)
+        VALUES ($1, $2)
+        ON CONFLICT (email) DO NOTHING
+        RETURNING *
+        "#,
+    )
+    .bind(email)
+    .bind(password_hash)
+    .fetch_optional(&mut *tx)
+    .await?;
+
+    let user = match user_opt {
+        Some(u) => u,
+        None => {
+            // User already exists, rollback and return None
+            tx.rollback().await?;
+            return Ok(None);
+        }
+    };
+
+    // Check if any admin exists (using FOR UPDATE to lock the rows)
+    let admin_count = sqlx::query_scalar::<_, i64>(
+        r#"
+        SELECT COUNT(DISTINCT ur.user_id)
+        FROM user_roles ur
+        JOIN roles r ON r.id = ur.role_id
+        WHERE r.name = 'admin'
+        FOR UPDATE
+        "#,
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+
+    // Assign role based on admin count
+    let role = if admin_count == 0 {
+        RoleName::Admin
+    } else {
+        RoleName::Editor
+    };
+
+    // Assign the role
+    sqlx::query(
+        r#"
+        INSERT INTO user_roles (user_id, role_id)
+        SELECT $1, r.id FROM roles r WHERE r.name = $2
+        "#,
+    )
+    .bind(user.id)
+    .bind(role.as_str())
+    .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+    Ok(Some(user))
+}
+
 pub async fn count_users(pool: &PgPool) -> Result<i64, sqlx::Error> {
     sqlx::query_scalar(r#"SELECT COUNT(*) FROM users"#)
         .fetch_one(pool)
