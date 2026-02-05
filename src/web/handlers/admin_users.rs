@@ -311,11 +311,15 @@ pub async fn users_delete(
     // deletion of the last admin, eliminating the race condition.
     if let Err(e) = db::soft_delete_user(&state.pool, target_id).await
     {
-        // Check if this is the "last admin" constraint violation
-        let error_msg = if e.to_string().contains("Cannot delete the last admin") {
-            "Cannot delete the last admin".to_string()
-        } else {
-            format!("Delete failed: {e}")
+        // Check if this is the "last admin" constraint violation (P0001)
+        let error_msg = match &e {
+            sqlx::Error::Database(db_err) 
+                if db_err.code().as_deref() == Some("P0001") 
+                && db_err.message().contains("Cannot delete the last admin") =>
+            {
+                "Cannot delete the last admin".to_string()
+            }
+            _ => format!("Delete failed: {e}"),
         };
         
         return render_list(

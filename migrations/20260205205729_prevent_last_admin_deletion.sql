@@ -39,7 +39,7 @@ BEGIN
     -- Prevent deletion if this is the last admin
     IF admin_count = 0 THEN
         RAISE EXCEPTION 'Cannot delete the last admin'
-            USING ERRCODE = '23514'; -- check_violation
+            USING ERRCODE = 'P0001'; -- raise_exception - application-defined exception
     END IF;
     
     -- For DELETE operations, NEW is NULL, so return OLD
