@@ -11,25 +11,31 @@
   <input type="hidden" name="kind" value="{{ kind }}" />
 
   <!-- Top Bar -->
-  <div class="flex items-center justify-between mb-6">
+  <div class="flex items-center justify-between mb-8">
     <div class="flex items-center gap-4">
-      <a class="text-rp-muted hover:text-rp-text" href="/admin" title="Back to Dashboard">
+      <a class="p-2 rounded-lg text-rp-muted hover:text-rp-text hover:bg-rp-border/30 transition-colors" href="/admin" title="Back to Dashboard">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
         </svg>
       </a>
       <div>
-        <h1 class="text-xl mb-0">New {{ kind|capitalize }}</h1>
+        <h1 class="text-2xl font-bold mb-0">New {{ kind|capitalize }}</h1>
         <p class="text-rp-muted text-sm mt-1">Create a new {{ kind }} for your site</p>
       </div>
     </div>
     <div class="flex items-center gap-2">
-      <a class="btn-secondary text-sm" href="/admin">Cancel</a>
-      <button class="btn-primary text-sm" type="submit">Create Draft</button>
+      <a class="btn-secondary text-sm inline-flex items-center gap-2" href="/admin">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        Cancel
+      </a>
+      <button class="btn-primary text-sm inline-flex items-center gap-2" type="submit">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Create Draft
+      </button>
     </div>
   </div>
 
-  <div class="grid lg:grid-cols-[1fr_320px] gap-6">
+  <div class="grid lg:grid-cols-[1fr_380px] gap-6">
     <!-- Main Editor Area -->
     <div class="space-y-4">
       <!-- Title -->
@@ -46,9 +52,26 @@
 
     <!-- Sidebar -->
     <div class="space-y-4">
+      <!-- Live Preview -->
+      <div class="card p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-medium flex items-center gap-2">
+            <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            Live Preview
+          </h3>
+          <span class="px-2 py-0.5 rounded-full text-xs bg-rp-secondary/10 text-rp-secondary">Auto-updates</span>
+        </div>
+        <div id="preview" class="border border-rp-border rounded-lg overflow-hidden bg-white" hx-post="/admin/preview" hx-trigger="load, editor-change from:body delay:500ms, every 3s" hx-include="#edit-form" hx-target="this" hx-swap="innerHTML">
+          <p class="text-rp-muted text-sm p-4">Loading preview...</p>
+        </div>
+      </div>
+
       <!-- Settings -->
-      <div class="card p-4">
-        <h3 class="text-sm font-medium mb-3">Settings</h3>
+      <div class="card p-5">
+        <h3 class="text-sm font-medium mb-3 flex items-center gap-2">
+          <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          Settings
+        </h3>
         <label class="block">
           <span class="text-sm text-rp-muted">Template</span>
           <select name="template" class="mt-1">
@@ -60,8 +83,11 @@
       </div>
 
       <!-- URL Settings -->
-      <div class="card p-4">
-        <h3 class="text-sm font-medium mb-3">URL Settings</h3>
+      <div class="card p-5">
+        <h3 class="text-sm font-medium mb-3 flex items-center gap-2">
+          <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+          URL Settings
+        </h3>
         <label class="block">
           <span class="text-sm text-rp-muted">Slug</span>
           <input id="slug" name="slug" required placeholder="url-friendly-slug" class="mt-1" />
@@ -71,20 +97,12 @@
         </p>
       </div>
 
-      <!-- Live Preview -->
-      <div class="card p-4">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-sm font-medium">Live Preview</h3>
-          <span class="text-xs text-rp-muted">Auto-updates</span>
-        </div>
-        <div id="preview" class="border border-rp-border rounded overflow-hidden bg-white" hx-post="/admin/preview" hx-trigger="load, editor-change delay:500ms" hx-include="#edit-form" hx-target="this" hx-swap="innerHTML">
-          <p class="text-rp-muted text-sm p-4">Loading preview...</p>
-        </div>
-      </div>
-
       <!-- Tips -->
-      <div class="card p-4 bg-rp-bg/50">
-        <h3 class="text-sm font-medium mb-2">Tips</h3>
+      <div class="card p-5 bg-rp-primary/5 border-rp-primary/20">
+        <h3 class="text-sm font-medium mb-2 flex items-center gap-2">
+          <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+          Tips
+        </h3>
         <ul class="text-xs text-rp-muted space-y-1">
           <li>Use a descriptive title for SEO</li>
           <li>Keep slugs short and readable</li>
