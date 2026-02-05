@@ -1,4 +1,5 @@
 use actix_web::{get, web, HttpRequest, Responder};
+use uuid::Uuid;
 
 use rustpress::db;
 
@@ -20,7 +21,10 @@ pub async fn themes_list(
 
     let q = query.q.clone().unwrap_or_default();
     let category = query.category.clone().unwrap_or_else(|| "all".to_string());
-    let selected_site_id = query.site_id;
+    let selected_site_id = query
+        .site_id
+        .as_ref()
+        .and_then(|s| s.trim().parse::<Uuid>().ok());
 
     let mut templates = db::list_site_templates_for_user(&state.pool, uid)
         .await

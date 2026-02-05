@@ -1,5 +1,4 @@
 use serde::Deserialize;
-use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct LoginForm {
@@ -54,7 +53,7 @@ pub struct SiteUpdateForm {
 pub struct ThemesQuery {
     pub q: Option<String>,
     pub category: Option<String>,
-    pub site_id: Option<Uuid>,
+    pub site_id: Option<String>,
 }
 
 #[derive(Deserialize)]
