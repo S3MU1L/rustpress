@@ -68,9 +68,8 @@
         <label>
           Homepage Page
           <select name="homepage_page_id">
-            <option value="">(Select a page)</option>
             {% for page in pages %}
-              <option value="{{ page.id }}" {% if s.homepage_page_id.is_some() && s.homepage_page_id.unwrap() == page.id %}selected{% endif %}>{{ page.title }}</option>
+              <option value="{{ page.id }}" {% if s.homepage_page_id.is_some() && s.homepage_page_id.unwrap() == page.id %}selected{% elif s.homepage_page_id.is_none() && loop.first %}selected{% endif %}>{{ page.title }}</option>
             {% endfor %}
           </select>
         </label>
