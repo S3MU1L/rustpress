@@ -7,75 +7,126 @@
 {% endblock %}
 
 {% block content %}
-<div class="flex items-center justify-between mb-6">
+<div class="flex items-center justify-between mb-8">
   <div>
-    <h1 class="mb-2">Themes</h1>
+    <h1 class="text-2xl font-bold mb-2">Themes</h1>
     <p class="text-rp-muted">Browse and apply themes to your sites.</p>
   </div>
-  <a class="btn-primary" href="/admin/templates/new">Create New Template</a>
+  <a class="btn-primary inline-flex items-center gap-2" href="/admin/templates/new">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+    </svg>
+    Create Template
+  </a>
 </div>
 
 <!-- Filters -->
-<div class="card p-4 mb-6">
-  <form method="get" action="/admin/themes" class="space-y-4">
-    <div class="grid md:grid-cols-2 gap-4">
-      <label class="mb-0">
-        Apply to Site
-        <select name="site_id">
+<div class="card p-6 mb-8">
+  <form method="get" action="/admin/themes" class="space-y-5">
+    <div class="grid md:grid-cols-2 gap-5">
+      <div>
+        <label class="mb-0 flex items-center gap-2">
+          <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+          </svg>
+          Apply to Site
+        </label>
+        <select name="site_id" class="mt-2">
           <option value="">(Select a site)</option>
           {% for s in sites %}
             <option value="{{ s.id }}" {% if selected_site_id.is_some() && selected_site_id.unwrap() == s.id %}selected{% endif %}>{{ s.name }} (/{{ s.slug }})</option>
           {% endfor %}
         </select>
-      </label>
+      </div>
 
-      <label class="mb-0">
-        Search
-        <input name="q" value="{{ query }}" placeholder="Search templates..." />
-      </label>
+      <div>
+        <label class="mb-0 flex items-center gap-2">
+          <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          Search
+        </label>
+        <input name="q" value="{{ query }}" placeholder="Search templates..." class="mt-2" />
+      </div>
     </div>
 
-    <div class="flex items-center gap-3">
-      <button class="btn-primary" type="submit">Filter</button>
-      <a class="btn-secondary" href="/admin/themes">Clear</a>
+    <div class="flex flex-wrap items-center gap-4">
+      <div class="flex items-center gap-2">
+        <button class="btn-primary inline-flex items-center gap-2" type="submit">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+          </svg>
+          Filter
+        </button>
+        <a class="btn-secondary inline-flex items-center gap-2" href="/admin/themes">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          Clear
+        </a>
+      </div>
 
-      <div class="flex items-center gap-2 ml-4">
-        <span class="text-rp-muted text-sm">Category:</span>
-        <a class="badge {% if category == "all" %}bg-rp-accent text-white{% endif %}" href="/admin/themes?category=all{% if query.len() > 0 %}&q={{ query }}{% endif %}{% if selected_site_id.is_some() %}&site_id={{ selected_site_id.unwrap() }}{% endif %}">All</a>
-        <a class="badge {% if category == "builtin" %}bg-rp-accent text-white{% endif %}" href="/admin/themes?category=builtin{% if query.len() > 0 %}&q={{ query }}{% endif %}{% if selected_site_id.is_some() %}&site_id={{ selected_site_id.unwrap() }}{% endif %}">Built-in</a>
-        <a class="badge {% if category == "custom" %}bg-rp-accent text-white{% endif %}" href="/admin/themes?category=custom{% if query.len() > 0 %}&q={{ query }}{% endif %}{% if selected_site_id.is_some() %}&site_id={{ selected_site_id.unwrap() }}{% endif %}">Custom</a>
+      <div class="flex items-center gap-2 border-l border-rp-border pl-4">
+        <span class="text-rp-muted text-sm font-medium">Category:</span>
+        <a class="px-3 py-1.5 rounded-full text-sm font-medium transition-all {% if category == "all" %}bg-rp-primary text-white{% else %}bg-rp-primary/10 text-rp-primary hover:bg-rp-primary/20{% endif %}" href="/admin/themes?category=all{% if query.len() > 0 %}&q={{ query }}{% endif %}{% if selected_site_id.is_some() %}&site_id={{ selected_site_id.unwrap() }}{% endif %}">All</a>
+        <a class="px-3 py-1.5 rounded-full text-sm font-medium transition-all {% if category == "builtin" %}bg-rp-primary text-white{% else %}bg-rp-primary/10 text-rp-primary hover:bg-rp-primary/20{% endif %}" href="/admin/themes?category=builtin{% if query.len() > 0 %}&q={{ query }}{% endif %}{% if selected_site_id.is_some() %}&site_id={{ selected_site_id.unwrap() }}{% endif %}">Built-in</a>
+        <a class="px-3 py-1.5 rounded-full text-sm font-medium transition-all {% if category == "custom" %}bg-rp-secondary text-white{% else %}bg-rp-secondary/10 text-rp-secondary hover:bg-rp-secondary/20{% endif %}" href="/admin/themes?category=custom{% if query.len() > 0 %}&q={{ query }}{% endif %}{% if selected_site_id.is_some() %}&site_id={{ selected_site_id.unwrap() }}{% endif %}">Custom</a>
       </div>
     </div>
   </form>
 </div>
 
 <!-- Templates Grid -->
-<div class="card">
+<div class="card overflow-hidden">
   {% if templates.len() == 0 %}
-    <div class="p-8 text-center">
-      <p class="text-rp-muted">No templates found.</p>
+    <div class="p-12 text-center">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-rp-primary/10 mb-4">
+        <svg class="w-8 h-8 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+        </svg>
+      </div>
+      <p class="text-rp-muted mb-4">No templates found.</p>
+      <a href="/admin/templates/new" class="text-rp-primary hover:underline font-medium">Create your first template</a>
     </div>
   {% else %}
     <ul class="divide-y divide-rp-border">
       {% for t in templates %}
-        <li class="p-4 flex items-center justify-between hover:bg-rp-bg/50">
-          <div class="flex-1">
-            <a href="/admin/templates/{{ t.id }}" class="font-medium">{{ t.name }}</a>
-            {% if t.description.len() > 0 %}
-              <p class="text-rp-muted text-sm">{{ t.description }}</p>
-            {% endif %}
+        <li class="group p-5 flex items-center justify-between hover:bg-rp-primary/5 transition-colors">
+          <div class="flex items-center gap-4 flex-1">
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center {% if t.is_builtin %}bg-rp-primary/10{% else %}bg-rp-secondary/10{% endif %} group-hover:scale-105 transition-transform">
+              <svg class="w-6 h-6 {% if t.is_builtin %}text-rp-primary{% else %}text-rp-secondary{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+              </svg>
+            </div>
+            <div>
+              <a href="/admin/templates/{{ t.id }}" class="font-semibold text-rp-text hover:text-rp-primary transition-colors">{{ t.name }}</a>
+              {% if t.description.len() > 0 %}
+                <p class="text-rp-muted text-sm mt-0.5">{{ t.description }}</p>
+              {% endif %}
+            </div>
           </div>
           <div class="flex items-center gap-3">
             {% if t.is_builtin %}
-              <span class="badge">Built-in</span>
+              <span class="px-3 py-1 rounded-full text-xs font-medium bg-rp-primary/10 text-rp-primary">Built-in</span>
             {% else %}
-              <span class="badge badge-success">Custom</span>
+              <span class="px-3 py-1 rounded-full text-xs font-medium bg-rp-secondary/10 text-rp-secondary">Custom</span>
             {% endif %}
+
+            <a href="/admin/templates/{{ t.id }}" class="p-2 rounded-lg hover:bg-rp-border/50 transition-colors" title="Edit template">
+              <svg class="w-5 h-5 text-rp-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </a>
 
             {% if selected_site_id.is_some() %}
               <form method="post" action="/admin/sites/{{ selected_site_id.unwrap() }}/theme" hx-post="/admin/sites/{{ selected_site_id.unwrap() }}/theme" hx-swap="none" class="m-0">
                 <input type="hidden" name="template" value="{{ t.name }}" />
-                <button class="btn-primary text-sm" type="submit">Apply</button>
+                <button class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-rp-secondary text-white font-medium hover:bg-rp-secondary-hover transition-colors text-sm" type="submit">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                  Apply
+                </button>
               </form>
             {% endif %}
           </div>
@@ -85,7 +136,19 @@
   {% endif %}
 </div>
 
-<p class="text-rp-muted text-sm mt-4">
-  Select a site above to apply a theme directly.
-</p>
+{% if selected_site_id.is_none() %}
+<div class="mt-6 p-5 rounded-lg bg-rp-primary/10 border-2 border-rp-primary/20">
+  <div class="flex items-center gap-3">
+    <div class="w-10 h-10 rounded-full bg-rp-primary/20 flex items-center justify-center">
+      <svg class="w-5 h-5 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </div>
+    <div>
+      <p class="font-medium text-rp-text">Select a site to apply themes</p>
+      <p class="text-sm text-rp-muted">Choose a site from the dropdown above to enable the Apply button for each theme.</p>
+    </div>
+  </div>
+</div>
+{% endif %}
 {% endblock %}
