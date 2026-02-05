@@ -34,7 +34,7 @@
       {% endif %}
       <button class="btn-primary text-sm" type="submit">Save</button>
       {% if item.status == "draft" %}
-        <button class="btn-primary text-sm bg-green-600 hover:bg-green-700" type="button" hx-post="/admin/publish/{{ item.id }}" hx-target="body" hx-swap="outerHTML">Publish</button>
+        <button class="btn-primary text-sm bg-rp-secondary hover:bg-rp-secondary-hover" type="button" hx-post="/admin/publish/{{ item.id }}" hx-target="body" hx-swap="outerHTML">Publish</button>
       {% endif %}
     </div>
   </div>

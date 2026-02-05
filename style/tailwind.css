@@ -42,7 +42,7 @@
   --color-rp-warning-bg: #fcf9e8;
 
   /* Header/sidebar colors */
-  --color-rp-header: #1d2327;
+  --color-rp-header: #1a2436;
   --color-rp-header-text: #f0f0f1;
 
   /* Subtle backgrounds */
@@ -203,7 +203,7 @@
 
   /* Admin header */
   .admin-header {
-    @apply bg-[#1d2327] text-white;
+    @apply bg-[#1a2436] text-white;
   }
 
   .admin-header a {
