@@ -1,4 +1,7 @@
+use std::collections::HashMap;
+
 use askama::Template;
+use uuid::Uuid;
 
 use rustpress::db::UserWithRoles;
 use rustpress::models::{ContentItem, Site, SiteTemplate, User};
@@ -34,6 +37,7 @@ pub struct AdminDashboardTemplate {
 #[template(path = "admin/posts_list.html")]
 pub struct AdminPostsListTemplate {
     pub posts: Vec<ContentItem>,
+    pub authors: HashMap<Uuid, String>,
     pub query: String,
     pub is_admin: bool,
 }
@@ -42,6 +46,7 @@ pub struct AdminPostsListTemplate {
 #[template(path = "admin/pages_list.html")]
 pub struct AdminPagesListTemplate {
     pub pages: Vec<ContentItem>,
+    pub authors: HashMap<Uuid, String>,
     pub query: String,
     pub is_admin: bool,
 }
@@ -50,6 +55,7 @@ pub struct AdminPagesListTemplate {
 #[template(path = "admin/edit.html")]
 pub struct AdminEditTemplate {
     pub item: ContentItem,
+    pub author: String,
     pub templates: Vec<SiteTemplate>,
     pub is_admin: bool,
 }

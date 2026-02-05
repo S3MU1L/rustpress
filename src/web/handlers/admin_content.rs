@@ -58,7 +58,12 @@ pub async fn admin_posts_list(
         .filter(|c| q.is_empty() || c.title.to_lowercase().contains(&q.to_lowercase()))
         .collect();
 
-    render(AdminPostsListTemplate { posts, query: q, is_admin })
+    let owner_ids: Vec<_> = posts.iter().filter_map(|p| p.owner_user_id).collect();
+    let authors = db::get_user_emails(&state.pool, &owner_ids)
+        .await
+        .unwrap_or_default();
+
+    render(AdminPostsListTemplate { posts, authors, query: q, is_admin })
 }
 
 #[get("/admin/pages")]
@@ -83,7 +88,12 @@ pub async fn admin_pages_list(
         .filter(|c| q.is_empty() || c.title.to_lowercase().contains(&q.to_lowercase()))
         .collect();
 
-    render(AdminPagesListTemplate { pages, query: q, is_admin })
+    let owner_ids: Vec<_> = pages.iter().filter_map(|p| p.owner_user_id).collect();
+    let authors = db::get_user_emails(&state.pool, &owner_ids)
+        .await
+        .unwrap_or_default();
+
+    render(AdminPagesListTemplate { pages, authors, query: q, is_admin })
 }
 
 #[get("/admin/{kind:posts|pages}/new")]
@@ -206,10 +216,18 @@ pub async fn admin_edit(
     }
 
     let is_admin = get_is_admin(&req);
+    let author = match item.owner_user_id {
+        Some(oid) => db::get_user_emails(&state.pool, &[oid])
+            .await
+            .ok()
+            .and_then(|m| m.into_values().next())
+            .unwrap_or_else(|| "Unknown".to_string()),
+        None => "Unknown".to_string(),
+    };
     let templates = db::list_site_templates_for_user(&state.pool, uid)
         .await
         .unwrap_or_default();
-    render(AdminEditTemplate { item, templates, is_admin })
+    render(AdminEditTemplate { item, author, templates, is_admin })
 }
 
 #[post("/admin/edit/{id}")]
@@ -284,11 +302,20 @@ pub async fn admin_update(
 
     if is_htmx(&req) {
         let is_admin = get_is_admin(&req);
+        let author = match updated.owner_user_id {
+            Some(oid) => db::get_user_emails(&state.pool, &[oid])
+                .await
+                .ok()
+                .and_then(|m| m.into_values().next())
+                .unwrap_or_else(|| "Unknown".to_string()),
+            None => "Unknown".to_string(),
+        };
         let templates = db::list_site_templates_for_user(&state.pool, uid)
             .await
             .unwrap_or_default();
         render(AdminEditTemplate {
             item: updated,
+            author,
             templates,
             is_admin,
         })
@@ -347,11 +374,20 @@ pub async fn admin_publish(
 
     if is_htmx(&req) {
         let is_admin = get_is_admin(&req);
+        let author = match published.owner_user_id {
+            Some(oid) => db::get_user_emails(&state.pool, &[oid])
+                .await
+                .ok()
+                .and_then(|m| m.into_values().next())
+                .unwrap_or_else(|| "Unknown".to_string()),
+            None => "Unknown".to_string(),
+        };
         let templates = db::list_site_templates_for_user(&state.pool, uid)
             .await
             .unwrap_or_default();
         render(AdminEditTemplate {
             item: published,
+            author,
             templates,
             is_admin,
         })

@@ -25,7 +25,7 @@
     </div>
   {% endif %}
 
-  <div class="card p-5">
+  <div class="card p-5 mb-6">
     <h2 class="text-lg mb-4">Email Address</h2>
     <form method="post" action="/admin/me/account/email" hx-post="/admin/me/account/email" hx-target="body" hx-swap="outerHTML">
       <label>
@@ -34,8 +34,7 @@
       </label>
 
       <div class="flex items-center gap-3 mt-4">
-        <button class="btn-primary" type="submit">Save Changes</button>
-        <a class="btn-secondary" href="/admin">Back to Dashboard</a>
+        <button class="btn-primary" type="submit">Save Email</button>
       </div>
     </form>
 
@@ -49,6 +48,30 @@
         {% endif %}
       </p>
     </div>
+  </div>
+
+  <div class="card p-5 mb-6">
+    <h2 class="text-lg mb-4">Change Password</h2>
+    <form method="post" action="/admin/me/account/password" hx-post="/admin/me/account/password" hx-target="body" hx-swap="outerHTML">
+      <div class="space-y-4">
+        <label>
+          Current Password
+          <input type="password" name="current_password" required />
+        </label>
+        <label>
+          New Password
+          <input type="password" name="new_password" required placeholder="At least 4 characters" minlength="4" />
+        </label>
+      </div>
+      <div class="mt-4">
+        <button class="btn-primary" type="submit">Update Password</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="flex items-center gap-3">
+    <a class="btn-secondary" href="/admin">Back to Dashboard</a>
+    <a class="btn-secondary" href="/admin/me/security">Security Settings</a>
   </div>
 </div>
 {% endblock %}

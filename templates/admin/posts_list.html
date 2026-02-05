@@ -88,7 +88,13 @@
             </div>
             <div>
               <span class="font-semibold text-rp-text group-hover:text-rp-tertiary transition-colors">{{ p.title }}</span>
-              <p class="text-rp-muted text-sm mt-0.5">/blog/{{ p.slug }}</p>
+              <p class="text-rp-muted text-sm mt-0.5">/blog/{{ p.slug }}
+                {% if let Some(oid) = p.owner_user_id %}
+                  {% if let Some(email) = authors.get(&oid) %}
+                    <span class="ml-2">by {{ email }}</span>
+                  {% endif %}
+                {% endif %}
+              </p>
             </div>
           </div>
           <div class="flex items-center gap-3">

@@ -74,9 +74,9 @@ async fn main() -> std::io::Result<()> {
             // Block non-admins from admin-only routes
             if !is_admin && ADMIN_ONLY_PREFIXES.iter().any(|p| path.starts_with(p)) {
                 return Ok(req.into_response(
-                    HttpResponse::Forbidden()
-                        .content_type("text/plain; charset=utf-8")
-                        .body("Forbidden: admin access required"),
+                    HttpResponse::SeeOther()
+                        .insert_header(("Location", "/admin"))
+                        .finish(),
                 ));
             }
         }

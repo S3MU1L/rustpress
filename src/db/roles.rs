@@ -165,6 +165,23 @@ pub async fn soft_delete_user(
     Ok(())
 }
 
+pub async fn get_user_emails(
+    pool: &PgPool,
+    ids: &[Uuid],
+) -> Result<std::collections::HashMap<Uuid, String>, sqlx::Error> {
+    if ids.is_empty() {
+        return Ok(std::collections::HashMap::new());
+    }
+    let rows = sqlx::query_as::<_, (Uuid, String)>(
+        r#"SELECT id, email FROM users WHERE id = ANY($1)"#,
+    )
+    .bind(ids)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows.into_iter().collect())
+}
+
 pub async fn list_all_users_with_roles(
     pool: &PgPool,
 ) -> Result<Vec<UserWithRoles>, sqlx::Error> {
