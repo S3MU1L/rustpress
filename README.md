@@ -82,6 +82,31 @@ Note: Docker builds use SQLx offline metadata stored in `.sqlx/`.
 
 If you want to run without Docker, copy `.env.example` to `.env` and adjust `DATABASE_URL`.
 
+### Logging
+
+RustPress uses the `tracing` framework for structured logging. You can configure the log level using the `RUST_LOG` environment variable:
+
+```bash
+# Default (info level)
+cargo run
+
+# Debug level for more detailed logs
+RUST_LOG=debug cargo run
+
+# Debug only for rustpress modules
+RUST_LOG=rustpress=debug cargo run
+
+# Trace level for maximum verbosity
+RUST_LOG=trace cargo run
+```
+
+Error logs include contextual information such as:
+- Operation type (e.g., `user_lookup`, `password_verification`)
+- User email (when safe to log)
+- Database error classification (e.g., `unique_violation`, `connection_error`)
+
+This helps with debugging while keeping user-facing error messages generic for security.
+
 ## 🎯 Usage
 
 ### Creating Content
