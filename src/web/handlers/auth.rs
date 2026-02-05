@@ -12,9 +12,15 @@ use crate::web::templates::{AdminLoginTemplate, AdminRegisterTemplate};
 
 #[get("/admin/login")]
 pub async fn login_form(query: web::Query<AuthQuery>) -> impl Responder {
-    render(AdminLoginTemplate {
-        error: query.error.clone(),
-    })
+    let error = query.error.as_deref().map(|code| match code {
+        "missing" => "Email and password are required".to_string(),
+        "invalid" => "Invalid email or password".to_string(),
+        "db" => "Database error. Please try again.".to_string(),
+        "internal" => "An internal error occurred. Please try again.".to_string(),
+        other => other.to_string(),
+    });
+
+    render(AdminLoginTemplate { error })
 }
 
 #[post("/admin/login")]
@@ -81,9 +87,15 @@ pub async fn login_submit(
 
 #[get("/admin/register")]
 pub async fn register_form(query: web::Query<AuthQuery>) -> impl Responder {
-    render(AdminRegisterTemplate {
-        error: query.error.clone(),
-    })
+    let error = query.error.as_deref().map(|code| match code {
+        "missing" => "Email and password (min 4 characters) are required".to_string(),
+        "exists" => "An account with this email already exists".to_string(),
+        "db" => "Database error. Please try again.".to_string(),
+        "internal" => "An internal error occurred. Please try again.".to_string(),
+        other => other.to_string(),
+    });
+
+    render(AdminRegisterTemplate { error })
 }
 
 #[post("/admin/register")]
