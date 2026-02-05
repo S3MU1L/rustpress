@@ -1,4 +1,6 @@
-use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{
+    HttpRequest, HttpResponse, Responder, get, post, web,
+};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -27,9 +29,10 @@ pub async fn configuration_page(
 
     let is_admin = get_is_admin(&req);
     let site = db::get_default_site(&state.pool).await.ok().flatten();
-    let pages = db::list_content(&state.pool, ContentKind::Page, false)
-        .await
-        .unwrap_or_default();
+    let pages =
+        db::list_content(&state.pool, ContentKind::Page, false)
+            .await
+            .unwrap_or_default();
 
     render(ConfigurationTemplate {
         site,
@@ -56,9 +59,13 @@ pub async fn configuration_update(
     let site = match db::get_default_site(&state.pool).await {
         Ok(Some(s)) => s,
         Ok(None) => {
-            let pages = db::list_content(&state.pool, ContentKind::Page, false)
-                .await
-                .unwrap_or_default();
+            let pages = db::list_content(
+                &state.pool,
+                ContentKind::Page,
+                false,
+            )
+            .await
+            .unwrap_or_default();
             return render(ConfigurationTemplate {
                 site: None,
                 pages,
@@ -67,7 +74,10 @@ pub async fn configuration_update(
                 is_admin,
             });
         }
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(e.to_string());
+        }
     };
 
     let homepage_type: Option<HomepageType> = form
@@ -94,38 +104,36 @@ pub async fn configuration_update(
         homepage_page_id,
     };
 
-    let pages = db::list_content(&state.pool, ContentKind::Page, false)
-        .await
-        .unwrap_or_default();
+    let pages =
+        db::list_content(&state.pool, ContentKind::Page, false)
+            .await
+            .unwrap_or_default();
 
     match db::update_site(&state.pool, site.id, uid, &update).await {
-        Ok(Some(updated)) => {
-            render(ConfigurationTemplate {
-                site: Some(updated),
-                pages,
-                error: None,
-                success: Some("Configuration saved".to_string()),
-                is_admin,
-            })
-        }
-        Ok(None) => {
-            render(ConfigurationTemplate {
-                site: Some(site),
-                pages,
-                error: Some("Update failed - site not found or no permission".to_string()),
-                success: None,
-                is_admin,
-            })
-        }
-        Err(e) => {
-            render(ConfigurationTemplate {
-                site: Some(site),
-                pages,
-                error: Some(format!("Update failed: {e}")),
-                success: None,
-                is_admin,
-            })
-        }
+        Ok(Some(updated)) => render(ConfigurationTemplate {
+            site: Some(updated),
+            pages,
+            error: None,
+            success: Some("Configuration saved".to_string()),
+            is_admin,
+        }),
+        Ok(None) => render(ConfigurationTemplate {
+            site: Some(site),
+            pages,
+            error: Some(
+                "Update failed - site not found or no permission"
+                    .to_string(),
+            ),
+            success: None,
+            is_admin,
+        }),
+        Err(e) => render(ConfigurationTemplate {
+            site: Some(site),
+            pages,
+            error: Some(format!("Update failed: {e}")),
+            success: None,
+            is_admin,
+        }),
     }
 }
 

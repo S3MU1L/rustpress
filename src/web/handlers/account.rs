@@ -1,4 +1,6 @@
-use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{
+    HttpRequest, HttpResponse, Responder, get, post, web,
+};
 use chrono::Utc;
 
 use rustpress::db;
@@ -6,16 +8,32 @@ use rustpress::models::User;
 use rustpress::services::PasswordManager;
 
 use crate::web::forms::{AccountEmailForm, ChangePasswordForm};
-use crate::web::helpers::{get_is_admin, is_unique_violation, load_user, render, require_user};
+use crate::web::helpers::{
+    get_is_admin, is_unique_violation, load_user, render,
+    require_user,
+};
 use crate::web::state::AppState;
 use crate::web::templates::{MeAccountTemplate, MeSecurityTemplate};
 
-fn render_account(user: User, is_admin: bool, error: Option<String>, success: Option<String>) -> HttpResponse {
-    render(MeAccountTemplate { user, error, success, is_admin })
+fn render_account(
+    user: User,
+    is_admin: bool,
+    error: Option<String>,
+    success: Option<String>,
+) -> HttpResponse {
+    render(MeAccountTemplate {
+        user,
+        error,
+        success,
+        is_admin,
+    })
 }
 
 #[get("/admin/me/account")]
-pub async fn me_account(state: web::Data<AppState>, req: HttpRequest) -> impl Responder {
+pub async fn me_account(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+) -> impl Responder {
     let uid = match require_user(&req) {
         Ok(uid) => uid,
         Err(resp) => return resp,
@@ -46,7 +64,12 @@ pub async fn me_account_update_email(
             Ok(u) => u,
             Err(resp) => return resp,
         };
-        return render_account(user, is_admin, Some("Email is required".into()), None);
+        return render_account(
+            user,
+            is_admin,
+            Some("Email is required".into()),
+            None,
+        );
     }
 
     match db::update_user_email(&state.pool, uid, &new_email).await {
@@ -55,18 +78,25 @@ pub async fn me_account_update_email(
                 Ok(u) => u,
                 Err(resp) => return resp,
             };
-            render_account(user, is_admin, None, Some("Email updated".into()))
+            render_account(
+                user,
+                is_admin,
+                None,
+                Some("Email updated".into()),
+            )
         }
         Err(e) => {
-            let user = load_user(&state.pool, uid).await.unwrap_or_else(|_| User {
-                id: uid,
-                email: new_email,
-                password_hash: "".into(),
-                email_verified_at: None,
-                created_at: Utc::now(),
-                edited_at: Utc::now(),
-                deleted_at: None,
-            });
+            let user = load_user(&state.pool, uid)
+                .await
+                .unwrap_or_else(|_| User {
+                    id: uid,
+                    email: new_email,
+                    password_hash: "".into(),
+                    email_verified_at: None,
+                    created_at: Utc::now(),
+                    edited_at: Utc::now(),
+                    deleted_at: None,
+                });
             let msg = if is_unique_violation(&e) {
                 "A user with this email already exists".into()
             } else {
@@ -96,38 +126,77 @@ pub async fn me_account_change_password(
     let is_admin = get_is_admin(&req);
 
     if form.new_password.trim().len() < 4 {
-        return render_account(user, is_admin, Some("New password must be at least 4 characters".into()), None);
+        return render_account(
+            user,
+            is_admin,
+            Some("New password must be at least 4 characters".into()),
+            None,
+        );
     }
 
-    let ok = match PasswordManager::verify_password(&form.current_password, &user.password_hash) {
+    let ok = match PasswordManager::verify_password(
+        &form.current_password,
+        &user.password_hash,
+    ) {
         Ok(v) => v,
         Err(e) => {
-            return render_account(user, is_admin, Some(format!("Password verification error: {e}")), None);
+            return render_account(
+                user,
+                is_admin,
+                Some(format!("Password verification error: {e}")),
+                None,
+            );
         }
     };
 
     if !ok {
-        return render_account(user, is_admin, Some("Current password is incorrect".into()), None);
+        return render_account(
+            user,
+            is_admin,
+            Some("Current password is incorrect".into()),
+            None,
+        );
     }
 
-    let new_hash = match PasswordManager::hash_password(&form.new_password) {
-        Ok(h) => h,
-        Err(e) => {
-            return render_account(user, is_admin, Some(format!("Password hashing error: {e}")), None);
-        }
-    };
+    let new_hash =
+        match PasswordManager::hash_password(&form.new_password) {
+            Ok(h) => h,
+            Err(e) => {
+                return render_account(
+                    user,
+                    is_admin,
+                    Some(format!("Password hashing error: {e}")),
+                    None,
+                );
+            }
+        };
 
-    match db::update_user_password(&state.pool, uid, &new_hash).await {
+    match db::update_user_password(&state.pool, uid, &new_hash).await
+    {
         Ok(()) => {
-            let user = load_user(&state.pool, uid).await.unwrap_or(user);
-            render_account(user, is_admin, None, Some("Password updated".into()))
+            let user =
+                load_user(&state.pool, uid).await.unwrap_or(user);
+            render_account(
+                user,
+                is_admin,
+                None,
+                Some("Password updated".into()),
+            )
         }
-        Err(e) => render_account(user, is_admin, Some(format!("Password update failed: {e}")), None),
+        Err(e) => render_account(
+            user,
+            is_admin,
+            Some(format!("Password update failed: {e}")),
+            None,
+        ),
     }
 }
 
 #[get("/admin/me/security")]
-pub async fn me_security(state: web::Data<AppState>, req: HttpRequest) -> impl Responder {
+pub async fn me_security(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+) -> impl Responder {
     let uid = match require_user(&req) {
         Ok(uid) => uid,
         Err(resp) => return resp,
@@ -170,19 +239,27 @@ pub async fn me_security_change_password(
         return render(MeSecurityTemplate {
             password_set: !user.password_hash.trim().is_empty(),
             email_verified: user.email_verified_at.is_some(),
-            error: Some("New password must be at least 4 characters".to_string()),
+            error: Some(
+                "New password must be at least 4 characters"
+                    .to_string(),
+            ),
             success: None,
             is_admin,
         });
     }
 
-    let ok = match PasswordManager::verify_password(&form.current_password, &user.password_hash) {
+    let ok = match PasswordManager::verify_password(
+        &form.current_password,
+        &user.password_hash,
+    ) {
         Ok(v) => v,
         Err(e) => {
             return render(MeSecurityTemplate {
                 password_set: !user.password_hash.trim().is_empty(),
                 email_verified: user.email_verified_at.is_some(),
-                error: Some(format!("Password verification error: {e}")),
+                error: Some(format!(
+                    "Password verification error: {e}"
+                )),
                 success: None,
                 is_admin,
             });
@@ -199,22 +276,30 @@ pub async fn me_security_change_password(
         });
     }
 
-    let new_hash = match PasswordManager::hash_password(&form.new_password) {
-        Ok(h) => h,
-        Err(e) => {
-            return render(MeSecurityTemplate {
-                password_set: !user.password_hash.trim().is_empty(),
-                email_verified: user.email_verified_at.is_some(),
-                error: Some(format!("Password hashing error: {e}")),
-                success: None,
-                is_admin,
-            });
-        }
-    };
+    let new_hash =
+        match PasswordManager::hash_password(&form.new_password) {
+            Ok(h) => h,
+            Err(e) => {
+                return render(MeSecurityTemplate {
+                    password_set: !user
+                        .password_hash
+                        .trim()
+                        .is_empty(),
+                    email_verified: user.email_verified_at.is_some(),
+                    error: Some(format!(
+                        "Password hashing error: {e}"
+                    )),
+                    success: None,
+                    is_admin,
+                });
+            }
+        };
 
-    match db::update_user_password(&state.pool, uid, &new_hash).await {
+    match db::update_user_password(&state.pool, uid, &new_hash).await
+    {
         Ok(()) => {
-            let user = load_user(&state.pool, uid).await.unwrap_or(user);
+            let user =
+                load_user(&state.pool, uid).await.unwrap_or(user);
             render(MeSecurityTemplate {
                 password_set: !user.password_hash.trim().is_empty(),
                 email_verified: user.email_verified_at.is_some(),
@@ -262,10 +347,13 @@ pub async fn me_security_mark_email_verified(
             password_set: !user.password_hash.trim().is_empty(),
             email_verified: user.email_verified_at.is_some(),
             error: None,
-            success: Some("Email marked as verified (dev)".to_string()),
+            success: Some(
+                "Email marked as verified (dev)".to_string(),
+            ),
             is_admin,
         }),
-        Err(e) => HttpResponse::InternalServerError().body(format!("Database error: {e}")),
+        Err(e) => HttpResponse::InternalServerError()
+            .body(format!("Database error: {e}")),
     }
 }
 

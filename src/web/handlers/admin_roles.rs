@@ -1,4 +1,4 @@
-use actix_web::{get, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{HttpRequest, HttpResponse, Responder, get, web};
 use serde::Serialize;
 use uuid::Uuid;
 
@@ -18,7 +18,10 @@ pub struct UserRoleRow {
 }
 
 #[get("/admin/roles")]
-pub async fn admin_roles_list(state: web::Data<AppState>, req: HttpRequest) -> impl Responder {
+pub async fn admin_roles_list(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+) -> impl Responder {
     let _uid = match require_user(&req) {
         Ok(uid) => uid,
         Err(resp) => return resp,
@@ -36,12 +39,17 @@ pub async fn admin_roles_list(state: web::Data<AppState>, req: HttpRequest) -> i
 
     match roles {
         Ok(rows) => HttpResponse::Ok().json(rows),
-        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => {
+            HttpResponse::InternalServerError().body(e.to_string())
+        }
     }
 }
 
 #[get("/admin/me/roles")]
-pub async fn admin_my_roles(state: web::Data<AppState>, req: HttpRequest) -> impl Responder {
+pub async fn admin_my_roles(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+) -> impl Responder {
     let uid = match require_user(&req) {
         Ok(uid) => uid,
         Err(resp) => return resp,
@@ -62,7 +70,9 @@ pub async fn admin_my_roles(state: web::Data<AppState>, req: HttpRequest) -> imp
 
     match roles {
         Ok(rows) => HttpResponse::Ok().json(rows),
-        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => {
+            HttpResponse::InternalServerError().body(e.to_string())
+        }
     }
 }
 

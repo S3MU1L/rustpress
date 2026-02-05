@@ -1649,7 +1649,10 @@ pub mod db_tests {
 
             let start = Utc::now();
             let result = db
-                .get_user(&UserIden::Email(user.email.clone()), include_deleted)
+                .get_user(
+                    &UserIden::Email(user.email.clone()),
+                    include_deleted,
+                )
                 .await
                 .expect("Failed to load user from database");
             let end = Utc::now();
@@ -1682,9 +1685,7 @@ pub mod db_tests {
         assert!(duration < TIME_LIMIT, "Get user was too slow");
 
         let start = Utc::now();
-        let result = db
-            .get_user(&UserIden::Id(user.id), false)
-            .await;
+        let result = db.get_user(&UserIden::Id(user.id), false).await;
         let end = Utc::now();
 
         assert!(
@@ -1814,8 +1815,9 @@ pub mod db_tests {
             let target_id = get_seed_user_nonexisting().id;
 
             let start = Utc::now();
-            let result =
-                db.get_user(&UserIden::Id(target_id), include_deleted).await;
+            let result = db
+                .get_user(&UserIden::Id(target_id), include_deleted)
+                .await;
             let end = Utc::now();
 
             assert!(
@@ -1844,7 +1846,10 @@ pub mod db_tests {
 
             let start = Utc::now();
             let result = db
-                .get_user(&UserIden::Email(target_email.clone()), include_deleted)
+                .get_user(
+                    &UserIden::Email(target_email.clone()),
+                    include_deleted,
+                )
                 .await;
             let end = Utc::now();
 
@@ -1934,10 +1939,13 @@ pub mod db_tests {
 
         let start = Utc::now();
         let users = db
-            .get_users(&UserQuery {
-                id: Some(user.id),
-                ..Default::default()
-            }, true)
+            .get_users(
+                &UserQuery {
+                    id: Some(user.id),
+                    ..Default::default()
+                },
+                true,
+            )
             .await
             .expect("Failed to get users from database");
         let end = Utc::now();
@@ -1950,10 +1958,13 @@ pub mod db_tests {
 
         let start = Utc::now();
         let users = db
-            .get_users(&UserQuery {
-                id: Some(user.id),
-                ..Default::default()
-            }, false)
+            .get_users(
+                &UserQuery {
+                    id: Some(user.id),
+                    ..Default::default()
+                },
+                false,
+            )
             .await
             .expect("Failed to get users from database");
         let end = Utc::now();
@@ -1971,10 +1982,13 @@ pub mod db_tests {
 
         let start = Utc::now();
         let users = db
-            .get_users(&UserQuery {
-                email: Some(user.email.clone()),
-                ..Default::default()
-            }, true)
+            .get_users(
+                &UserQuery {
+                    email: Some(user.email.clone()),
+                    ..Default::default()
+                },
+                true,
+            )
             .await
             .expect("Failed to get users from database");
         let end = Utc::now();
@@ -1987,10 +2001,13 @@ pub mod db_tests {
 
         let start = Utc::now();
         let users = db
-            .get_users(&UserQuery {
-                email: Some(user.email.clone()),
-                ..Default::default()
-            }, false)
+            .get_users(
+                &UserQuery {
+                    email: Some(user.email.clone()),
+                    ..Default::default()
+                },
+                false,
+            )
             .await
             .expect("Failed to get users from database");
         let end = Utc::now();

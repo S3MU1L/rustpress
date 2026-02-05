@@ -1,9 +1,15 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::models::{ContentCollaborator, ContentItem, ContentKind, RoleName};
+use crate::models::{
+    ContentCollaborator, ContentItem, ContentKind, RoleName,
+};
 
-pub async fn can_view_content(pool: &PgPool, item: &ContentItem, uid: Uuid) -> Result<bool, sqlx::Error> {
+pub async fn can_view_content(
+    pool: &PgPool,
+    item: &ContentItem,
+    uid: Uuid,
+) -> Result<bool, sqlx::Error> {
     if item.owner_user_id.is_none() {
         return Ok(true);
     }
@@ -29,7 +35,11 @@ pub async fn can_view_content(pool: &PgPool, item: &ContentItem, uid: Uuid) -> R
     Ok(exists)
 }
 
-pub async fn can_edit_content(pool: &PgPool, item: &ContentItem, uid: Uuid) -> Result<bool, sqlx::Error> {
+pub async fn can_edit_content(
+    pool: &PgPool,
+    item: &ContentItem,
+    uid: Uuid,
+) -> Result<bool, sqlx::Error> {
     if item.owner_user_id.is_none() {
         return Ok(true);
     }

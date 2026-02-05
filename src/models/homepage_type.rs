@@ -1,7 +1,16 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    sqlx::Type,
+)]
 #[sqlx(type_name = "text", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 pub enum HomepageType {
@@ -10,7 +19,10 @@ pub enum HomepageType {
 }
 
 impl HomepageType {
-    pub fn validate(typ: Self, page_id: Option<Uuid>) -> Result<(), String> {
+    pub fn validate(
+        typ: Self,
+        page_id: Option<Uuid>,
+    ) -> Result<(), String> {
         match (typ, page_id) {
             (Self::Posts, Some(_)) => Err("homepage_page_id must be NULL when homepage_type=posts".into()),
             (Self::Page, None) => Err("homepage_page_id is required when homepage_type=page".into()),
@@ -26,7 +38,10 @@ impl Default for HomepageType {
 }
 
 impl std::fmt::Display for HomepageType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
         match self {
             Self::Posts => write!(f, "posts"),
             Self::Page => write!(f, "page"),
