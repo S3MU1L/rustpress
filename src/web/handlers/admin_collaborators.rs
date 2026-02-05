@@ -3,27 +3,15 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use rustpress::db;
+use rustpress::models::RoleName;
 
-use crate::web::helpers::require_user;
-use crate::web::state::AppState;
-
-#[derive(Deserialize)]
-pub struct AddCollaboratorForm {
-    pub email: String,
-    pub role: String,
-}
+use super::super::helpers::require_user;
+use super::super::state::AppState;
 
 #[derive(Deserialize)]
-pub struct SetRoleForm {
-    pub role: String,
-}
-
-fn normalize_role(role: &str) -> Option<&'static str> {
-    match role.trim().to_lowercase().as_str() {
-        "viewer" => Some("viewer"),
-        "editor" => Some("editor"),
-        _ => None,
-    }
+pub struct CollaboratorForm {
+    pub email: Option<String>,
+    pub role: RoleName,
 }
 
 #[get("/admin/content/{id}/collaborators")]
@@ -64,7 +52,7 @@ pub async fn admin_add_collaborator(
     state: web::Data<AppState>,
     req: HttpRequest,
     path: web::Path<Uuid>,
-    form: web::Form<AddCollaboratorForm>,
+    form: web::Form<CollaboratorForm>,
 ) -> impl Responder {
     let uid = match require_user(&req) {
         Ok(uid) => uid,
@@ -87,17 +75,12 @@ pub async fn admin_add_collaborator(
         return HttpResponse::Forbidden().body("Only the owner can manage collaborators");
     }
 
-    let role = match normalize_role(&form.role) {
-        Some(r) => r,
-        None => return HttpResponse::BadRequest().body("Invalid role (use viewer|editor)"),
-    };
-
-    let email = form.email.trim().to_string();
+    let email = form.email.as_deref().unwrap_or("").trim().to_string();
     if email.is_empty() {
         return HttpResponse::BadRequest().body("Email required");
     }
 
-    match db::add_collaborator(&state.pool, id, &email, role, Some(uid)).await {
+    match db::add_collaborator(&state.pool, id, &email, form.role, Some(uid)).await {
         Ok(()) => HttpResponse::Ok().finish(),
         Err(e) => HttpResponse::BadRequest().body(e.to_string()),
     }
@@ -108,7 +91,7 @@ pub async fn admin_set_collaborator_role(
     state: web::Data<AppState>,
     req: HttpRequest,
     path: web::Path<(Uuid, Uuid)>,
-    form: web::Form<SetRoleForm>,
+    form: web::Form<CollaboratorForm>,
 ) -> impl Responder {
     let uid = match require_user(&req) {
         Ok(uid) => uid,
@@ -132,12 +115,7 @@ pub async fn admin_set_collaborator_role(
         return HttpResponse::Forbidden().body("Only the owner can manage collaborators");
     }
 
-    let role = match normalize_role(&form.role) {
-        Some(r) => r,
-        None => return HttpResponse::BadRequest().body("Invalid role (use viewer|editor)"),
-    };
-
-    match db::set_collaborator_role(&state.pool, id, user_id, role).await {
+    match db::set_collaborator_role(&state.pool, id, user_id, form.role).await {
         Ok(()) => HttpResponse::Ok().finish(),
         Err(e) => HttpResponse::BadRequest().body(e.to_string()),
     }

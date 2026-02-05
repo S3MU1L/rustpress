@@ -1,0 +1,57 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Edit User - RustPress{% endblock %}
+
+{% block header %}
+{% include "partials/nav_admin.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+  <div class="mb-6">
+    <h1 class="mb-2">Edit User</h1>
+    <p class="text-rp-muted">Update user account details, role, and password.</p>
+  </div>
+
+  {% if let Some(err) = error %}
+    <div class="card bg-rp-error/10 border-rp-error p-4 mb-6">
+      <p class="text-rp-error">{{ err }}</p>
+    </div>
+  {% endif %}
+
+  {% if let Some(msg) = success %}
+    <div class="card bg-rp-secondary/10 border-rp-secondary p-4 mb-6">
+      <p class="text-rp-secondary">{{ msg }}</p>
+    </div>
+  {% endif %}
+
+  <div class="card p-6">
+    <form method="post" action="/admin/users/{{ target_user.id }}/edit">
+      <div class="space-y-4">
+        <label>
+          Email
+          <input name="email" type="email" value="{{ target_user.email }}" required />
+        </label>
+
+        <label>
+          Role
+          <select name="role">
+            <option value="editor" {% if target_roles.contains(&"editor".to_string()) %}selected{% endif %}>Editor</option>
+            <option value="admin" {% if target_roles.contains(&"admin".to_string()) %}selected{% endif %}>Admin</option>
+          </select>
+        </label>
+
+        <label>
+          New Password <span class="text-rp-muted text-sm">(leave blank to keep current)</span>
+          <input name="new_password" type="password" minlength="4" placeholder="Minimum 4 characters" />
+        </label>
+
+        <div class="flex items-center gap-3 pt-2">
+          <button class="btn-primary" type="submit">Save Changes</button>
+          <a class="btn-secondary" href="/admin/users">Back to Users</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

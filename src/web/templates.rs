@@ -1,5 +1,6 @@
 use askama::Template;
 
+use rustpress::db::UserWithRoles;
 use rustpress::models::{ContentItem, Site, SiteTemplate, User};
 
 #[derive(Template)]
@@ -26,6 +27,7 @@ pub struct PublicFallbackTemplate<'a> {
 pub struct AdminDashboardTemplate {
     pub posts: Vec<ContentItem>,
     pub pages: Vec<ContentItem>,
+    pub is_admin: bool,
 }
 
 #[derive(Template)]
@@ -33,6 +35,7 @@ pub struct AdminDashboardTemplate {
 pub struct AdminPostsListTemplate {
     pub posts: Vec<ContentItem>,
     pub query: String,
+    pub is_admin: bool,
 }
 
 #[derive(Template)]
@@ -40,6 +43,7 @@ pub struct AdminPostsListTemplate {
 pub struct AdminPagesListTemplate {
     pub pages: Vec<ContentItem>,
     pub query: String,
+    pub is_admin: bool,
 }
 
 #[derive(Template)]
@@ -47,6 +51,7 @@ pub struct AdminPagesListTemplate {
 pub struct AdminEditTemplate {
     pub item: ContentItem,
     pub templates: Vec<SiteTemplate>,
+    pub is_admin: bool,
 }
 
 #[derive(Template)]
@@ -55,12 +60,14 @@ pub struct AdminNewTemplate {
     pub kind: String,
     pub default_template: String,
     pub templates: Vec<SiteTemplate>,
+    pub is_admin: bool,
 }
 
 #[derive(Template)]
 #[template(path = "admin/templates_list.html")]
 pub struct AdminTemplatesListTemplate {
     pub templates: Vec<SiteTemplate>,
+    pub is_admin: bool,
 }
 
 #[derive(Template)]
@@ -79,12 +86,14 @@ pub struct AdminRegisterTemplate {
 #[template(path = "admin/template_new.html")]
 pub struct AdminTemplateNewTemplate {
     pub starter_html: String,
+    pub is_admin: bool,
 }
 
 #[derive(Template)]
 #[template(path = "admin/template_edit.html")]
 pub struct AdminTemplateEditTemplate {
     pub template: SiteTemplate,
+    pub is_admin: bool,
 }
 
 #[derive(Template)]
@@ -93,6 +102,7 @@ pub struct MeAccountTemplate {
     pub user: User,
     pub error: Option<String>,
     pub success: Option<String>,
+    pub is_admin: bool,
 }
 
 #[derive(Template)]
@@ -102,6 +112,7 @@ pub struct MeSecurityTemplate {
     pub email_verified: bool,
     pub error: Option<String>,
     pub success: Option<String>,
+    pub is_admin: bool,
 }
 
 #[derive(Template)]
@@ -109,6 +120,7 @@ pub struct MeSecurityTemplate {
 pub struct SitesListTemplate {
     pub sites: Vec<Site>,
     pub query: String,
+    pub is_admin: bool,
 }
 
 #[derive(Template)]
@@ -117,6 +129,7 @@ pub struct SiteNewTemplate {
     pub templates: Vec<SiteTemplate>,
     pub default_template: String,
     pub error: Option<String>,
+    pub is_admin: bool,
 }
 
 #[derive(Template)]
@@ -126,6 +139,7 @@ pub struct SiteEditTemplate {
     pub templates: Vec<SiteTemplate>,
     pub error: Option<String>,
     pub success: Option<String>,
+    pub is_admin: bool,
 }
 
 #[derive(Template)]
@@ -136,6 +150,7 @@ pub struct ThemesTemplate {
     pub selected_site_id: Option<uuid::Uuid>,
     pub query: String,
     pub category: String,
+    pub is_admin: bool,
 }
 
 #[derive(Template)]
@@ -143,6 +158,33 @@ pub struct ThemesTemplate {
 pub struct ConfigurationTemplate {
     pub site: Option<Site>,
     pub pages: Vec<ContentItem>,
+    pub error: Option<String>,
+    pub success: Option<String>,
+    pub is_admin: bool,
+}
+
+#[derive(Template)]
+#[template(path = "admin/users_list.html")]
+pub struct AdminUsersListTemplate {
+    pub users: Vec<UserWithRoles>,
+    pub is_admin: bool,
+    pub error: Option<String>,
+    pub success: Option<String>,
+}
+
+#[derive(Template)]
+#[template(path = "admin/user_new.html")]
+pub struct AdminUserNewTemplate {
+    pub is_admin: bool,
+    pub error: Option<String>,
+}
+
+#[derive(Template)]
+#[template(path = "admin/user_edit.html")]
+pub struct AdminUserEditTemplate {
+    pub target_user: User,
+    pub target_roles: Vec<String>,
+    pub is_admin: bool,
     pub error: Option<String>,
     pub success: Option<String>,
 }

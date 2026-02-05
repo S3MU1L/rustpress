@@ -5,7 +5,7 @@ use rustpress::db;
 use rustpress::models::HomepageType;
 
 use crate::web::forms::{ApplyThemeForm, SiteCreateForm, SiteUpdateForm, SitesQuery};
-use crate::web::helpers::{is_htmx, render, require_user};
+use crate::web::helpers::{get_is_admin, is_htmx, render, require_user};
 use crate::web::state::AppState;
 use crate::web::templates::{SiteEditTemplate, SiteNewTemplate, SitesListTemplate};
 
@@ -20,12 +20,13 @@ pub async fn sites_list(
         Err(resp) => return resp,
     };
 
+    let is_admin = get_is_admin(&req);
     let q = query.q.clone().unwrap_or_default();
     let sites = db::list_sites_for_user(&state.pool, uid, query.q.as_deref())
         .await
         .unwrap_or_default();
 
-    render(SitesListTemplate { sites, query: q })
+    render(SitesListTemplate { sites, query: q, is_admin })
 }
 
 #[get("/admin/sites/new")]
@@ -35,6 +36,7 @@ pub async fn sites_new(state: web::Data<AppState>, req: HttpRequest) -> impl Res
         Err(resp) => return resp,
     };
 
+    let is_admin = get_is_admin(&req);
     let templates = db::list_site_templates_for_user(&state.pool, uid)
         .await
         .unwrap_or_default();
@@ -43,6 +45,7 @@ pub async fn sites_new(state: web::Data<AppState>, req: HttpRequest) -> impl Res
         templates,
         default_template: "default".to_string(),
         error: None,
+        is_admin,
     })
 }
 
@@ -57,6 +60,7 @@ pub async fn sites_create(
         Err(resp) => return resp,
     };
 
+    let is_admin = get_is_admin(&req);
     let name = form.name.trim().to_string();
     let slug = form.slug.trim().to_string();
     if name.is_empty() || slug.is_empty() {
@@ -70,6 +74,7 @@ pub async fn sites_create(
                 .clone()
                 .unwrap_or_else(|| "default".to_string()),
             error: Some("Name and slug are required".to_string()),
+            is_admin,
         });
     }
 
@@ -114,6 +119,7 @@ pub async fn sites_create(
                     .clone()
                     .unwrap_or_else(|| "default".to_string()),
                 error: Some(format!("Create failed: {e}")),
+                is_admin,
             })
         }
     }
@@ -141,6 +147,7 @@ pub async fn sites_edit(
         return HttpResponse::Forbidden().body("Forbidden");
     }
 
+    let is_admin = get_is_admin(&req);
     let templates = db::list_site_templates_for_user(&state.pool, uid)
         .await
         .unwrap_or_default();
@@ -150,6 +157,7 @@ pub async fn sites_edit(
         templates,
         error: None,
         success: None,
+        is_admin,
     })
 }
 
@@ -200,6 +208,8 @@ pub async fn sites_update(
         homepage_page_id,
     };
 
+    let is_admin = get_is_admin(&req);
+
     if let Err(e) = update.validate_homepage() {
         let templates = db::list_site_templates_for_user(&state.pool, uid).await.unwrap_or_default();
         return render(SiteEditTemplate {
@@ -207,6 +217,7 @@ pub async fn sites_update(
             templates,
             error: Some(e),
             success: None,
+            is_admin,
         });
     }
 
@@ -222,6 +233,7 @@ pub async fn sites_update(
                 templates,
                 error: Some(format!("Update failed: {e}")),
                 success: None,
+                is_admin,
             });
         }
     };
@@ -235,6 +247,7 @@ pub async fn sites_update(
         templates,
         error: None,
         success: Some("Saved".to_string()),
+        is_admin,
     })
 }
 
@@ -265,6 +278,7 @@ pub async fn sites_publish(
         Err(e) => return HttpResponse::BadRequest().body(format!("Publish failed: {e}")),
     };
 
+    let is_admin = get_is_admin(&req);
     render(SiteEditTemplate {
         site: published,
         templates: db::list_site_templates_for_user(&state.pool, uid)
@@ -272,6 +286,7 @@ pub async fn sites_publish(
             .unwrap_or_default(),
         error: None,
         success: Some("Site published".to_string()),
+        is_admin,
     })
 }
 

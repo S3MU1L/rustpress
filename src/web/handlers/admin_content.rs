@@ -9,7 +9,7 @@ use crate::web::forms::{
     AdminCreateForm, AdminLiveForm, AdminNewPreviewForm, AdminUpdateForm, SitesQuery,
 };
 use crate::web::helpers::{
-    apply_site_template, escape_html, iframe_srcdoc, is_htmx, is_unique_violation,
+    apply_site_template, escape_html, get_is_admin, iframe_srcdoc, is_htmx, is_unique_violation,
     normalize_builtin_template_html, render, require_user,
 };
 use crate::web::state::AppState;
@@ -25,6 +25,7 @@ pub async fn admin_dashboard(state: web::Data<AppState>, req: HttpRequest) -> im
         Err(resp) => return resp,
     };
 
+    let is_admin = get_is_admin(&req);
     let posts = db::list_content_for_user(&state.pool, ContentKind::Post, true, uid)
         .await
         .unwrap_or_default();
@@ -32,7 +33,7 @@ pub async fn admin_dashboard(state: web::Data<AppState>, req: HttpRequest) -> im
         .await
         .unwrap_or_default();
 
-    render(AdminDashboardTemplate { posts, pages })
+    render(AdminDashboardTemplate { posts, pages, is_admin })
 }
 
 #[get("/admin/posts")]
@@ -46,6 +47,7 @@ pub async fn admin_posts_list(
         Err(resp) => return resp,
     };
 
+    let is_admin = get_is_admin(&req);
     let q = query.q.clone().unwrap_or_default();
     let posts = db::list_content_for_user(&state.pool, ContentKind::Post, true, uid)
         .await
@@ -56,7 +58,7 @@ pub async fn admin_posts_list(
         .filter(|c| q.is_empty() || c.title.to_lowercase().contains(&q.to_lowercase()))
         .collect();
 
-    render(AdminPostsListTemplate { posts, query: q })
+    render(AdminPostsListTemplate { posts, query: q, is_admin })
 }
 
 #[get("/admin/pages")]
@@ -70,6 +72,7 @@ pub async fn admin_pages_list(
         Err(resp) => return resp,
     };
 
+    let is_admin = get_is_admin(&req);
     let q = query.q.clone().unwrap_or_default();
     let pages = db::list_content_for_user(&state.pool, ContentKind::Page, true, uid)
         .await
@@ -80,7 +83,7 @@ pub async fn admin_pages_list(
         .filter(|c| q.is_empty() || c.title.to_lowercase().contains(&q.to_lowercase()))
         .collect();
 
-    render(AdminPagesListTemplate { pages, query: q })
+    render(AdminPagesListTemplate { pages, query: q, is_admin })
 }
 
 #[get("/admin/{kind:posts|pages}/new")]
@@ -94,6 +97,7 @@ pub async fn admin_new(
         Err(resp) => return resp,
     };
 
+    let is_admin = get_is_admin(&req);
     let kind = path.into_inner();
 
     let templates = db::list_site_templates_for_user(&state.pool, uid)
@@ -104,6 +108,7 @@ pub async fn admin_new(
         kind,
         default_template: "default".to_string(),
         templates,
+        is_admin,
     })
 }
 
@@ -200,10 +205,11 @@ pub async fn admin_edit(
         return HttpResponse::InternalServerError().body(e.to_string());
     }
 
+    let is_admin = get_is_admin(&req);
     let templates = db::list_site_templates_for_user(&state.pool, uid)
         .await
         .unwrap_or_default();
-    render(AdminEditTemplate { item, templates })
+    render(AdminEditTemplate { item, templates, is_admin })
 }
 
 #[post("/admin/edit/{id}")]
@@ -277,12 +283,14 @@ pub async fn admin_update(
     }
 
     if is_htmx(&req) {
+        let is_admin = get_is_admin(&req);
         let templates = db::list_site_templates_for_user(&state.pool, uid)
             .await
             .unwrap_or_default();
         render(AdminEditTemplate {
             item: updated,
             templates,
+            is_admin,
         })
     } else {
         HttpResponse::SeeOther()
@@ -338,12 +346,14 @@ pub async fn admin_publish(
     }
 
     if is_htmx(&req) {
+        let is_admin = get_is_admin(&req);
         let templates = db::list_site_templates_for_user(&state.pool, uid)
             .await
             .unwrap_or_default();
         render(AdminEditTemplate {
             item: published,
             templates,
+            is_admin,
         })
     } else {
         HttpResponse::SeeOther()

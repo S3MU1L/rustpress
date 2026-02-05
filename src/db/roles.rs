@@ -3,6 +3,8 @@ use serde::Serialize;
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::models::{RoleName, User};
+
 #[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct UserWithRoles {
     pub id: Uuid,
@@ -12,7 +14,48 @@ pub struct UserWithRoles {
     pub roles: String, // comma-separated role names from SQL
 }
 
-pub async fn user_is_admin(pool: &PgPool, user_id: Uuid) -> Result<bool, sqlx::Error> {
+pub async fn create_user(
+    pool: &PgPool,
+    email: &str,
+    password_hash: &str,
+) -> Result<Option<User>, sqlx::Error> {
+    sqlx::query_as::<_, User>(
+        r#"
+        INSERT INTO users (email, password_hash)
+        VALUES ($1, $2)
+        ON CONFLICT (email) DO NOTHING
+        RETURNING *
+        "#,
+    )
+    .bind(email)
+    .bind(password_hash)
+    .fetch_optional(pool)
+    .await
+}
+
+pub async fn count_users(pool: &PgPool) -> Result<i64, sqlx::Error> {
+    sqlx::query_scalar(r#"SELECT COUNT(*) FROM users"#)
+        .fetch_one(pool)
+        .await
+}
+
+pub async fn count_admins(pool: &PgPool) -> Result<i64, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"
+        SELECT COUNT(DISTINCT ur.user_id)
+        FROM user_roles ur
+        JOIN roles r ON r.id = ur.role_id
+        WHERE r.name = 'admin'
+        "#,
+    )
+    .fetch_one(pool)
+    .await
+}
+
+pub async fn user_is_admin(
+    pool: &PgPool,
+    user_id: Uuid,
+) -> Result<bool, sqlx::Error> {
     let row = sqlx::query_scalar::<_, bool>(
         r#"
         SELECT EXISTS(
@@ -50,40 +93,72 @@ pub async fn get_user_role_names(
     Ok(rows)
 }
 
-pub async fn assign_role(
+/// Set the user's role. Each user has exactly one role (admin or editor).
+/// This replaces any existing role.
+pub async fn set_user_role(
     pool: &PgPool,
     user_id: Uuid,
-    role_name: &str,
+    role: RoleName,
 ) -> Result<(), sqlx::Error> {
+    sqlx::query(r#"DELETE FROM user_roles WHERE user_id = $1"#)
+        .bind(user_id)
+        .execute(pool)
+        .await?;
+
     sqlx::query(
         r#"
         INSERT INTO user_roles (user_id, role_id)
         SELECT $1, r.id FROM roles r WHERE r.name = $2
-        ON CONFLICT DO NOTHING
         "#,
     )
     .bind(user_id)
-    .bind(role_name)
+    .bind(role.as_str())
     .execute(pool)
     .await?;
 
     Ok(())
 }
 
-pub async fn remove_role(
+pub async fn update_user_email(
     pool: &PgPool,
     user_id: Uuid,
-    role_name: &str,
+    email: &str,
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
-        r#"
-        DELETE FROM user_roles
-        WHERE user_id = $1
-          AND role_id = (SELECT id FROM roles WHERE name = $2)
-        "#,
+        r#"UPDATE users SET email = $1, edited_at = now() WHERE id = $2"#,
+    )
+    .bind(email)
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+pub async fn update_user_password(
+    pool: &PgPool,
+    user_id: Uuid,
+    password_hash: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"UPDATE users SET password_hash = $1, edited_at = now() WHERE id = $2"#,
+    )
+    .bind(password_hash)
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+pub async fn soft_delete_user(
+    pool: &PgPool,
+    user_id: Uuid,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"UPDATE users SET deleted_at = now(), edited_at = now() WHERE id = $1"#,
     )
     .bind(user_id)
-    .bind(role_name)
     .execute(pool)
     .await?;
 

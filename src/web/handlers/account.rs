@@ -5,7 +5,7 @@ use rustpress::models::User;
 use rustpress::services::PasswordManager;
 
 use crate::web::forms::{AccountEmailForm, ChangePasswordForm};
-use crate::web::helpers::{load_user, render, require_user};
+use crate::web::helpers::{get_is_admin, load_user, render, require_user};
 use crate::web::state::AppState;
 use crate::web::templates::{MeAccountTemplate, MeSecurityTemplate};
 
@@ -21,10 +21,12 @@ pub async fn me_account(state: web::Data<AppState>, req: HttpRequest) -> impl Re
         Err(resp) => return resp,
     };
 
+    let is_admin = get_is_admin(&req);
     render(MeAccountTemplate {
         user,
         error: None,
         success: None,
+        is_admin,
     })
 }
 
@@ -39,6 +41,7 @@ pub async fn me_account_update_email(
         Err(resp) => return resp,
     };
 
+    let is_admin = get_is_admin(&req);
     let new_email = form.email.trim().to_string();
     if new_email.is_empty() {
         let user = match load_user(&state.pool, uid).await {
@@ -49,6 +52,7 @@ pub async fn me_account_update_email(
             user,
             error: Some("Email is required".to_string()),
             success: None,
+            is_admin,
         });
     }
 
@@ -70,6 +74,7 @@ pub async fn me_account_update_email(
             user,
             error: None,
             success: Some("Email updated".to_string()),
+            is_admin,
         }),
         Err(e) => {
             let user = load_user(&state.pool, uid).await.unwrap_or_else(|_| User {
@@ -85,6 +90,7 @@ pub async fn me_account_update_email(
                 user,
                 error: Some(format!("Update failed: {e}")),
                 success: None,
+                is_admin,
             })
         }
     }
@@ -102,11 +108,13 @@ pub async fn me_security(state: web::Data<AppState>, req: HttpRequest) -> impl R
         Err(resp) => return resp,
     };
 
+    let is_admin = get_is_admin(&req);
     render(MeSecurityTemplate {
         password_set: !user.password_hash.trim().is_empty(),
         email_verified: user.email_verified_at.is_some(),
         error: None,
         success: None,
+        is_admin,
     })
 }
 
@@ -126,12 +134,15 @@ pub async fn me_security_change_password(
         Err(resp) => return resp,
     };
 
+    let is_admin = get_is_admin(&req);
+
     if form.new_password.trim().len() < 4 {
         return render(MeSecurityTemplate {
             password_set: !user.password_hash.trim().is_empty(),
             email_verified: user.email_verified_at.is_some(),
             error: Some("New password must be at least 4 characters".to_string()),
             success: None,
+            is_admin,
         });
     }
 
@@ -143,6 +154,7 @@ pub async fn me_security_change_password(
                 email_verified: user.email_verified_at.is_some(),
                 error: Some(format!("Password verification error: {e}")),
                 success: None,
+                is_admin,
             });
         }
     };
@@ -153,6 +165,7 @@ pub async fn me_security_change_password(
             email_verified: user.email_verified_at.is_some(),
             error: Some("Current password is incorrect".to_string()),
             success: None,
+            is_admin,
         });
     }
 
@@ -164,6 +177,7 @@ pub async fn me_security_change_password(
                 email_verified: user.email_verified_at.is_some(),
                 error: Some(format!("Password hashing error: {e}")),
                 success: None,
+                is_admin,
             });
         }
     };
@@ -187,12 +201,14 @@ pub async fn me_security_change_password(
             email_verified: user.email_verified_at.is_some(),
             error: None,
             success: Some("Password updated".to_string()),
+            is_admin,
         }),
         Err(e) => render(MeSecurityTemplate {
             password_set: !user.password_hash.trim().is_empty(),
             email_verified: user.email_verified_at.is_some(),
             error: Some(format!("Update failed: {e}")),
             success: None,
+            is_admin,
         }),
     }
 }
@@ -206,6 +222,8 @@ pub async fn me_security_mark_email_verified(
         Ok(uid) => uid,
         Err(resp) => return resp,
     };
+
+    let is_admin = get_is_admin(&req);
 
     let updated = sqlx::query_as::<_, User>(
         r#"
@@ -225,6 +243,7 @@ pub async fn me_security_mark_email_verified(
             email_verified: user.email_verified_at.is_some(),
             error: None,
             success: Some("Email marked as verified (dev)".to_string()),
+            is_admin,
         }),
         Err(e) => HttpResponse::InternalServerError().body(format!("Database error: {e}")),
     }

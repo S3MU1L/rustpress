@@ -1,22 +1,29 @@
 use actix_web::cookie::{Cookie, SameSite};
-use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{
+    HttpRequest, HttpResponse, Responder, get, post, web,
+};
 
 use rustpress::db;
-use rustpress::models::{SiteCreate, User};
+use rustpress::models::{RoleName, SiteCreate, User};
 use rustpress::services::PasswordManager;
 
 use crate::web::forms::{AuthQuery, LoginForm, RegisterForm};
 use crate::web::helpers::{is_htmx, render};
 use crate::web::state::AppState;
-use crate::web::templates::{AdminLoginTemplate, AdminRegisterTemplate};
+use crate::web::templates::{
+    AdminLoginTemplate, AdminRegisterTemplate,
+};
 
 #[get("/admin/login")]
-pub async fn login_form(query: web::Query<AuthQuery>) -> impl Responder {
+pub async fn login_form(
+    query: web::Query<AuthQuery>,
+) -> impl Responder {
     let error = query.error.as_deref().map(|code| match code {
         "missing" => "Email and password are required".to_string(),
         "invalid" => "Invalid email or password".to_string(),
         "db" => "Database error. Please try again.".to_string(),
-        "internal" => "An internal error occurred. Please try again.".to_string(),
+        "internal" => "An internal error occurred. Please try again."
+            .to_string(),
         other => other.to_string(),
     });
 
@@ -37,16 +44,21 @@ pub async fn login_submit(
             .finish();
     }
 
-    let user = sqlx::query_as::<_, User>(r#"SELECT * FROM users WHERE email = $1"#)
-        .bind(&email)
-        .fetch_optional(&state.pool)
-        .await;
+    let user = sqlx::query_as::<_, User>(
+        r#"SELECT * FROM users WHERE email = $1"#,
+    )
+    .bind(&email)
+    .fetch_optional(&state.pool)
+    .await;
 
     let user = match user {
         Ok(Some(u)) => u,
         Ok(None) => {
             return HttpResponse::SeeOther()
-                .insert_header(("Location", "/admin/login?error=invalid"))
+                .insert_header((
+                    "Location",
+                    "/admin/login?error=invalid",
+                ))
                 .finish();
         }
         Err(e) => {
@@ -57,12 +69,18 @@ pub async fn login_submit(
         }
     };
 
-    let ok = match PasswordManager::verify_password(&password, &user.password_hash) {
+    let ok = match PasswordManager::verify_password(
+        &password,
+        &user.password_hash,
+    ) {
         Ok(v) => v,
         Err(e) => {
             eprintln!("Password verification error: {e}");
             return HttpResponse::SeeOther()
-                .insert_header(("Location", "/admin/login?error=internal"))
+                .insert_header((
+                    "Location",
+                    "/admin/login?error=internal",
+                ))
                 .finish();
         }
     };
@@ -86,12 +104,20 @@ pub async fn login_submit(
 }
 
 #[get("/admin/register")]
-pub async fn register_form(query: web::Query<AuthQuery>) -> impl Responder {
+pub async fn register_form(
+    query: web::Query<AuthQuery>,
+) -> impl Responder {
     let error = query.error.as_deref().map(|code| match code {
-        "missing" => "Email and password (min 4 characters) are required".to_string(),
-        "exists" => "An account with this email already exists".to_string(),
+        "missing" => {
+            "Email and password (min 4 characters) are required"
+                .to_string()
+        }
+        "exists" => {
+            "An account with this email already exists".to_string()
+        }
         "db" => "Database error. Please try again.".to_string(),
-        "internal" => "An internal error occurred. Please try again.".to_string(),
+        "internal" => "An internal error occurred. Please try again."
+            .to_string(),
         other => other.to_string(),
     });
 
@@ -108,50 +134,71 @@ pub async fn register_submit(
 
     if email.is_empty() || password.len() < 4 {
         return HttpResponse::SeeOther()
-            .insert_header(("Location", "/admin/register?error=missing"))
+            .insert_header((
+                "Location",
+                "/admin/register?error=missing",
+            ))
             .finish();
     }
 
-    let password_hash = match PasswordManager::hash_password(&password) {
-        Ok(h) => h,
-        Err(e) => {
-            eprintln!("Password hashing error: {e}");
-            return HttpResponse::SeeOther()
-                .insert_header(("Location", "/admin/register?error=internal"))
-                .finish();
-        }
-    };
+    let password_hash =
+        match PasswordManager::hash_password(&password) {
+            Ok(h) => h,
+            Err(e) => {
+                eprintln!("Password hashing error: {e}");
+                return HttpResponse::SeeOther()
+                    .insert_header((
+                        "Location",
+                        "/admin/register?error=internal",
+                    ))
+                    .finish();
+            }
+        };
 
-    let user = sqlx::query_as::<_, User>(
-        r#"
-        INSERT INTO users (email, password_hash)
-        VALUES ($1, $2)
-        ON CONFLICT (email) DO NOTHING
-        RETURNING *
-        "#,
-    )
-    .bind(&email)
-    .bind(&password_hash)
-    .fetch_optional(&state.pool)
-    .await;
+    let user =
+        match db::create_user(&state.pool, &email, &password_hash)
+            .await
+        {
+            Ok(Some(u)) => u,
+            Ok(None) => {
+                return HttpResponse::SeeOther()
+                    .insert_header((
+                        "Location",
+                        "/admin/register?error=exists",
+                    ))
+                    .finish();
+            }
+            Err(e) => {
+                eprintln!("Database error: {e}");
+                return HttpResponse::SeeOther()
+                    .insert_header((
+                        "Location",
+                        "/admin/register?error=db",
+                    ))
+                    .finish();
+            }
+        };
 
-    let user = match user {
-        Ok(Some(u)) => u,
-        Ok(None) => {
-            return HttpResponse::SeeOther()
-                .insert_header(("Location", "/admin/register?error=exists"))
-                .finish();
-        }
-        Err(e) => {
-            eprintln!("Database error: {e}");
-            return HttpResponse::SeeOther()
-                .insert_header(("Location", "/admin/register?error=db"))
-                .finish();
-        }
+    // Set role: first user gets admin, subsequent users get editor.
+    let user_count = db::count_users(&state.pool).await.unwrap_or(1);
+    let role = if user_count <= 1 {
+        RoleName::Admin
+    } else {
+        RoleName::Editor
     };
+    if let Err(e) =
+        db::set_user_role(&state.pool, user.id, role).await
+    {
+        eprintln!("Failed to set user role: {e}");
+    }
 
     // Create default site if none exists
-    if db::get_default_site(&state.pool).await.ok().flatten().is_none() {
+    if db::get_default_site(&state.pool)
+        .await
+        .ok()
+        .flatten()
+        .is_none()
+    {
         let site_data = SiteCreate {
             owner_user_id: user.id,
             name: "RustPress".to_string(),
@@ -159,8 +206,12 @@ pub async fn register_submit(
             default_template: "default".to_string(),
         };
 
-        if let Ok(site) = db::create_site(&state.pool, &site_data).await {
-            if let Err(e) = db::publish_site(&state.pool, site.id, user.id).await {
+        if let Ok(site) =
+            db::create_site(&state.pool, &site_data).await
+        {
+            if let Err(e) =
+                db::publish_site(&state.pool, site.id, user.id).await
+            {
                 eprintln!("Failed to publish default site: {e}");
             }
         }

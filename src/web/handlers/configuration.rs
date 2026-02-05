@@ -5,7 +5,7 @@ use uuid::Uuid;
 use rustpress::db;
 use rustpress::models::{ContentKind, HomepageType};
 
-use crate::web::helpers::{render, require_user};
+use crate::web::helpers::{get_is_admin, render, require_user};
 use crate::web::state::AppState;
 use crate::web::templates::ConfigurationTemplate;
 
@@ -25,6 +25,7 @@ pub async fn configuration_page(
         Err(resp) => return resp,
     };
 
+    let is_admin = get_is_admin(&req);
     let site = db::get_default_site(&state.pool).await.ok().flatten();
     let pages = db::list_content(&state.pool, ContentKind::Page, false)
         .await
@@ -35,6 +36,7 @@ pub async fn configuration_page(
         pages,
         error: None,
         success: None,
+        is_admin,
     })
 }
 
@@ -49,6 +51,8 @@ pub async fn configuration_update(
         Err(resp) => return resp,
     };
 
+    let is_admin = get_is_admin(&req);
+
     let site = match db::get_default_site(&state.pool).await {
         Ok(Some(s)) => s,
         Ok(None) => {
@@ -60,6 +64,7 @@ pub async fn configuration_update(
                 pages,
                 error: Some("No site configured".to_string()),
                 success: None,
+                is_admin,
             });
         }
         Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
@@ -100,6 +105,7 @@ pub async fn configuration_update(
                 pages,
                 error: None,
                 success: Some("Configuration saved".to_string()),
+                is_admin,
             })
         }
         Ok(None) => {
@@ -108,6 +114,7 @@ pub async fn configuration_update(
                 pages,
                 error: Some("Update failed - site not found or no permission".to_string()),
                 success: None,
+                is_admin,
             })
         }
         Err(e) => {
@@ -116,6 +123,7 @@ pub async fn configuration_update(
                 pages,
                 error: Some(format!("Update failed: {e}")),
                 success: None,
+                is_admin,
             })
         }
     }

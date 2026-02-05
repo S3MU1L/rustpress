@@ -4,7 +4,7 @@ use uuid::Uuid;
 use rustpress::db;
 
 use crate::web::forms::ThemesQuery;
-use crate::web::helpers::{render, require_user};
+use crate::web::helpers::{get_is_admin, render, require_user};
 use crate::web::state::AppState;
 use crate::web::templates::ThemesTemplate;
 
@@ -48,12 +48,14 @@ pub async fn themes_list(
         _ => {}
     }
 
+    let is_admin = get_is_admin(&req);
     render(ThemesTemplate {
         templates,
         sites,
         selected_site_id,
         query: q,
         category,
+        is_admin,
     })
 }
 

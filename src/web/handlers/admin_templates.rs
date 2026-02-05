@@ -4,7 +4,7 @@ use uuid::Uuid;
 use rustpress::db;
 
 use crate::web::forms::{AdminTemplateCreateForm, AdminTemplateUpdateForm};
-use crate::web::helpers::{is_htmx, is_unique_violation, render, require_user};
+use crate::web::helpers::{get_is_admin, is_htmx, is_unique_violation, render, require_user};
 use crate::web::state::AppState;
 use crate::web::templates::{AdminTemplateEditTemplate, AdminTemplateNewTemplate, AdminTemplatesListTemplate};
 
@@ -15,20 +15,22 @@ pub async fn admin_templates_list(state: web::Data<AppState>, req: HttpRequest) 
         Err(resp) => return resp,
     };
 
+    let is_admin = get_is_admin(&req);
     let templates = db::list_site_templates_for_user(&state.pool, uid)
         .await
         .unwrap_or_default();
-    render(AdminTemplatesListTemplate { templates })
+    render(AdminTemplatesListTemplate { templates, is_admin })
 }
 
 #[get("/admin/templates/new")]
-pub async fn admin_template_new(req: HttpRequest) -> impl Responder {
+pub async fn admin_template_new(_state: web::Data<AppState>, req: HttpRequest) -> impl Responder {
     if let Err(resp) = require_user(&req) {
         return resp;
     }
 
+    let is_admin = get_is_admin(&req);
     let starter_html = "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\"/>\n    <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/>\n    <title>{{title}}</title>\n    <link rel=\"stylesheet\" href=\"/static/app.css\"/>\n  </head>\n  <body>\n    <header class=\"topbar\">\n      <div class=\"container\">\n        <a class=\"brand\" href=\"/\">RustPress</a>\n        <nav class=\"nav\"><a href=\"/admin\">Admin</a></nav>\n      </div>\n    </header>\n    <main class=\"container\">\n      <article class=\"card\">\n        <h1>{{title}}</h1>\n        <div class=\"prose\">{{content}}</div>\n      </article>\n    </main>\n  </body>\n</html>\n".to_string();
-    render(AdminTemplateNewTemplate { starter_html })
+    render(AdminTemplateNewTemplate { starter_html, is_admin })
 }
 
 #[post("/admin/templates")]
@@ -97,7 +99,8 @@ pub async fn admin_template_edit(
             return HttpResponse::Forbidden().body("Forbidden");
         }
     }
-    render(AdminTemplateEditTemplate { template })
+    let is_admin = get_is_admin(&req);
+    render(AdminTemplateEditTemplate { template, is_admin })
 }
 
 #[post("/admin/templates/{id}")]
@@ -149,7 +152,8 @@ pub async fn admin_template_update(
     };
 
     if is_htmx(&req) {
-        render(AdminTemplateEditTemplate { template: updated })
+        let is_admin = get_is_admin(&req);
+        render(AdminTemplateEditTemplate { template: updated, is_admin })
     } else {
         HttpResponse::SeeOther()
             .insert_header(("Location", format!("/admin/templates/{}", id)))

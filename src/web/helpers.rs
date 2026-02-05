@@ -1,9 +1,21 @@
-use actix_web::{HttpRequest, HttpResponse};
+use actix_web::{HttpMessage, HttpRequest, HttpResponse};
 use askama::Template;
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use rustpress::models::User;
+
+/// Marker stored in request extensions by the admin middleware.
+#[derive(Clone, Copy)]
+pub struct AdminStatus(pub bool);
+
+/// Read the admin flag set by middleware. Returns `false` if middleware didn't run.
+pub fn get_is_admin(req: &HttpRequest) -> bool {
+    req.extensions()
+        .get::<AdminStatus>()
+        .map(|s| s.0)
+        .unwrap_or(false)
+}
 
 pub fn is_htmx(req: &HttpRequest) -> bool {
     req.headers()

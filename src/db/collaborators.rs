@@ -1,7 +1,7 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::models::{ContentCollaborator, ContentItem, ContentKind};
+use crate::models::{ContentCollaborator, ContentItem, ContentKind, RoleName};
 
 pub async fn can_view_content(pool: &PgPool, item: &ContentItem, uid: Uuid) -> Result<bool, sqlx::Error> {
     if item.owner_user_id.is_none() {
@@ -38,7 +38,7 @@ pub async fn can_edit_content(pool: &PgPool, item: &ContentItem, uid: Uuid) -> R
         return Ok(true);
     }
 
-    let role = sqlx::query_scalar::<_, Option<String>>(
+    let role = sqlx::query_scalar::<_, Option<RoleName>>(
         r#"
         SELECT role
         FROM content_item_collaborators
@@ -51,7 +51,7 @@ pub async fn can_edit_content(pool: &PgPool, item: &ContentItem, uid: Uuid) -> R
     .await?
     .flatten();
 
-    Ok(matches!(role.as_deref(), Some("editor")))
+    Ok(role == Some(RoleName::Editor))
 }
 
 pub async fn can_manage_collaborators(
@@ -133,7 +133,7 @@ pub async fn add_collaborator(
     pool: &PgPool,
     content_item_id: Uuid,
     email: &str,
-    role: &str,
+    role: RoleName,
     invited_by_user_id: Option<Uuid>,
 ) -> Result<(), sqlx::Error> {
     let user_id = sqlx::query_scalar::<_, Uuid>(
@@ -169,7 +169,7 @@ pub async fn set_collaborator_role(
     pool: &PgPool,
     content_item_id: Uuid,
     user_id: Uuid,
-    role: &str,
+    role: RoleName,
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
