@@ -102,8 +102,10 @@ RUST_LOG=trace cargo run
 
 Error logs include contextual information such as:
 - Operation type (e.g., `user_lookup`, `password_verification`)
-- User email (when safe to log)
 - Database error classification (e.g., `unique_violation`, `connection_error`)
+- Detailed error messages from the underlying libraries
+
+**Privacy Note**: User email addresses and other PII are not logged to protect user privacy and comply with data protection regulations.
 
 This helps with debugging while keeping user-facing error messages generic for security.
 

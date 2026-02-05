@@ -64,7 +64,6 @@ pub async fn login_submit(
         Err(e) => {
             tracing::error!(
                 error = %e,
-                email = %email,
                 operation = "user_lookup",
                 error_type = ?classify_db_error(&e),
                 "Database error during user login: failed to fetch user by email"
@@ -83,7 +82,6 @@ pub async fn login_submit(
         Err(e) => {
             tracing::error!(
                 error = %e,
-                email = %email,
                 operation = "password_verification",
                 "Password verification error during user login"
             );
@@ -189,7 +187,6 @@ pub async fn register_submit(
         Err(e) => {
             tracing::error!(
                 error = %e,
-                email = %email,
                 operation = "user_creation",
                 error_type = ?classify_db_error(&e),
                 "Database error during user registration: failed to create user"
