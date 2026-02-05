@@ -307,28 +307,21 @@ pub async fn users_delete(
         .await;
     }
 
-    let target_roles =
-        db::get_user_role_names(&state.pool, target_id)
-            .await
-            .unwrap_or_default();
-    if target_roles.contains(&"admin".to_string())
-        && db::count_admins(&state.pool).await.unwrap_or(0) <= 1
-    {
-        return render_list(
-            &state.pool,
-            is_admin,
-            Some("Cannot delete the last admin".into()),
-            None,
-        )
-        .await;
-    }
-
+    // Attempt to delete the user. The database trigger will prevent
+    // deletion of the last admin, eliminating the race condition.
     if let Err(e) = db::soft_delete_user(&state.pool, target_id).await
     {
+        // Check if this is the "last admin" constraint violation
+        let error_msg = if e.to_string().contains("Cannot delete the last admin") {
+            "Cannot delete the last admin".to_string()
+        } else {
+            format!("Delete failed: {e}")
+        };
+        
         return render_list(
             &state.pool,
             is_admin,
-            Some(format!("Delete failed: {e}")),
+            Some(error_msg),
             None,
         )
         .await;
