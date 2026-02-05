@@ -62,7 +62,13 @@ pub async fn login_submit(
                 .finish();
         }
         Err(e) => {
-            eprintln!("Database error: {e}");
+            tracing::error!(
+                error = %e,
+                email = %email,
+                operation = "user_lookup",
+                error_type = ?classify_db_error(&e),
+                "Database error during user login: failed to fetch user by email"
+            );
             return HttpResponse::SeeOther()
                 .insert_header(("Location", "/admin/login?error=db"))
                 .finish();
@@ -75,7 +81,12 @@ pub async fn login_submit(
     ) {
         Ok(v) => v,
         Err(e) => {
-            eprintln!("Password verification error: {e}");
+            tracing::error!(
+                error = %e,
+                email = %email,
+                operation = "password_verification",
+                "Password verification error during user login"
+            );
             return HttpResponse::SeeOther()
                 .insert_header((
                     "Location",
@@ -145,7 +156,11 @@ pub async fn register_submit(
         match PasswordManager::hash_password(&password) {
             Ok(h) => h,
             Err(e) => {
-                eprintln!("Password hashing error: {e}");
+                tracing::error!(
+                    error = %e,
+                    operation = "password_hashing",
+                    "Password hashing error during user registration"
+                );
                 return HttpResponse::SeeOther()
                     .insert_header((
                         "Location",
@@ -155,29 +170,38 @@ pub async fn register_submit(
             }
         };
 
-    let user =
-        match db::create_user(&state.pool, &email, &password_hash)
-            .await
-        {
-            Ok(Some(u)) => u,
-            Ok(None) => {
-                return HttpResponse::SeeOther()
-                    .insert_header((
-                        "Location",
-                        "/admin/register?error=exists",
-                    ))
-                    .finish();
-            }
-            Err(e) => {
-                eprintln!("Database error: {e}");
-                return HttpResponse::SeeOther()
-                    .insert_header((
-                        "Location",
-                        "/admin/register?error=db",
-                    ))
-                    .finish();
-            }
-        };
+    let user = match db::create_user(
+        &state.pool,
+        &email,
+        &password_hash,
+    )
+    .await
+    {
+        Ok(Some(u)) => u,
+        Ok(None) => {
+            return HttpResponse::SeeOther()
+                .insert_header((
+                    "Location",
+                    "/admin/register?error=exists",
+                ))
+                .finish();
+        }
+        Err(e) => {
+            tracing::error!(
+                error = %e,
+                email = %email,
+                operation = "user_creation",
+                error_type = ?classify_db_error(&e),
+                "Database error during user registration: failed to create user"
+            );
+            return HttpResponse::SeeOther()
+                .insert_header((
+                    "Location",
+                    "/admin/register?error=db",
+                ))
+                .finish();
+        }
+    };
 
     // Set role: first user gets admin, subsequent users get editor.
     let user_count = db::count_users(&state.pool).await.unwrap_or(1);
@@ -189,7 +213,13 @@ pub async fn register_submit(
     if let Err(e) =
         db::set_user_role(&state.pool, user.id, role).await
     {
-        eprintln!("Failed to set user role: {e}");
+        tracing::error!(
+            error = %e,
+            user_id = %user.id,
+            role = ?role,
+            operation = "set_user_role",
+            "Failed to set user role during registration"
+        );
     }
 
     // Create default site if none exists
@@ -212,7 +242,13 @@ pub async fn register_submit(
             if let Err(e) =
                 db::publish_site(&state.pool, site.id, user.id).await
             {
-                eprintln!("Failed to publish default site: {e}");
+                tracing::error!(
+                    error = %e,
+                    site_id = %site.id,
+                    user_id = %user.id,
+                    operation = "publish_site",
+                    "Failed to publish default site during registration"
+                );
             }
         }
     }
@@ -248,6 +284,38 @@ pub async fn logout(req: HttpRequest) -> impl Responder {
             .cookie(cookie)
             .insert_header(("Location", "/admin/login"))
             .finish()
+    }
+}
+
+/// Classify database errors to provide more specific logging context
+fn classify_db_error(error: &sqlx::Error) -> &'static str {
+    match error {
+        sqlx::Error::RowNotFound => "row_not_found",
+        sqlx::Error::ColumnNotFound(_) => "column_not_found",
+        sqlx::Error::Database(db_err) => {
+            // Check for common PostgreSQL error codes
+            if let Some(code) = db_err.code() {
+                match code.as_ref() {
+                    "23505" => "unique_violation", // Duplicate key
+                    "23503" => "foreign_key_violation", // FK violation
+                    "23502" => "not_null_violation", // NOT NULL violation
+                    "23514" => "check_violation", // CHECK constraint
+                    "42P01" => "undefined_table", // Table doesn't exist
+                    "42703" => "undefined_column", // Column doesn't exist
+                    "08000" | "08003" | "08006" => "connection_error", // Connection issues
+                    _ => "database_constraint_or_other",
+                }
+            } else {
+                "database_error_unknown"
+            }
+        }
+        sqlx::Error::Io(_) => "io_error",
+        sqlx::Error::Tls(_) => "tls_error",
+        sqlx::Error::Protocol(_) => "protocol_error",
+        sqlx::Error::PoolTimedOut => "pool_timeout",
+        sqlx::Error::PoolClosed => "pool_closed",
+        sqlx::Error::WorkerCrashed => "worker_crashed",
+        _ => "other_error",
     }
 }
 

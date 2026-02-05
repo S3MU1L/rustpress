@@ -4,6 +4,16 @@ mod web;
 async fn main() -> std::io::Result<()> {
     dotenvy::dotenv().ok();
 
+    // Initialize tracing subscriber for structured logging
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| {
+                    tracing_subscriber::EnvFilter::new("info")
+                }),
+        )
+        .init();
+
     use crate::web::helpers::{AdminStatus, render_unauthorized};
     use crate::web::{AppState, handlers};
     use actix_files::Files;
@@ -103,9 +113,9 @@ async fn main() -> std::io::Result<()> {
         pool: db.pool.clone(),
     });
 
-    println!("Starting RustPress (Actix + Askama + HTMX)");
-    println!("Server running at http://{bind_addr}");
-    println!("Admin console at http://{bind_addr}/admin");
+    tracing::info!("Starting RustPress (Actix + Askama + HTMX)");
+    tracing::info!("Server running at http://{bind_addr}");
+    tracing::info!("Admin console at http://{bind_addr}/admin");
 
     HttpServer::new(move || {
         App::new()
