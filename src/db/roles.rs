@@ -5,6 +5,11 @@ use uuid::Uuid;
 
 use crate::models::{RoleName, User};
 
+/// Advisory lock key used to serialize admin role assignment during user registration.
+/// This prevents race conditions where multiple concurrent registrations could both
+/// become admins.
+const ADMIN_ROLE_LOCK_KEY: i64 = 1234567890;
+
 #[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct UserWithRoles {
     pub id: Uuid,
@@ -44,8 +49,7 @@ pub async fn create_user_with_role(
     let mut tx = pool.begin().await?;
 
     // Acquire advisory lock to serialize admin role assignment
-    // Lock key is arbitrary but consistent (using a hash of "admin_role_assignment")
-    sqlx::query("SELECT pg_advisory_xact_lock(1234567890)")
+    sqlx::query(&format!("SELECT pg_advisory_xact_lock({})", ADMIN_ROLE_LOCK_KEY))
         .execute(&mut *tx)
         .await?;
 
@@ -75,7 +79,7 @@ pub async fn create_user_with_role(
     // Check if any admin exists
     let admin_count = sqlx::query_scalar::<_, i64>(
         r#"
-        SELECT COUNT(DISTINCT ur.user_id)
+        SELECT COUNT(*)
         FROM user_roles ur
         JOIN roles r ON r.id = ur.role_id
         WHERE r.name = 'admin'
