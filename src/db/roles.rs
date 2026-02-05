@@ -49,7 +49,8 @@ pub async fn create_user_with_role(
     let mut tx = pool.begin().await?;
 
     // Acquire advisory lock to serialize admin role assignment
-    sqlx::query(&format!("SELECT pg_advisory_xact_lock({})", ADMIN_ROLE_LOCK_KEY))
+    sqlx::query("SELECT pg_advisory_xact_lock($1)")
+        .bind(ADMIN_ROLE_LOCK_KEY)
         .execute(&mut *tx)
         .await?;
 
