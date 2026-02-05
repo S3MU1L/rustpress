@@ -19,7 +19,12 @@ BEGIN
     
     -- If not an admin, allow the operation
     IF NOT is_target_admin THEN
-        RETURN NEW;
+        -- For DELETE operations, NEW is NULL, so return OLD
+        IF TG_OP = 'DELETE' THEN
+            RETURN OLD;
+        ELSE
+            RETURN NEW;
+        END IF;
     END IF;
     
     -- Count remaining admins (excluding the one being deleted)
@@ -33,11 +38,16 @@ BEGIN
     
     -- Prevent deletion if this is the last admin
     IF admin_count = 0 THEN
-        RAISE EXCEPTION 'Cannot delete the last admin user'
+        RAISE EXCEPTION 'Cannot delete the last admin'
             USING ERRCODE = '23514'; -- check_violation
     END IF;
     
-    RETURN NEW;
+    -- For DELETE operations, NEW is NULL, so return OLD
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    ELSE
+        RETURN NEW;
+    END IF;
 END;
 $$ LANGUAGE plpgsql;
 
