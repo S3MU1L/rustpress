@@ -19,7 +19,19 @@
       {% endif %}
     </div>
   </div>
-  <a class="btn-secondary" href="/admin/templates">Back to Templates</a>
+  <div class="flex items-center gap-2">
+    {% if template.is_builtin %}
+      <form method="post" action="/admin/templates/{{ template.id }}/duplicate" hx-post="/admin/templates/{{ template.id }}/duplicate" hx-swap="none" style="display:inline">
+        <button class="btn-primary text-sm" type="submit">Duplicate</button>
+      </form>
+    {% else %}
+      <button type="button" class="btn-secondary text-sm text-red-500 hover:text-red-700"
+              hx-post="/admin/templates/{{ template.id }}/delete"
+              hx-swap="none"
+              hx-confirm="Delete template '{{ template.name }}'? Pages using it will fall back to the default template.">Delete</button>
+    {% endif %}
+    <a class="btn-secondary text-sm" href="/admin/templates">Back to Templates</a>
+  </div>
 </div>
 
 {% if template.is_builtin %}
@@ -111,27 +123,6 @@
       </dl>
     </div>
 
-    {% if template.is_builtin %}
-    <!-- Duplicate -->
-    <div class="card p-4">
-      <h3 class="text-sm font-medium mb-2">Make a Copy</h3>
-      <p class="text-rp-muted text-sm mb-4">Create a custom copy of this template that you can edit.</p>
-      <form method="post" action="/admin/templates/{{ template.id }}/duplicate" hx-post="/admin/templates/{{ template.id }}/duplicate" hx-swap="none">
-        <button class="btn-primary" type="submit">Copy as Custom Template</button>
-      </form>
-    </div>
-    {% endif %}
-
-    {% if !template.is_builtin %}
-    <!-- Delete -->
-    <div class="card p-4 border-red-200">
-      <h3 class="text-sm font-medium mb-2 text-red-600">Delete Template</h3>
-      <p class="text-rp-muted text-sm mb-4">Permanently delete this template. Pages using it will fall back to the default template.</p>
-      <form method="post" action="/admin/templates/{{ template.id }}/delete" hx-post="/admin/templates/{{ template.id }}/delete" hx-swap="none" hx-confirm="Delete template '{{ template.name }}'? This cannot be undone.">
-        <button class="btn-secondary text-red-500 hover:text-red-700" type="submit">Delete Template</button>
-      </form>
-    </div>
-    {% endif %}
   </div>
 </div>
 {% endblock %}

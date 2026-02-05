@@ -123,6 +123,22 @@ pub async fn update_content(
     .await
 }
 
+pub async fn delete_content(
+    pool: &PgPool,
+    id: Uuid,
+) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query(
+        r#"
+        DELETE FROM content_items
+        WHERE id = $1
+        "#,
+    )
+    .bind(id)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() > 0)
+}
+
 pub async fn publish_content(
     pool: &PgPool,
     id: Uuid,

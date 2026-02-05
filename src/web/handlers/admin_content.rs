@@ -528,6 +528,65 @@ pub async fn admin_publish(
     }
 }
 
+#[post("/admin/edit/{id}/delete")]
+pub async fn admin_delete(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<Uuid>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let id = path.into_inner();
+    let item = match db::get_content_by_id(&state.pool, id).await {
+        Ok(Some(item)) => item,
+        Ok(None) => return render_not_found(&req),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(e.to_string());
+        }
+    };
+
+    let can_edit =
+        match db::can_edit_content(&state.pool, &item, uid).await {
+            Ok(v) => v,
+            Err(e) => {
+                return HttpResponse::InternalServerError()
+                    .body(e.to_string());
+            }
+        };
+
+    if !can_edit {
+        return HttpResponse::Forbidden().body("Forbidden");
+    }
+
+    let redirect = match item.kind {
+        ContentKind::Post => "/admin/posts",
+        ContentKind::Page => "/admin/pages",
+    };
+
+    match db::delete_content(&state.pool, id).await {
+        Ok(true) => {}
+        Ok(false) => return render_not_found(&req),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(e.to_string());
+        }
+    }
+
+    if is_htmx(&req) {
+        HttpResponse::Ok()
+            .insert_header(("HX-Redirect", redirect))
+            .finish()
+    } else {
+        HttpResponse::SeeOther()
+            .insert_header(("Location", redirect))
+            .finish()
+    }
+}
+
 #[post("/admin/edit/{id}/autosave")]
 pub async fn admin_autosave(
     state: web::Data<AppState>,
@@ -936,6 +995,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(admin_edit)
         .service(admin_update)
         .service(admin_publish)
+        .service(admin_delete)
         .service(admin_autosave)
         .service(admin_preview)
         .service(admin_preview_fullpage)

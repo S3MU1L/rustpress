@@ -36,6 +36,10 @@
       {% if item.status == "draft" %}
         <button class="btn-primary text-sm bg-rp-secondary hover:bg-rp-secondary-hover" type="button" hx-post="/admin/publish/{{ item.id }}" hx-target="body" hx-swap="outerHTML">Publish</button>
       {% endif %}
+      <button type="button" class="btn-secondary text-sm text-red-500 hover:text-red-700"
+              hx-post="/admin/edit/{{ item.id }}/delete"
+              hx-swap="none"
+              hx-confirm="Delete '{{ item.title }}'? This cannot be undone.">Delete</button>
     </div>
   </div>
 
@@ -94,7 +98,7 @@
           <h3 class="text-sm font-medium">Live Preview</h3>
           <span class="text-xs text-rp-muted">Auto-updates</span>
         </div>
-        <div id="preview" class="border border-rp-border rounded overflow-hidden bg-white" hx-post="/admin/edit/{{ item.id }}/preview" hx-trigger="load, editor-change delay:500ms" hx-include="#edit-form" hx-target="this" hx-swap="innerHTML">
+        <div id="preview" class="border border-rp-border rounded overflow-hidden bg-white" hx-post="/admin/edit/{{ item.id }}/preview" hx-trigger="load, editor-change from:body delay:500ms, every 3s" hx-include="#edit-form" hx-target="this" hx-swap="innerHTML">
           <p class="text-rp-muted text-sm p-4">Loading preview...</p>
         </div>
       </div>
@@ -123,6 +127,7 @@
           {% endif %}
         </dl>
       </div>
+
     </div>
   </div>
 
