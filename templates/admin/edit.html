@@ -1,4 +1,5 @@
 {% extends "layouts/base.html" %}
+{% import "partials/content_macros.html" as macros %}
 
 {% block title %}Edit - {{ item.title }} - RustPress{% endblock %}
 
@@ -7,62 +8,76 @@
 {% endblock %}
 
 {% block content %}
-<form id="edit-form" method="post" action="/admin/edit/{{ item.id }}" hx-post="/admin/edit/{{ item.id }}" hx-target="body" hx-swap="outerHTML">
+<form id="edit-form" method="post" action="/admin/edit/{{ item.id }}" hx-post="/admin/edit/{{ item.id }}"
+  hx-target="body" hx-swap="outerHTML">
   <!-- Top Bar -->
-  <div class="flex items-center justify-between mb-8">
-    <div class="flex items-center gap-4">
-      <a class="p-2 rounded-lg text-rp-muted hover:text-rp-text hover:bg-rp-border/30 transition-colors" href="/admin" title="Back to Dashboard">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-        </svg>
-      </a>
-      <div>
-        <h1 class="text-2xl font-bold mb-0">{{ item.title }}</h1>
-        <div class="flex items-center gap-2 mt-1">
-          <span class="px-3 py-1 rounded-full text-xs font-medium bg-rp-primary/10 text-rp-primary">{{ item.kind }}</span>
-          {% if item.status == "published" %}
-            <span class="px-3 py-1 rounded-full text-xs font-medium bg-rp-secondary/10 text-rp-secondary">{{ item.status }}</span>
-          {% else %}
-            <span class="px-3 py-1 rounded-full text-xs font-medium bg-rp-tertiary/10 text-rp-tertiary">{{ item.status }}</span>
-          {% endif %}
-          <span id="autosave-status" class="text-rp-muted text-xs"></span>
+  <div class="space-y-4 mb-8">
+    <!-- Row 1: Title and Action Buttons -->
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        {{ macros::back_button() }}
+        <div>
+          <h1 class="text-2xl font-bold mb-0">{{ item.title }}</h1>
+          <div class="flex items-center gap-2 mt-1">
+            <span class="px-3 py-1 rounded-full text-xs font-medium bg-rp-primary/10 text-rp-primary">{{ item.kind
+              }}</span>
+            {% if item.status == "published" %}
+            <span class="px-3 py-1 rounded-full text-xs font-medium bg-rp-secondary/10 text-rp-secondary">{{ item.status
+              }}</span>
+            {% else %}
+            <span class="px-3 py-1 rounded-full text-xs font-medium bg-rp-tertiary/10 text-rp-tertiary">{{ item.status
+              }}</span>
+            {% endif %}
+            <span id="autosave-status" class="text-rp-muted text-xs"></span>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="flex items-center gap-2">
-      <a class="btn-secondary text-sm inline-flex items-center gap-2" href="/admin/content/{{ item.id }}/preview" target="_blank">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-        Preview
-      </a>
-      {% if item.kind == "post" %}
-        <a class="btn-secondary text-sm inline-flex items-center gap-2" href="/blog/{{ item.slug }}" target="_blank">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+      <div class="flex items-center gap-2">
+        <a class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
+          href="/admin/content/{{ item.id }}/preview" target="_blank">
+          {{ macros::preview_button() }}
+          Preview
+        </a>
+        {% if item.kind == "post" %}
+        <a class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
+          href="/blog/{{ item.slug }}" target="_blank">
+          {{ macros::external_link_icon() }}
           View Live
         </a>
-      {% else %}
-        <a class="btn-secondary text-sm inline-flex items-center gap-2" href="/{{ item.slug }}" target="_blank">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+        {% else %}
+        <a class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
+          href="/{{ item.slug }}" target="_blank">
+          {{ macros::external_link_icon() }}
           View Live
         </a>
-      {% endif %}
-      <button class="btn-primary text-sm inline-flex items-center gap-2" type="submit">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-        Save
-      </button>
-      {% if item.status == "draft" %}
-        <button class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-rp-secondary text-white font-medium hover:bg-rp-secondary-hover transition-colors text-sm" type="button" hx-post="/admin/publish/{{ item.id }}" hx-target="body" hx-swap="outerHTML">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"/></svg>
+        {% endif %}
+        <button
+          class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
+          type="submit">
+          {{ macros::save_icon() }}
+          Save
+        </button>
+        {% if item.status == "draft" %}
+        <button
+          class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
+          type="button" hx-post="/admin/publish/{{ item.id }}" hx-target="body" hx-swap="outerHTML">
+          {{ macros::publish_icon() }}
           Publish
         </button>
-      {% endif %}
-      <button type="button" class="btn-secondary text-sm inline-flex items-center gap-2 text-rp-error hover:text-rp-error"
-              hx-post="/admin/edit/{{ item.id }}/delete"
-              hx-swap="none"
-              hx-confirm="Delete '{{ item.title }}'? This cannot be undone.">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-        Delete
-      </button>
+        {% endif %}
+        <button type="button"
+          class="px-4 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors text-sm inline-flex items-center gap-2"
+          hx-post="/admin/edit/{{ item.id }}/delete" hx-swap="none"
+          hx-confirm="Delete '{{ item.title }}'? This cannot be undone.">
+          {{ macros::delete_icon() }}
+          Delete
+        </button>
+      </div>
     </div>
+
+    <!-- Row 2: Settings -->
+    {{ macros::settings_row(slug_value=item.slug, slug_required=false, template_value=item.template, show_status=true,
+    status_value=item.status.as_str()) }}
   </div>
 
   <div class="grid lg:grid-cols-[1fr_380px] gap-6">
@@ -70,7 +85,8 @@
     <div class="space-y-4">
       <!-- Title -->
       <div class="card p-4">
-        <input id="title" name="title" value="{{ item.title }}" placeholder="Enter title..." class="text-2xl font-semibold border-0 bg-transparent w-full focus:outline-none focus:ring-0 p-0" />
+        <input id="title" name="title" value="{{ item.title }}" placeholder="Enter title..."
+          class="text-2xl font-semibold border-0 bg-transparent w-full focus:outline-none focus:ring-0 p-0" />
       </div>
 
       <!-- Content Editor -->
@@ -86,58 +102,30 @@
       <div class="card p-5">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-sm font-medium flex items-center gap-2">
-            <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
             Live Preview
           </h3>
           <span class="px-2 py-0.5 rounded-full text-xs bg-rp-secondary/10 text-rp-secondary">Auto-updates</span>
         </div>
-        <div id="preview" class="border border-rp-border rounded-lg overflow-hidden bg-white" hx-post="/admin/edit/{{ item.id }}/preview" hx-trigger="load, editor-change from:body delay:500ms, every 3s" hx-include="#edit-form" hx-target="this" hx-swap="innerHTML">
+        <div id="preview" class="border border-rp-border rounded-lg overflow-hidden bg-white"
+          hx-post="/admin/edit/{{ item.id }}/preview" hx-trigger="load, editor-change from:body delay:500ms, every 3s"
+          hx-include="#edit-form" hx-target="this" hx-swap="innerHTML">
           <p class="text-rp-muted text-sm p-4">Loading preview...</p>
         </div>
-      </div>
-
-      <!-- Publish Settings -->
-      <div class="card p-5">
-        <h3 class="text-sm font-medium mb-3 flex items-center gap-2">
-          <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-          Publish Settings
-        </h3>
-        <label class="block mb-3">
-          <span class="text-sm text-rp-muted">Status</span>
-          <select name="status" class="mt-1">
-            <option value="draft" {% if item.status == "draft" %}selected{% endif %}>Draft</option>
-            <option value="published" {% if item.status == "published" %}selected{% endif %}>Published</option>
-          </select>
-        </label>
-        <label class="block">
-          <span class="text-sm text-rp-muted">Template</span>
-          <select name="template" class="mt-1">
-            {% for t in templates %}
-              <option value="{{ t.name }}" {% if t.name == item.template %}selected{% endif %}>{{ t.name }}</option>
-            {% endfor %}
-          </select>
-        </label>
-      </div>
-
-      <!-- URL Settings -->
-      <div class="card p-5">
-        <h3 class="text-sm font-medium mb-3 flex items-center gap-2">
-          <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-          URL Settings
-        </h3>
-        <label class="block">
-          <span class="text-sm text-rp-muted">Slug</span>
-          <input id="slug" name="slug" value="{{ item.slug }}" placeholder="url-friendly-slug" class="mt-1" />
-        </label>
-        <p class="text-xs text-rp-muted mt-2">
-          {% if item.kind == "post" %}/blog/{{ item.slug }}{% else %}/{{ item.slug }}{% endif %}
-        </p>
       </div>
 
       <!-- Info -->
       <div class="card p-5">
         <h3 class="text-sm font-medium mb-3 flex items-center gap-2">
-          <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
           Info
         </h3>
         <dl class="text-xs space-y-2">
@@ -165,7 +153,8 @@
   </div>
 
   <!-- Autosave trigger -->
-  <div id="autosave" hx-post="/admin/edit/{{ item.id }}/autosave" hx-trigger="autosave-trigger" hx-include="#edit-form" hx-target="#autosave-status" hx-swap="innerHTML"></div>
+  <div id="autosave" hx-post="/admin/edit/{{ item.id }}/autosave" hx-trigger="autosave-trigger" hx-include="#edit-form"
+    hx-target="#autosave-status" hx-swap="innerHTML"></div>
 </form>
 {% endblock %}
 

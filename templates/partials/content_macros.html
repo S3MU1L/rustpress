@@ -1,0 +1,93 @@
+{% macro back_button() %}
+<a class="p-2 rounded-lg text-rp-muted hover:text-rp-text hover:bg-rp-border/30 transition-colors" href="/admin"
+    title="Back to Dashboard">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+    </svg>
+</a>
+{% endmacro %}
+
+{% macro settings_row(slug_value, slug_required, template_value, show_status, status_value) %}
+<div class="flex items-center justify-end gap-3 px-2">
+    <label class="flex items-center gap-2">
+        <span class="text-sm text-rp-muted whitespace-nowrap">Slug:</span>
+        <input id="slug" name="slug" value="{{ slug_value }}" {% if slug_required %}required{% endif %}
+            placeholder="url-friendly-slug"
+            class="px-3 py-2 text-sm rounded-lg border border-rp-border bg-rp-surface focus:outline-none focus:ring-2 focus:ring-rp-primary/50 w-64" />
+    </label>
+    <label class="flex items-center gap-2">
+        <span class="text-sm text-rp-muted whitespace-nowrap">Template:</span>
+        <select name="template"
+            class="px-3 py-2 text-sm rounded-lg border border-rp-border bg-rp-surface focus:outline-none focus:ring-2 focus:ring-rp-primary/50 w-40">
+            {% for t in templates %}
+            {% if t.name.as_str() == template_value %}
+            <option value="{{ t.name }}" selected>{{ t.name }}</option>
+            {% else %}
+            <option value="{{ t.name }}">{{ t.name }}</option>
+            {% endif %}
+            {% endfor %}
+        </select>
+    </label>
+    {% if show_status %}
+    <label class="flex items-center gap-2">
+        <span class="text-sm text-rp-muted whitespace-nowrap">Status:</span>
+        <select name="status"
+            class="px-3 py-2 text-sm rounded-lg border border-rp-border bg-rp-surface focus:outline-none focus:ring-2 focus:ring-rp-primary/50 w-32">
+            {% if status_value == "draft" %}
+            <option value="draft" selected>Draft</option>
+            <option value="published">Published</option>
+            {% else %}
+            <option value="draft">Draft</option>
+            <option value="published" selected>Published</option>
+            {% endif %}
+        </select>
+    </label>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% macro preview_button(text="Preview", icon=true) %}
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+</svg>
+{% endmacro %}
+
+{% macro external_link_icon() %}
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+</svg>
+{% endmacro %}
+
+{% macro save_icon() %}
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+</svg>
+{% endmacro %}
+
+{% macro cancel_icon() %}
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+</svg>
+{% endmacro %}
+
+{% macro create_icon() %}
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+</svg>
+{% endmacro %}
+
+{% macro publish_icon() %}
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12" />
+</svg>
+{% endmacro %}
+
+{% macro delete_icon() %}
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+</svg>
+{% endmacro %}

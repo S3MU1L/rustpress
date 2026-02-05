@@ -1,4 +1,5 @@
 {% extends "layouts/base.html" %}
+{% import "partials/content_macros.html" as macros %}
 
 {% block title %}New {{ kind|capitalize }} - RustPress{% endblock %}
 
@@ -7,32 +8,35 @@
 {% endblock %}
 
 {% block content %}
-<form id="edit-form" method="post" action="/admin/{{ kind }}" hx-post="/admin/{{ kind }}" hx-trigger="submit" hx-swap="none">
+<form id="edit-form" method="post" action="/admin/{{ kind }}" hx-post="/admin/{{ kind }}" hx-trigger="submit"
+  hx-swap="none">
   <input type="hidden" name="kind" value="{{ kind }}" />
 
   <!-- Top Bar -->
-  <div class="flex items-center justify-between mb-8">
-    <div class="flex items-center gap-4">
-      <a class="p-2 rounded-lg text-rp-muted hover:text-rp-text hover:bg-rp-border/30 transition-colors" href="/admin" title="Back to Dashboard">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-        </svg>
-      </a>
-      <div>
-        <h1 class="text-2xl font-bold mb-0">New {{ kind|capitalize }}</h1>
-        <p class="text-rp-muted text-sm mt-1">Create a new {{ kind }} for your site</p>
+  <div class="space-y-4 mb-8">
+    <!-- Row 1: Title and Action Buttons -->
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        {{ macros::back_button() }}
+        <div>
+          <h1 class="text-2xl font-bold mb-0">New {{ kind|capitalize }}</h1>
+          <p class="text-rp-muted text-sm mt-1">Create a new {{ kind }} for your site</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <a class="px-4 py-2 rounded-lg bg-gray-200 text-rp-text font-medium hover:bg-gray-300 transition-colors text-sm inline-flex items-center gap-2" href="/admin">
+          {{ macros::cancel_icon() }}
+          Cancel
+        </a>
+        <button class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2" type="submit">
+          {{ macros::create_icon() }}
+          Create Draft
+        </button>
       </div>
     </div>
-    <div class="flex items-center gap-2">
-      <a class="btn-secondary text-sm inline-flex items-center gap-2" href="/admin">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-        Cancel
-      </a>
-      <button class="btn-primary text-sm inline-flex items-center gap-2" type="submit">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-        Create Draft
-      </button>
-    </div>
+
+    <!-- Row 2: Settings -->
+    {{ macros::settings_row(slug_value="", slug_required=true, template_value=default_template, show_status=false, status_value="") }}
   </div>
 
   <div class="grid lg:grid-cols-[1fr_380px] gap-6">
@@ -40,7 +44,8 @@
     <div class="space-y-4">
       <!-- Title -->
       <div class="card p-4">
-        <input id="title" name="title" required placeholder="Enter title..." class="text-2xl font-semibold border-0 bg-transparent w-full focus:outline-none focus:ring-0 p-0" />
+        <input id="title" name="title" required placeholder="Enter title..."
+          class="text-2xl font-semibold border-0 bg-transparent w-full focus:outline-none focus:ring-0 p-0" />
       </div>
 
       <!-- Content Editor -->
@@ -56,59 +61,21 @@
       <div class="card p-5">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-sm font-medium flex items-center gap-2">
-            <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
             Live Preview
           </h3>
           <span class="px-2 py-0.5 rounded-full text-xs bg-rp-secondary/10 text-rp-secondary">Auto-updates</span>
         </div>
-        <div id="preview" class="border border-rp-border rounded-lg overflow-hidden bg-white" hx-post="/admin/preview" hx-trigger="load, editor-change from:body delay:500ms, every 3s" hx-include="#edit-form" hx-target="this" hx-swap="innerHTML">
+        <div id="preview" class="border border-rp-border rounded-lg overflow-hidden bg-white" hx-post="/admin/preview"
+          hx-trigger="load, editor-change from:body delay:500ms, every 3s" hx-include="#edit-form" hx-target="this"
+          hx-swap="innerHTML">
           <p class="text-rp-muted text-sm p-4">Loading preview...</p>
         </div>
-      </div>
-
-      <!-- Settings -->
-      <div class="card p-5">
-        <h3 class="text-sm font-medium mb-3 flex items-center gap-2">
-          <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-          Settings
-        </h3>
-        <label class="block">
-          <span class="text-sm text-rp-muted">Template</span>
-          <select name="template" class="mt-1">
-            {% for t in templates %}
-              <option value="{{ t.name }}" {% if t.name == default_template %}selected{% endif %}>{{ t.name }}</option>
-            {% endfor %}
-          </select>
-        </label>
-      </div>
-
-      <!-- URL Settings -->
-      <div class="card p-5">
-        <h3 class="text-sm font-medium mb-3 flex items-center gap-2">
-          <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-          URL Settings
-        </h3>
-        <label class="block">
-          <span class="text-sm text-rp-muted">Slug</span>
-          <input id="slug" name="slug" required placeholder="url-friendly-slug" class="mt-1" />
-        </label>
-        <p class="text-xs text-rp-muted mt-2">
-          {% if kind == "posts" %}/blog/<span id="slug-preview">your-slug</span>{% else %}/<span id="slug-preview">your-slug</span>{% endif %}
-        </p>
-      </div>
-
-      <!-- Tips -->
-      <div class="card p-5 bg-rp-primary/5 border-rp-primary/20">
-        <h3 class="text-sm font-medium mb-2 flex items-center gap-2">
-          <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-          Tips
-        </h3>
-        <ul class="text-xs text-rp-muted space-y-1">
-          <li>Use a descriptive title for SEO</li>
-          <li>Keep slugs short and readable</li>
-          <li>Content is saved as a draft</li>
-          <li>You can publish after reviewing</li>
-        </ul>
       </div>
     </div>
   </div>
