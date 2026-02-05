@@ -92,6 +92,7 @@ pub struct AdminRegisterTemplate {
 #[template(path = "admin/template_new.html")]
 pub struct AdminTemplateNewTemplate {
     pub starter_html: String,
+    pub content_items: Vec<ContentItem>,
     pub is_admin: bool,
 }
 
@@ -99,6 +100,7 @@ pub struct AdminTemplateNewTemplate {
 #[template(path = "admin/template_edit.html")]
 pub struct AdminTemplateEditTemplate {
     pub template: SiteTemplate,
+    pub content_items: Vec<ContentItem>,
     pub is_admin: bool,
 }
 

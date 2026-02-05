@@ -108,6 +108,22 @@ pub async fn create_site_template(
     .await
 }
 
+pub async fn delete_site_template(
+    pool: &PgPool,
+    id: Uuid,
+) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query(
+        r#"
+        DELETE FROM site_templates
+        WHERE id = $1 AND is_builtin = false
+        "#,
+    )
+    .bind(id)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() > 0)
+}
+
 pub async fn update_site_template(
     pool: &PgPool,
     id: Uuid,

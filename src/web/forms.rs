@@ -111,6 +111,12 @@ pub struct AdminTemplateUpdateForm {
 }
 
 #[derive(Deserialize)]
+pub struct AdminTemplatePreviewForm {
+    pub html: String,
+    pub preview_content_id: Option<String>,
+}
+
+#[derive(Deserialize)]
 pub struct AdminCreateUserForm {
     pub email: String,
     pub password: String,

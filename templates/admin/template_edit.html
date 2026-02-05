@@ -7,71 +7,168 @@
 {% endblock %}
 
 {% block content %}
-<div class="max-w-3xl">
-  <div class="flex items-center justify-between mb-6">
-    <div>
-      <h1 class="mb-1">Edit Template</h1>
-      <div class="flex items-center gap-2">
-        <span class="text-rp-muted">{{ template.name }}</span>
-        {% if template.is_builtin %}
-          <span class="badge">Built-in</span>
-        {% else %}
-          <span class="badge badge-success">Custom</span>
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-xl mb-1">Edit Template</h1>
+    <div class="flex items-center gap-2">
+      <span class="text-rp-muted">{{ template.name }}</span>
+      {% if template.is_builtin %}
+        <span class="badge">Built-in</span>
+      {% else %}
+        <span class="badge badge-success">Custom</span>
+      {% endif %}
+    </div>
+  </div>
+  <a class="btn-secondary" href="/admin/templates">Back to Templates</a>
+</div>
+
+{% if template.is_builtin %}
+  <div class="notice notice-warning mb-6">
+    <p class="m-0">Built-in templates are read-only. Create a copy to make changes.</p>
+  </div>
+{% endif %}
+
+<div class="grid lg:grid-cols-[1fr_380px] gap-6">
+  <!-- Left Column: Editor -->
+  <div class="space-y-4">
+    <div class="card p-5">
+      <form id="tpl-form" method="post" action="/admin/templates/{{ template.id }}" hx-post="/admin/templates/{{ template.id }}" hx-target="body" hx-swap="outerHTML">
+        <label>
+          Name
+          <input name="name" value="{{ template.name }}" {% if template.is_builtin %}disabled{% endif %} />
+        </label>
+
+        <label>
+          Description
+          <input name="description" value="{{ template.description }}" {% if template.is_builtin %}disabled{% endif %} />
+        </label>
+
+        {% if !template.is_builtin %}
+        <div class="mb-2">
+          <span class="text-sm text-rp-muted">Insert placeholder:</span>
+          <div class="flex flex-wrap gap-1 mt-1">
+            <button type="button" class="btn-secondary text-xs" onclick="insertPlaceholder('{{"{{title}}"}}')">{{"{{title}}"}}</button>
+            <button type="button" class="btn-secondary text-xs" onclick="insertPlaceholder('{{"{{content}}"}}')">{{"{{content}}"}}</button>
+            <button type="button" class="btn-secondary text-xs" onclick="insertPlaceholder('{{"{{slug}}"}}')">{{"{{slug}}"}}</button>
+            <button type="button" class="btn-secondary text-xs" onclick="insertPlaceholder('{{"{{kind}}"}}')">{{"{{kind}}"}}</button>
+          </div>
+        </div>
         {% endif %}
-      </div>
+
+        <label>
+          HTML
+          <textarea id="tpl-html" name="html" rows="20" class="font-mono text-sm" {% if template.is_builtin %}disabled{% endif %}>{{ template.html }}</textarea>
+        </label>
+
+        {% if !template.is_builtin %}
+        <div class="mt-4">
+          <button class="btn-primary" type="submit">Save Changes</button>
+        </div>
+        {% endif %}
+      </form>
     </div>
-    <a class="btn-secondary" href="/admin/templates">Back to Templates</a>
   </div>
 
-  {% if template.is_builtin %}
-    <div class="notice notice-warning mb-6">
-      <p class="m-0">Built-in templates are read-only. Create a copy to make changes.</p>
-    </div>
-  {% endif %}
-
-  <!-- Edit Form -->
-  <div class="card p-5 mb-6">
-    <h2 class="text-lg mb-4">Template Settings</h2>
-    <form method="post" action="/admin/templates/{{ template.id }}" hx-post="/admin/templates/{{ template.id }}" hx-target="body" hx-swap="outerHTML">
-      <label>
-        Name
-        <input name="name" value="{{ template.name }}" {% if template.is_builtin %}disabled{% endif %} />
-      </label>
-
-      <label>
-        Description
-        <input name="description" value="{{ template.description }}" {% if template.is_builtin %}disabled{% endif %} />
-      </label>
-
-      <label>
-        HTML
-        <textarea name="html" rows="18" class="font-mono text-sm" {% if template.is_builtin %}disabled{% endif %}>{{ template.html }}</textarea>
-      </label>
-
-      <div class="mt-4">
-        <button class="btn-primary" type="submit" {% if template.is_builtin %}disabled{% endif %}>Save Changes</button>
+  <!-- Right Column: Sidebar -->
+  <div class="space-y-4">
+    <!-- Live Preview -->
+    <div class="card p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-medium">Live Preview</h3>
+        <span class="text-xs text-rp-muted">Auto-updates</span>
       </div>
-    </form>
-  </div>
+      <label class="block mb-3">
+        <span class="text-sm text-rp-muted">Preview with content</span>
+        <select id="preview-content-id" name="preview_content_id" class="mt-1">
+          <option value="">Sample data</option>
+          {% for ci in content_items %}
+            <option value="{{ ci.id }}">{{ ci.title }} ({{ ci.kind }})</option>
+          {% endfor %}
+        </select>
+      </label>
+      <div id="preview" class="border border-rp-border rounded overflow-hidden bg-white"
+           hx-post="/admin/templates/preview"
+           hx-trigger="load, template-change delay:500ms"
+           hx-include="#tpl-html, #preview-content-id"
+           hx-target="this"
+           hx-swap="innerHTML">
+        <p class="text-rp-muted text-sm p-4">Loading preview...</p>
+      </div>
+    </div>
 
-  {% if template.is_builtin %}
-    <!-- Duplicate Form -->
-    <div class="card p-5 mb-6">
-      <h2 class="text-lg mb-2">Make a Copy</h2>
+    <!-- Info -->
+    <div class="card p-4">
+      <h3 class="text-sm font-medium mb-3">Info</h3>
+      <dl class="text-xs space-y-2">
+        <div class="flex justify-between">
+          <dt class="text-rp-muted">Created</dt>
+          <dd>{{ template.created_at.format("%b %d, %Y") }}</dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-rp-muted">Last edited</dt>
+          <dd>{{ template.edited_at.format("%b %d, %Y %H:%M") }}</dd>
+        </div>
+      </dl>
+    </div>
+
+    {% if template.is_builtin %}
+    <!-- Duplicate -->
+    <div class="card p-4">
+      <h3 class="text-sm font-medium mb-2">Make a Copy</h3>
       <p class="text-rp-muted text-sm mb-4">Create a custom copy of this template that you can edit.</p>
       <form method="post" action="/admin/templates/{{ template.id }}/duplicate" hx-post="/admin/templates/{{ template.id }}/duplicate" hx-swap="none">
         <button class="btn-primary" type="submit">Copy as Custom Template</button>
       </form>
     </div>
-  {% endif %}
+    {% endif %}
 
-  {% if !template.is_builtin %}
-    <p class="text-rp-muted text-sm">
-      Placeholders: <code class="bg-rp-bg px-1 rounded text-sm">{{"{{title}}"}}</code>,
-      <code class="bg-rp-bg px-1 rounded text-sm">{{"{{content}}"}}</code>,
-      <code class="bg-rp-bg px-1 rounded text-sm">{{"{{slug}}"}}</code>,
-      <code class="bg-rp-bg px-1 rounded text-sm">{{"{{kind}}"}}</code>
-    </p>
-  {% endif %}
+    {% if !template.is_builtin %}
+    <!-- Delete -->
+    <div class="card p-4 border-red-200">
+      <h3 class="text-sm font-medium mb-2 text-red-600">Delete Template</h3>
+      <p class="text-rp-muted text-sm mb-4">Permanently delete this template. Pages using it will fall back to the default template.</p>
+      <form method="post" action="/admin/templates/{{ template.id }}/delete" hx-post="/admin/templates/{{ template.id }}/delete" hx-swap="none" hx-confirm="Delete template '{{ template.name }}'? This cannot be undone.">
+        <button class="btn-secondary text-red-500 hover:text-red-700" type="submit">Delete Template</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function insertPlaceholder(text) {
+    const ta = document.getElementById('tpl-html');
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const before = ta.value.substring(0, start);
+    const after = ta.value.substring(end);
+    ta.value = before + text + after;
+    ta.selectionStart = ta.selectionEnd = start + text.length;
+    ta.focus();
+    ta.dispatchEvent(new Event('input'));
+  }
+
+  (function() {
+    const ta = document.getElementById('tpl-html');
+    const sel = document.getElementById('preview-content-id');
+    if (!ta) return;
+
+    let timer = null;
+    ta.addEventListener('input', function() {
+      clearTimeout(timer);
+      timer = setTimeout(function() {
+        ta.dispatchEvent(new CustomEvent('template-change', { bubbles: true }));
+      }, 300);
+    });
+
+    if (sel) {
+      sel.addEventListener('change', function() {
+        ta.dispatchEvent(new CustomEvent('template-change', { bubbles: true }));
+      });
+    }
+  })();
+</script>
 {% endblock %}

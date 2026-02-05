@@ -7,44 +7,115 @@
 {% endblock %}
 
 {% block content %}
-<div class="max-w-3xl">
-  <div class="flex items-center justify-between mb-6">
-    <div>
-      <h1 class="mb-2">New Template</h1>
-      <p class="text-rp-muted">Create a custom template for your sites.</p>
-    </div>
-    <a class="btn-secondary" href="/admin/templates">Back to Templates</a>
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="mb-2">New Template</h1>
+    <p class="text-rp-muted">Create a custom template for your sites.</p>
   </div>
-
-  <div class="card p-5">
-    <form method="post" action="/admin/templates" hx-post="/admin/templates" hx-trigger="submit" hx-swap="none">
-      <label>
-        Name
-        <input name="name" required placeholder="landing" />
-      </label>
-
-      <label>
-        Description
-        <input name="description" placeholder="Optional description..." />
-      </label>
-
-      <label>
-        HTML
-        <textarea name="html" rows="18" class="font-mono text-sm">{{ starter_html }}</textarea>
-      </label>
-
-      <div class="flex items-center gap-3 mt-6">
-        <button class="btn-primary" type="submit">Create Template</button>
-        <a class="btn-secondary" href="/admin/templates">Cancel</a>
-      </div>
-    </form>
-  </div>
-
-  <p class="text-rp-muted text-sm mt-4">
-    Placeholders: <code class="bg-rp-bg px-1 rounded text-sm">{{"{{title}}"}}</code>,
-    <code class="bg-rp-bg px-1 rounded text-sm">{{"{{content}}"}}</code>,
-    <code class="bg-rp-bg px-1 rounded text-sm">{{"{{slug}}"}}</code>,
-    <code class="bg-rp-bg px-1 rounded text-sm">{{"{{kind}}"}}</code>
-  </p>
+  <a class="btn-secondary" href="/admin/templates">Back to Templates</a>
 </div>
+
+<div class="grid lg:grid-cols-[1fr_380px] gap-6">
+  <!-- Left Column: Form -->
+  <div class="space-y-4">
+    <div class="card p-5">
+      <form id="tpl-form" method="post" action="/admin/templates" hx-post="/admin/templates" hx-trigger="submit" hx-swap="none">
+        <label>
+          Name
+          <input name="name" required placeholder="landing" />
+        </label>
+
+        <label>
+          Description
+          <input name="description" placeholder="Optional description..." />
+        </label>
+
+        <div class="mb-2">
+          <span class="text-sm text-rp-muted">Insert placeholder:</span>
+          <div class="flex flex-wrap gap-1 mt-1">
+            <button type="button" class="btn-secondary text-xs" onclick="insertPlaceholder('{{"{{title}}"}}')">{{"{{title}}"}}</button>
+            <button type="button" class="btn-secondary text-xs" onclick="insertPlaceholder('{{"{{content}}"}}')">{{"{{content}}"}}</button>
+            <button type="button" class="btn-secondary text-xs" onclick="insertPlaceholder('{{"{{slug}}"}}')">{{"{{slug}}"}}</button>
+            <button type="button" class="btn-secondary text-xs" onclick="insertPlaceholder('{{"{{kind}}"}}')">{{"{{kind}}"}}</button>
+          </div>
+        </div>
+
+        <label>
+          HTML
+          <textarea id="tpl-html" name="html" rows="20" class="font-mono text-sm">{{ starter_html }}</textarea>
+        </label>
+
+        <div class="flex items-center gap-3 mt-6">
+          <button class="btn-primary" type="submit">Create Template</button>
+          <a class="btn-secondary" href="/admin/templates">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Right Column: Sidebar -->
+  <div class="space-y-4">
+    <!-- Live Preview -->
+    <div class="card p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-medium">Live Preview</h3>
+        <span class="text-xs text-rp-muted">Auto-updates</span>
+      </div>
+      <label class="block mb-3">
+        <span class="text-sm text-rp-muted">Preview with content</span>
+        <select id="preview-content-id" name="preview_content_id" class="mt-1">
+          <option value="">Sample data</option>
+          {% for ci in content_items %}
+            <option value="{{ ci.id }}">{{ ci.title }} ({{ ci.kind }})</option>
+          {% endfor %}
+        </select>
+      </label>
+      <div id="preview" class="border border-rp-border rounded overflow-hidden bg-white"
+           hx-post="/admin/templates/preview"
+           hx-trigger="load, template-change delay:500ms"
+           hx-include="#tpl-html, #preview-content-id"
+           hx-target="this"
+           hx-swap="innerHTML">
+        <p class="text-rp-muted text-sm p-4">Loading preview...</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function insertPlaceholder(text) {
+    const ta = document.getElementById('tpl-html');
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const before = ta.value.substring(0, start);
+    const after = ta.value.substring(end);
+    ta.value = before + text + after;
+    ta.selectionStart = ta.selectionEnd = start + text.length;
+    ta.focus();
+    ta.dispatchEvent(new Event('input'));
+  }
+
+  (function() {
+    const ta = document.getElementById('tpl-html');
+    const sel = document.getElementById('preview-content-id');
+    if (!ta) return;
+
+    let timer = null;
+    ta.addEventListener('input', function() {
+      clearTimeout(timer);
+      timer = setTimeout(function() {
+        ta.dispatchEvent(new CustomEvent('template-change', { bubbles: true }));
+      }, 300);
+    });
+
+    if (sel) {
+      sel.addEventListener('change', function() {
+        ta.dispatchEvent(new CustomEvent('template-change', { bubbles: true }));
+      });
+    }
+  })();
+</script>
 {% endblock %}

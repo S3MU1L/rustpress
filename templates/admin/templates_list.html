@@ -31,12 +31,21 @@
             {% if t.description.len() > 0 %}
               <p class="text-rp-muted text-sm">{{ t.description }}</p>
             {% endif %}
+            <p class="text-rp-muted text-xs mt-1">Edited {{ t.edited_at.format("%b %d, %Y %H:%M") }}</p>
           </div>
-          {% if t.is_builtin %}
-            <span class="badge">Built-in</span>
-          {% else %}
-            <span class="badge badge-success">Custom</span>
-          {% endif %}
+          <div class="flex items-center gap-2">
+            {% if t.is_builtin %}
+              <span class="badge">Built-in</span>
+            {% else %}
+              <span class="badge badge-success">Custom</span>
+            {% endif %}
+            <a class="btn-secondary text-sm" href="/admin/templates/{{ t.id }}">Edit</a>
+            {% if !t.is_builtin %}
+              <form method="post" action="/admin/templates/{{ t.id }}/delete" hx-post="/admin/templates/{{ t.id }}/delete" hx-swap="none" hx-confirm="Delete template '{{ t.name }}'? Pages using it will fall back to the default template." style="display:inline">
+                <button class="btn-secondary text-sm text-red-500 hover:text-red-700" type="submit">Delete</button>
+              </form>
+            {% endif %}
+          </div>
         </li>
       {% endfor %}
     </ul>
