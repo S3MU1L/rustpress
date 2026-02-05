@@ -1,7 +1,8 @@
 use actix_web::cookie::{Cookie, SameSite};
 use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 
-use rustpress::models::User;
+use rustpress::db;
+use rustpress::models::{SiteCreate, User};
 use rustpress::services::PasswordManager;
 
 use crate::web::forms::{AuthQuery, LoginForm, RegisterForm};
@@ -136,6 +137,22 @@ pub async fn register_submit(
                 .finish();
         }
     };
+
+    // Create default site if none exists
+    if db::get_default_site(&state.pool).await.ok().flatten().is_none() {
+        let site_data = SiteCreate {
+            owner_user_id: user.id,
+            name: "RustPress".to_string(),
+            slug: "default".to_string(),
+            default_template: "default".to_string(),
+        };
+
+        if let Ok(site) = db::create_site(&state.pool, &site_data).await {
+            if let Err(e) = db::publish_site(&state.pool, site.id, user.id).await {
+                eprintln!("Failed to publish default site: {e}");
+            }
+        }
+    }
 
     let cookie = Cookie::build("rp_uid", user.id.to_string())
         .path("/")
