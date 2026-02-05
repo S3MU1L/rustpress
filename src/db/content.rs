@@ -2,9 +2,15 @@ use chrono::Utc;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::models::{ContentCreate, ContentItem, ContentKind, ContentStatus, ContentUpdate};
+use crate::models::{
+    ContentCreate, ContentItem, ContentKind, ContentStatus,
+    ContentUpdate,
+};
 
-pub async fn create_content(pool: &PgPool, data: &ContentCreate) -> Result<ContentItem, sqlx::Error> {
+pub async fn create_content(
+    pool: &PgPool,
+    data: &ContentCreate,
+) -> Result<ContentItem, sqlx::Error> {
     sqlx::query_as::<_, ContentItem>(
         r#"
         INSERT INTO content_items (owner_user_id, kind, status, title, slug, content, template)
@@ -54,7 +60,10 @@ pub async fn list_content(
     }
 }
 
-pub async fn get_content_by_id(pool: &PgPool, id: Uuid) -> Result<Option<ContentItem>, sqlx::Error> {
+pub async fn get_content_by_id(
+    pool: &PgPool,
+    id: Uuid,
+) -> Result<Option<ContentItem>, sqlx::Error> {
     sqlx::query_as::<_, ContentItem>(
         r#"
         SELECT *
@@ -85,7 +94,11 @@ pub async fn get_published_by_slug(
     .await
 }
 
-pub async fn update_content(pool: &PgPool, id: Uuid, data: &ContentUpdate) -> Result<Option<ContentItem>, sqlx::Error> {
+pub async fn update_content(
+    pool: &PgPool,
+    id: Uuid,
+    data: &ContentUpdate,
+) -> Result<Option<ContentItem>, sqlx::Error> {
     sqlx::query_as::<_, ContentItem>(
         r#"
         UPDATE content_items
@@ -110,7 +123,26 @@ pub async fn update_content(pool: &PgPool, id: Uuid, data: &ContentUpdate) -> Re
     .await
 }
 
-pub async fn publish_content(pool: &PgPool, id: Uuid) -> Result<Option<ContentItem>, sqlx::Error> {
+pub async fn delete_content(
+    pool: &PgPool,
+    id: Uuid,
+) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query(
+        r#"
+        DELETE FROM content_items
+        WHERE id = $1
+        "#,
+    )
+    .bind(id)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() > 0)
+}
+
+pub async fn publish_content(
+    pool: &PgPool,
+    id: Uuid,
+) -> Result<Option<ContentItem>, sqlx::Error> {
     let now = Utc::now();
     sqlx::query_as::<_, ContentItem>(
         r#"

@@ -1,4 +1,5 @@
 {% extends "layouts/base.html" %}
+{% import "partials/content_macros.html" as macros %}
 
 {% block title %}New {{ kind|capitalize }} - RustPress{% endblock %}
 
@@ -7,34 +8,46 @@
 {% endblock %}
 
 {% block content %}
-<form id="edit-form" method="post" action="/admin/{{ kind }}" hx-post="/admin/{{ kind }}" hx-trigger="submit" hx-swap="none">
+<form id="edit-form" method="post" action="/admin/{{ kind }}" hx-post="/admin/{{ kind }}" hx-trigger="submit"
+  hx-swap="none">
   <input type="hidden" name="kind" value="{{ kind }}" />
 
   <!-- Top Bar -->
-  <div class="flex items-center justify-between mb-6">
-    <div class="flex items-center gap-4">
-      <a class="text-rp-muted hover:text-rp-text" href="/admin" title="Back to Dashboard">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-        </svg>
-      </a>
-      <div>
-        <h1 class="text-xl mb-0">New {{ kind|capitalize }}</h1>
-        <p class="text-rp-muted text-sm mt-1">Create a new {{ kind }} for your site</p>
+  <div class="mb-6">
+    <!-- Compact Header -->
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-3">
+        {{ macros::back_button() }}
+        <div>
+          <h1 class="text-2xl font-bold text-rp-text">New {{ kind|capitalize }}</h1>
+          <p class="text-rp-muted text-sm mt-1">Create a new {{ kind }} for your site</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <a class="px-4 py-2 rounded-lg bg-gray-200 text-rp-text font-medium hover:bg-gray-300 transition-colors text-sm inline-flex items-center gap-2" href="/admin">
+          {{ macros::cancel_icon() }}
+          Cancel
+        </a>
+        <button class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2" type="submit">
+          {{ macros::create_icon() }}
+          Create Draft
+        </button>
       </div>
     </div>
-    <div class="flex items-center gap-2">
-      <a class="btn-secondary text-sm" href="/admin">Cancel</a>
-      <button class="btn-primary text-sm" type="submit">Create Draft</button>
+
+    <!-- Settings -->
+    <div class="bg-rp-surface border border-rp-border rounded-lg p-4">
+      {{ macros::settings_row(slug_value="", slug_required=true, template_value=default_template, show_status=false, status_value="") }}
     </div>
   </div>
 
-  <div class="grid lg:grid-cols-[1fr_320px] gap-6">
+  <div class="grid lg:grid-cols-[1fr_380px] gap-6">
     <!-- Main Editor Area -->
     <div class="space-y-4">
       <!-- Title -->
       <div class="card p-4">
-        <input id="title" name="title" required placeholder="Enter title..." class="text-2xl font-semibold border-0 bg-transparent w-full focus:outline-none focus:ring-0 p-0" />
+        <input id="title" name="title" required placeholder="Enter title..."
+          class="text-2xl font-semibold border-0 bg-transparent w-full focus:outline-none focus:ring-0 p-0" />
       </div>
 
       <!-- Content Editor -->
@@ -46,51 +59,25 @@
 
     <!-- Sidebar -->
     <div class="space-y-4">
-      <!-- Settings -->
-      <div class="card p-4">
-        <h3 class="text-sm font-medium mb-3">Settings</h3>
-        <label class="block">
-          <span class="text-sm text-rp-muted">Template</span>
-          <select name="template" class="mt-1">
-            {% for t in templates %}
-              <option value="{{ t.name }}" {% if t.name == default_template %}selected{% endif %}>{{ t.name }}</option>
-            {% endfor %}
-          </select>
-        </label>
-      </div>
-
-      <!-- URL Settings -->
-      <div class="card p-4">
-        <h3 class="text-sm font-medium mb-3">URL Settings</h3>
-        <label class="block">
-          <span class="text-sm text-rp-muted">Slug</span>
-          <input id="slug" name="slug" required placeholder="url-friendly-slug" class="mt-1" />
-        </label>
-        <p class="text-xs text-rp-muted mt-2">
-          {% if kind == "posts" %}/blog/<span id="slug-preview">your-slug</span>{% else %}/<span id="slug-preview">your-slug</span>{% endif %}
-        </p>
-      </div>
-
       <!-- Live Preview -->
-      <div class="card p-4">
+      <div class="card p-5">
         <div class="flex items-center justify-between mb-3">
-          <h3 class="text-sm font-medium">Live Preview</h3>
-          <span class="text-xs text-rp-muted">Auto-updates</span>
+          <h3 class="text-sm font-medium flex items-center gap-2">
+            <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            Live Preview
+          </h3>
+          <span class="px-2 py-0.5 rounded-full text-xs bg-rp-secondary/10 text-rp-secondary">Auto-updates</span>
         </div>
-        <div id="preview" class="border border-rp-border rounded overflow-hidden bg-white" hx-post="/admin/preview" hx-trigger="load, editor-change delay:500ms" hx-include="#edit-form" hx-target="this" hx-swap="innerHTML">
+        <div id="preview" class="border border-rp-border rounded-lg overflow-hidden bg-white" hx-post="/admin/preview"
+          hx-trigger="load, editor-change from:body delay:500ms, every 3s" hx-include="#edit-form" hx-target="this"
+          hx-swap="innerHTML">
           <p class="text-rp-muted text-sm p-4">Loading preview...</p>
         </div>
-      </div>
-
-      <!-- Tips -->
-      <div class="card p-4 bg-rp-bg/50">
-        <h3 class="text-sm font-medium mb-2">Tips</h3>
-        <ul class="text-xs text-rp-muted space-y-1">
-          <li>Use a descriptive title for SEO</li>
-          <li>Keep slugs short and readable</li>
-          <li>Content is saved as a draft</li>
-          <li>You can publish after reviewing</li>
-        </ul>
       </div>
     </div>
   </div>

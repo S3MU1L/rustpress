@@ -1,0 +1,51 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}New User - RustPress{% endblock %}
+
+{% block header %}
+{% include "partials/nav_admin.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+  <div class="mb-6">
+    <h1 class="mb-2">Create User</h1>
+    <p class="text-rp-muted">Add a new user account.</p>
+  </div>
+
+  {% if let Some(err) = error %}
+    <div class="card bg-rp-error/10 border-rp-error p-4 mb-6">
+      <p class="text-rp-error">{{ err }}</p>
+    </div>
+  {% endif %}
+
+  <div class="card p-6">
+    <form method="post" action="/admin/users">
+      <div class="space-y-4">
+        <label>
+          Email
+          <input name="email" type="email" required placeholder="user@example.com" />
+        </label>
+
+        <label>
+          Password
+          <input name="password" type="password" required minlength="4" placeholder="Minimum 4 characters" />
+        </label>
+
+        <label>
+          Role
+          <select name="role">
+            <option value="editor">Editor</option>
+            <option value="admin">Admin</option>
+          </select>
+        </label>
+
+        <div class="flex items-center gap-3 pt-2">
+          <button class="btn-primary" type="submit">Create User</button>
+          <a class="btn-secondary" href="/admin/users">Cancel</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,5 +1,5 @@
+use rustpress::models::RoleName;
 use serde::Deserialize;
-use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct LoginForm {
@@ -54,7 +54,7 @@ pub struct SiteUpdateForm {
 pub struct ThemesQuery {
     pub q: Option<String>,
     pub category: Option<String>,
-    pub site_id: Option<Uuid>,
+    pub site_id: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -108,4 +108,24 @@ pub struct AdminTemplateUpdateForm {
     pub name: Option<String>,
     pub description: Option<String>,
     pub html: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct AdminTemplatePreviewForm {
+    pub html: String,
+    pub preview_content_id: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct AdminCreateUserForm {
+    pub email: String,
+    pub password: String,
+    pub role: RoleName,
+}
+
+#[derive(Deserialize)]
+pub struct AdminUpdateUserForm {
+    pub email: String,
+    pub role: RoleName,
+    pub new_password: Option<String>,
 }

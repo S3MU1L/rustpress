@@ -1,7 +1,9 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::models::{SiteTemplate, SiteTemplateCreate, SiteTemplateUpdate};
+use crate::models::{
+    SiteTemplate, SiteTemplateCreate, SiteTemplateUpdate,
+};
 
 pub async fn list_site_templates_for_user(
     pool: &PgPool,
@@ -20,7 +22,9 @@ pub async fn list_site_templates_for_user(
     .await
 }
 
-pub async fn list_site_templates(pool: &PgPool) -> Result<Vec<SiteTemplate>, sqlx::Error> {
+pub async fn list_site_templates(
+    pool: &PgPool,
+) -> Result<Vec<SiteTemplate>, sqlx::Error> {
     sqlx::query_as::<_, SiteTemplate>(
         r#"
         SELECT *
@@ -32,7 +36,10 @@ pub async fn list_site_templates(pool: &PgPool) -> Result<Vec<SiteTemplate>, sql
     .await
 }
 
-pub async fn get_site_template_by_id(pool: &PgPool, id: Uuid) -> Result<Option<SiteTemplate>, sqlx::Error> {
+pub async fn get_site_template_by_id(
+    pool: &PgPool,
+    id: Uuid,
+) -> Result<Option<SiteTemplate>, sqlx::Error> {
     sqlx::query_as::<_, SiteTemplate>(
         r#"
         SELECT *
@@ -99,6 +106,22 @@ pub async fn create_site_template(
     .bind(&data.html)
     .fetch_one(pool)
     .await
+}
+
+pub async fn delete_site_template(
+    pool: &PgPool,
+    id: Uuid,
+) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query(
+        r#"
+        DELETE FROM site_templates
+        WHERE id = $1 AND is_builtin = false
+        "#,
+    )
+    .bind(id)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() > 0)
 }
 
 pub async fn update_site_template(

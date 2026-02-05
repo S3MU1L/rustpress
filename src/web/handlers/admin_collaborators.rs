@@ -1,29 +1,21 @@
-use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{
+    HttpRequest, HttpResponse, Responder, get, post, web,
+};
 use serde::Deserialize;
 use uuid::Uuid;
 
 use rustpress::db;
+use rustpress::models::RoleName;
 
-use crate::web::helpers::require_user;
-use crate::web::state::AppState;
-
-#[derive(Deserialize)]
-pub struct AddCollaboratorForm {
-    pub email: String,
-    pub role: String,
-}
+use super::super::helpers::{
+    render_not_found, render_unauthorized, require_user,
+};
+use super::super::state::AppState;
 
 #[derive(Deserialize)]
-pub struct SetRoleForm {
-    pub role: String,
-}
-
-fn normalize_role(role: &str) -> Option<&'static str> {
-    match role.trim().to_lowercase().as_str() {
-        "viewer" => Some("viewer"),
-        "editor" => Some("editor"),
-        _ => None,
-    }
+pub struct CollaboratorForm {
+    pub email: Option<String>,
+    pub role: RoleName,
 }
 
 #[get("/admin/content/{id}/collaborators")]
@@ -40,22 +32,31 @@ pub async fn admin_list_collaborators(
     let id = path.into_inner();
     let item = match db::get_content_by_id(&state.pool, id).await {
         Ok(Some(item)) => item,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(None) => return render_not_found(&req),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(e.to_string());
+        }
     };
 
-    let can_view = match db::can_view_content(&state.pool, &item, uid).await {
-        Ok(v) => v,
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
-    };
+    let can_view =
+        match db::can_view_content(&state.pool, &item, uid).await {
+            Ok(v) => v,
+            Err(e) => {
+                return HttpResponse::InternalServerError()
+                    .body(e.to_string());
+            }
+        };
 
     if !can_view {
-        return HttpResponse::Forbidden().body("Forbidden");
+        return render_unauthorized(&req);
     }
 
     match db::list_collaborators(&state.pool, id).await {
         Ok(list) => HttpResponse::Ok().json(list),
-        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => {
+            HttpResponse::InternalServerError().body(e.to_string())
+        }
     }
 }
 
@@ -64,7 +65,7 @@ pub async fn admin_add_collaborator(
     state: web::Data<AppState>,
     req: HttpRequest,
     path: web::Path<Uuid>,
-    form: web::Form<AddCollaboratorForm>,
+    form: web::Form<CollaboratorForm>,
 ) -> impl Responder {
     let uid = match require_user(&req) {
         Ok(uid) => uid,
@@ -74,30 +75,43 @@ pub async fn admin_add_collaborator(
     let id = path.into_inner();
     let item = match db::get_content_by_id(&state.pool, id).await {
         Ok(Some(item)) => item,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(None) => return render_not_found(&req),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(e.to_string());
+        }
     };
 
-    let can_manage = match db::can_manage_collaborators(&state.pool, &item, uid).await {
-        Ok(v) => v,
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
-    };
+    let can_manage =
+        match db::can_manage_collaborators(&state.pool, &item, uid)
+            .await
+        {
+            Ok(v) => v,
+            Err(e) => {
+                return HttpResponse::InternalServerError()
+                    .body(e.to_string());
+            }
+        };
 
     if !can_manage {
-        return HttpResponse::Forbidden().body("Only the owner can manage collaborators");
+        return render_unauthorized(&req);
     }
 
-    let role = match normalize_role(&form.role) {
-        Some(r) => r,
-        None => return HttpResponse::BadRequest().body("Invalid role (use viewer|editor)"),
-    };
-
-    let email = form.email.trim().to_string();
+    let email =
+        form.email.as_deref().unwrap_or("").trim().to_string();
     if email.is_empty() {
         return HttpResponse::BadRequest().body("Email required");
     }
 
-    match db::add_collaborator(&state.pool, id, &email, role, Some(uid)).await {
+    match db::add_collaborator(
+        &state.pool,
+        id,
+        &email,
+        form.role,
+        Some(uid),
+    )
+    .await
+    {
         Ok(()) => HttpResponse::Ok().finish(),
         Err(e) => HttpResponse::BadRequest().body(e.to_string()),
     }
@@ -108,7 +122,7 @@ pub async fn admin_set_collaborator_role(
     state: web::Data<AppState>,
     req: HttpRequest,
     path: web::Path<(Uuid, Uuid)>,
-    form: web::Form<SetRoleForm>,
+    form: web::Form<CollaboratorForm>,
 ) -> impl Responder {
     let uid = match require_user(&req) {
         Ok(uid) => uid,
@@ -119,25 +133,36 @@ pub async fn admin_set_collaborator_role(
 
     let item = match db::get_content_by_id(&state.pool, id).await {
         Ok(Some(item)) => item,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(None) => return render_not_found(&req),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(e.to_string());
+        }
     };
 
-    let can_manage = match db::can_manage_collaborators(&state.pool, &item, uid).await {
-        Ok(v) => v,
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
-    };
+    let can_manage =
+        match db::can_manage_collaborators(&state.pool, &item, uid)
+            .await
+        {
+            Ok(v) => v,
+            Err(e) => {
+                return HttpResponse::InternalServerError()
+                    .body(e.to_string());
+            }
+        };
 
     if !can_manage {
-        return HttpResponse::Forbidden().body("Only the owner can manage collaborators");
+        return render_unauthorized(&req);
     }
 
-    let role = match normalize_role(&form.role) {
-        Some(r) => r,
-        None => return HttpResponse::BadRequest().body("Invalid role (use viewer|editor)"),
-    };
-
-    match db::set_collaborator_role(&state.pool, id, user_id, role).await {
+    match db::set_collaborator_role(
+        &state.pool,
+        id,
+        user_id,
+        form.role,
+    )
+    .await
+    {
         Ok(()) => HttpResponse::Ok().finish(),
         Err(e) => HttpResponse::BadRequest().body(e.to_string()),
     }
@@ -158,17 +183,26 @@ pub async fn admin_remove_collaborator(
 
     let item = match db::get_content_by_id(&state.pool, id).await {
         Ok(Some(item)) => item,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(None) => return render_not_found(&req),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(e.to_string());
+        }
     };
 
-    let can_manage = match db::can_manage_collaborators(&state.pool, &item, uid).await {
-        Ok(v) => v,
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
-    };
+    let can_manage =
+        match db::can_manage_collaborators(&state.pool, &item, uid)
+            .await
+        {
+            Ok(v) => v,
+            Err(e) => {
+                return HttpResponse::InternalServerError()
+                    .body(e.to_string());
+            }
+        };
 
     if !can_manage {
-        return HttpResponse::Forbidden().body("Only the owner can manage collaborators");
+        return render_unauthorized(&req);
     }
 
     match db::remove_collaborator(&state.pool, id, user_id).await {

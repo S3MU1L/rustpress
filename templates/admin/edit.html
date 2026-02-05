@@ -1,4 +1,5 @@
 {% extends "layouts/base.html" %}
+{% import "partials/content_macros.html" as macros %}
 
 {% block title %}Edit - {{ item.title }} - RustPress{% endblock %}
 
@@ -7,44 +8,103 @@
 {% endblock %}
 
 {% block content %}
-<form id="edit-form" method="post" action="/admin/edit/{{ item.id }}" hx-post="/admin/edit/{{ item.id }}" hx-target="body" hx-swap="outerHTML">
+<form id="edit-form" method="post" action="/admin/edit/{{ item.id }}" hx-post="/admin/edit/{{ item.id }}"
+  hx-target="body" hx-swap="outerHTML">
   <!-- Top Bar -->
-  <div class="flex items-center justify-between mb-6">
-    <div class="flex items-center gap-4">
-      <a class="text-rp-muted hover:text-rp-text" href="/admin" title="Back to Dashboard">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-        </svg>
-      </a>
-      <div>
-        <h1 class="text-xl mb-0">{{ item.title }}</h1>
-        <div class="flex items-center gap-2 mt-1">
-          <span class="badge">{{ item.kind }}</span>
-          <span class="badge {% if item.status == "published" %}badge-success{% endif %}">{{ item.status }}</span>
+  <div class="mb-6">
+    <!-- Compact Header -->
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-3">
+        {{ macros::back_button() }}
+        <div class="flex items-center gap-3">
+          <h1 class="text-2xl font-bold text-rp-text">{{ item.title }}</h1>
           <span id="autosave-status" class="text-rp-muted text-xs"></span>
         </div>
       </div>
+      <div class="flex items-center gap-2">
+        <button type="button" id="toggle-header"
+          class="p-2 rounded-lg text-rp-muted hover:text-rp-text hover:bg-rp-border/30 transition-colors"
+          title="Toggle Settings">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        <a class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
+          href="/admin/content/{{ item.id }}/preview" target="_blank">
+          {{ macros::preview_button() }}
+          Preview
+        </a>
+        {% if item.kind == "post" %}
+        <a class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
+          href="/blog/{{ item.slug }}" target="_blank">
+          {{ macros::external_link_icon() }}
+          View Live
+        </a>
+        {% else %}
+        <a class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
+          href="/{{ item.slug }}" target="_blank">
+          {{ macros::external_link_icon() }}
+          View Live
+        </a>
+        {% endif %}
+        <button
+          class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
+          type="submit">
+          {{ macros::save_icon() }}
+          Save
+        </button>
+        {% if item.status == "draft" %}
+        <button
+          class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
+          type="button" hx-post="/admin/publish/{{ item.id }}" hx-target="body" hx-swap="outerHTML">
+          {{ macros::publish_icon() }}
+          Publish
+        </button>
+        {% endif %}
+        <button type="button"
+          class="px-4 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors text-sm inline-flex items-center gap-2"
+          hx-post="/admin/edit/{{ item.id }}/delete" hx-swap="none"
+          hx-confirm="Delete '{{ item.title }}'? This cannot be undone.">
+          {{ macros::delete_icon() }}
+          Delete
+        </button>
+      </div>
     </div>
-    <div class="flex items-center gap-2">
-      <a class="btn-secondary text-sm" href="/admin/content/{{ item.id }}/preview" target="_blank">Preview</a>
-      {% if item.kind == "post" %}
-        <a class="btn-secondary text-sm" href="/blog/{{ item.slug }}" target="_blank">View Live</a>
-      {% else %}
-        <a class="btn-secondary text-sm" href="/{{ item.slug }}" target="_blank">View Live</a>
-      {% endif %}
-      <button class="btn-primary text-sm" type="submit">Save</button>
-      {% if item.status == "draft" %}
-        <button class="btn-primary text-sm bg-green-600 hover:bg-green-700" type="button" hx-post="/admin/publish/{{ item.id }}" hx-target="body" hx-swap="outerHTML">Publish</button>
-      {% endif %}
+
+    <!-- Collapsible Settings -->
+    <div id="header-settings" class="bg-rp-surface border border-rp-border rounded-lg p-4 transition-all duration-300">
+      {{ macros::settings_row(slug_value=item.slug, slug_required=false, template_value=item.template, show_status=true,
+      status_value=item.status.as_str()) }}
     </div>
   </div>
 
-  <div class="grid lg:grid-cols-[1fr_320px] gap-6">
+  <script>
+    (function () {
+      const toggle = document.getElementById('toggle-header');
+      const settings = document.getElementById('header-settings');
+      const isCollapsed = localStorage.getItem('header-collapsed') === 'true';
+
+      if (isCollapsed) {
+        settings.style.display = 'none';
+        toggle.querySelector('svg').style.transform = 'rotate(-90deg)';
+      }
+
+      toggle.addEventListener('click', function () {
+        const isHidden = settings.style.display === 'none';
+        settings.style.display = isHidden ? 'block' : 'none';
+        toggle.querySelector('svg').style.transform = isHidden ? 'rotate(0deg)' : 'rotate(-90deg)';
+        localStorage.setItem('header-collapsed', !isHidden);
+      });
+    })();
+  </script>
+
+  <div class="grid lg:grid-cols-[1fr_380px] gap-6">
     <!-- Main Editor Area -->
     <div class="space-y-4">
       <!-- Title -->
       <div class="card p-4">
-        <input id="title" name="title" value="{{ item.title }}" placeholder="Enter title..." class="text-2xl font-semibold border-0 bg-transparent w-full focus:outline-none focus:ring-0 p-0" />
+        <input id="title" name="title" value="{{ item.title }}" placeholder="Enter title..."
+          class="text-2xl font-semibold border-0 bg-transparent w-full focus:outline-none focus:ring-0 p-0" />
       </div>
 
       <!-- Content Editor -->
@@ -56,53 +116,41 @@
 
     <!-- Sidebar -->
     <div class="space-y-4">
-      <!-- Publish Settings -->
-      <div class="card p-4">
-        <h3 class="text-sm font-medium mb-3">Publish Settings</h3>
-        <label class="block mb-3">
-          <span class="text-sm text-rp-muted">Status</span>
-          <select name="status" class="mt-1">
-            <option value="draft" {% if item.status == "draft" %}selected{% endif %}>Draft</option>
-            <option value="published" {% if item.status == "published" %}selected{% endif %}>Published</option>
-          </select>
-        </label>
-        <label class="block">
-          <span class="text-sm text-rp-muted">Template</span>
-          <select name="template" class="mt-1">
-            {% for t in templates %}
-              <option value="{{ t.name }}" {% if t.name == item.template %}selected{% endif %}>{{ t.name }}</option>
-            {% endfor %}
-          </select>
-        </label>
-      </div>
-
-      <!-- URL Settings -->
-      <div class="card p-4">
-        <h3 class="text-sm font-medium mb-3">URL Settings</h3>
-        <label class="block">
-          <span class="text-sm text-rp-muted">Slug</span>
-          <input id="slug" name="slug" value="{{ item.slug }}" placeholder="url-friendly-slug" class="mt-1" />
-        </label>
-        <p class="text-xs text-rp-muted mt-2">
-          {% if item.kind == "post" %}/blog/{{ item.slug }}{% else %}/{{ item.slug }}{% endif %}
-        </p>
-      </div>
-
       <!-- Live Preview -->
-      <div class="card p-4">
+      <div class="card p-5">
         <div class="flex items-center justify-between mb-3">
-          <h3 class="text-sm font-medium">Live Preview</h3>
-          <span class="text-xs text-rp-muted">Auto-updates</span>
+          <h3 class="text-sm font-medium flex items-center gap-2">
+            <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            Live Preview
+          </h3>
+          <span class="px-2 py-0.5 rounded-full text-xs bg-rp-secondary/10 text-rp-secondary">Auto-updates</span>
         </div>
-        <div id="preview" class="border border-rp-border rounded overflow-hidden bg-white" hx-post="/admin/edit/{{ item.id }}/preview" hx-trigger="load, editor-change delay:500ms" hx-include="#edit-form" hx-target="this" hx-swap="innerHTML">
+        <div id="preview" class="border border-rp-border rounded-lg overflow-hidden bg-white"
+          hx-post="/admin/edit/{{ item.id }}/preview" hx-trigger="load, editor-change from:body delay:500ms, every 3s"
+          hx-include="#edit-form" hx-target="this" hx-swap="innerHTML">
           <p class="text-rp-muted text-sm p-4">Loading preview...</p>
         </div>
       </div>
 
       <!-- Info -->
-      <div class="card p-4">
-        <h3 class="text-sm font-medium mb-3">Info</h3>
+      <div class="card p-5">
+        <h3 class="text-sm font-medium mb-3 flex items-center gap-2">
+          <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Info
+        </h3>
         <dl class="text-xs space-y-2">
+          <div class="flex justify-between">
+            <dt class="text-rp-muted">Author</dt>
+            <dd>{{ author }}</dd>
+          </div>
           <div class="flex justify-between">
             <dt class="text-rp-muted">Created</dt>
             <dd>{{ item.created_at.format("%b %d, %Y") }}</dd>
@@ -123,7 +171,8 @@
   </div>
 
   <!-- Autosave trigger -->
-  <div id="autosave" hx-post="/admin/edit/{{ item.id }}/autosave" hx-trigger="autosave-trigger" hx-include="#edit-form" hx-target="#autosave-status" hx-swap="innerHTML"></div>
+  <div id="autosave" hx-post="/admin/edit/{{ item.id }}/autosave" hx-trigger="autosave-trigger" hx-include="#edit-form"
+    hx-target="#autosave-status" hx-swap="innerHTML"></div>
 </form>
 {% endblock %}
 

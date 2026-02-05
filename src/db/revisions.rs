@@ -1,7 +1,9 @@
 use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
-use crate::models::{ContentItem, ContentItemRevisionMeta, ContentStatus};
+use crate::models::{
+    ContentItem, ContentItemRevisionMeta, ContentStatus,
+};
 
 pub async fn ensure_initial_revision(
     pool: &PgPool,
@@ -37,7 +39,8 @@ pub async fn ensure_initial_revision(
     .await?;
 
     if !exists {
-        insert_revision_snapshot(&mut tx, &item, 1, actor_user_id).await?;
+        insert_revision_snapshot(&mut tx, &item, 1, actor_user_id)
+            .await?;
     }
 
     // Ensure pointer is sane.
@@ -80,7 +83,8 @@ pub async fn record_revision(
     .await?;
 
     if !rev1_exists {
-        insert_revision_snapshot(&mut tx, item, 1, actor_user_id).await?;
+        insert_revision_snapshot(&mut tx, item, 1, actor_user_id)
+            .await?;
         sqlx::query(
             r#"
             UPDATE content_items
@@ -111,7 +115,8 @@ pub async fn record_revision(
     }
 
     let next = current.saturating_add(1);
-    insert_revision_snapshot(&mut tx, item, next, actor_user_id).await?;
+    insert_revision_snapshot(&mut tx, item, next, actor_user_id)
+        .await?;
 
     sqlx::query(
         r#"
@@ -161,7 +166,10 @@ pub async fn restore_revision(
 ) -> Result<Option<ContentItem>, sqlx::Error> {
     let mut tx = pool.begin().await?;
 
-    let rev = sqlx::query_as::<_, (String, String, String, String, ContentStatus)>(
+    let rev = sqlx::query_as::<
+        _,
+        (String, String, String, String, ContentStatus),
+    >(
         r#"
         SELECT title, slug, content, template, status
         FROM content_item_revisions
@@ -208,7 +216,10 @@ pub async fn restore_revision(
     Ok(item)
 }
 
-pub async fn undo(pool: &PgPool, content_item_id: Uuid) -> Result<Option<ContentItem>, sqlx::Error> {
+pub async fn undo(
+    pool: &PgPool,
+    content_item_id: Uuid,
+) -> Result<Option<ContentItem>, sqlx::Error> {
     let current = sqlx::query_scalar::<_, i32>(
         r#"
         SELECT current_rev
@@ -225,13 +236,17 @@ pub async fn undo(pool: &PgPool, content_item_id: Uuid) -> Result<Option<Content
     };
 
     if current <= 1 {
-        return restore_revision(pool, content_item_id, current).await;
+        return restore_revision(pool, content_item_id, current)
+            .await;
     }
 
     restore_revision(pool, content_item_id, current - 1).await
 }
 
-pub async fn redo(pool: &PgPool, content_item_id: Uuid) -> Result<Option<ContentItem>, sqlx::Error> {
+pub async fn redo(
+    pool: &PgPool,
+    content_item_id: Uuid,
+) -> Result<Option<ContentItem>, sqlx::Error> {
     let current = sqlx::query_scalar::<_, i32>(
         r#"
         SELECT current_rev
@@ -263,7 +278,8 @@ pub async fn redo(pool: &PgPool, content_item_id: Uuid) -> Result<Option<Content
     .await?;
 
     if !exists {
-        return restore_revision(pool, content_item_id, current).await;
+        return restore_revision(pool, content_item_id, current)
+            .await;
     }
 
     restore_revision(pool, content_item_id, current + 1).await

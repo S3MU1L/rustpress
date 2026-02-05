@@ -41,7 +41,10 @@ pub async fn list_sites_for_user(
     }
 }
 
-pub async fn get_site_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Site>, sqlx::Error> {
+pub async fn get_site_by_id(
+    pool: &PgPool,
+    id: Uuid,
+) -> Result<Option<Site>, sqlx::Error> {
     sqlx::query_as::<_, Site>(
         r#"
         SELECT *
@@ -54,7 +57,9 @@ pub async fn get_site_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Site>, sql
     .await
 }
 
-pub async fn get_default_site(pool: &PgPool) -> Result<Option<Site>, sqlx::Error> {
+pub async fn get_default_site(
+    pool: &PgPool,
+) -> Result<Option<Site>, sqlx::Error> {
     sqlx::query_as::<_, Site>(
         r#"
         SELECT *
@@ -68,7 +73,10 @@ pub async fn get_default_site(pool: &PgPool) -> Result<Option<Site>, sqlx::Error
     .await
 }
 
-pub async fn create_site(pool: &PgPool, data: &SiteCreate) -> Result<Site, sqlx::Error> {
+pub async fn create_site(
+    pool: &PgPool,
+    data: &SiteCreate,
+) -> Result<Site, sqlx::Error> {
     sqlx::query_as::<_, Site>(
         r#"
         INSERT INTO sites (owner_user_id, name, slug, status, default_template)

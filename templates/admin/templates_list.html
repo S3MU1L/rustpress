@@ -12,41 +12,105 @@
     <h1 class="mb-2">Templates</h1>
     <p class="text-rp-muted">Manage your site templates and themes.</p>
   </div>
-  <a class="btn-primary" href="/admin/templates/new">Add New Template</a>
+  <a class="btn-primary inline-flex items-center gap-2" href="/admin/templates/new">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+    </svg>
+    Add New Template
+  </a>
 </div>
 
 <!-- Templates List -->
 <div class="card">
   {% if templates.len() == 0 %}
-    <div class="p-8 text-center">
-      <p class="text-rp-muted mb-4">No templates found.</p>
-      <a class="btn-primary" href="/admin/templates/new">Create your first template</a>
-    </div>
+  <div class="p-8 text-center">
+    <p class="text-rp-muted mb-4">No templates found.</p>
+    <a class="btn-primary inline-flex items-center gap-2" href="/admin/templates/new">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+      </svg>
+      Create your first template
+    </a>
+  </div>
   {% else %}
-    <ul class="divide-y divide-rp-border">
-      {% for t in templates %}
-        <li class="p-4 flex items-center justify-between hover:bg-rp-bg/50">
-          <div>
-            <a href="/admin/templates/{{ t.id }}" class="font-medium">{{ t.name }}</a>
-            {% if t.description.len() > 0 %}
-              <p class="text-rp-muted text-sm">{{ t.description }}</p>
-            {% endif %}
-          </div>
+  <ul class="divide-y divide-rp-border">
+    {% for t in templates %}
+    <li class="p-5 flex items-center justify-between hover:bg-rp-bg/50 transition-colors">
+      <div class="flex-1">
+        <div class="flex items-center gap-3 mb-1">
+          <a href="/admin/templates/{{ t.id }}"
+            class="text-lg font-semibold text-rp-text hover:text-rp-primary transition-colors">{{ t.name }}</a>
           {% if t.is_builtin %}
-            <span class="badge">Built-in</span>
+          <span
+            class="px-2.5 py-1 rounded-full text-xs font-medium bg-rp-primary/10 text-rp-primary border border-rp-primary/20">Built-in</span>
           {% else %}
-            <span class="badge badge-success">Custom</span>
+          <span
+            class="px-2.5 py-1 rounded-full text-xs font-medium bg-rp-secondary/10 text-rp-secondary border border-rp-secondary/20">Custom</span>
           {% endif %}
-        </li>
-      {% endfor %}
-    </ul>
+        </div>
+        {% if t.description.len() > 0 %}
+        <p class="text-rp-text text-sm mb-2 max-w-2xl">{{ t.description }}</p>
+        {% endif %}
+        <div class="flex items-center gap-3 text-xs text-rp-muted">
+          <span class="flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Edited {{ t.edited_at.format("%b %d, %Y %H:%M") }}
+          </span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <a class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
+          href="/admin/templates/{{ t.id }}">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+          Edit
+        </a>
+        {% if !t.is_builtin %}
+        <form method="post" action="/admin/templates/{{ t.id }}/delete" hx-post="/admin/templates/{{ t.id }}/delete"
+          hx-swap="none"
+          hx-confirm="Delete template '{{ t.name }}'? Pages using it will fall back to the default template."
+          style="display:inline">
+          <button
+            class="px-4 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors text-sm inline-flex items-center gap-2"
+            type="submit">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Delete
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
   {% endif %}
 </div>
 
-<p class="text-rp-muted text-sm mt-4">
-  Placeholders: <code class="bg-rp-bg px-1 rounded text-sm">{{"{{title}}"}}</code>,
-  <code class="bg-rp-bg px-1 rounded text-sm">{{"{{content}}"}}</code>,
-  <code class="bg-rp-bg px-1 rounded text-sm">{{"{{slug}}"}}</code>,
-  <code class="bg-rp-bg px-1 rounded text-sm">{{"{{kind}}"}}</code>
-</p>
+<div class="card p-4 mt-4">
+  <div class="flex items-center gap-2 mb-2">
+    <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+    <span class="text-sm font-medium text-rp-text">Available placeholders</span>
+  </div>
+  <p class="text-rp-muted text-xs mb-2">Use these in your templates to display dynamic content:</p>
+  <div class="flex flex-wrap gap-2">
+    <code
+      class="bg-rp-primary/5 border border-rp-primary/20 px-2 py-1 rounded text-xs font-mono text-rp-primary">{{"{{title}}"}}</code>
+    <code
+      class="bg-rp-primary/5 border border-rp-primary/20 px-2 py-1 rounded text-xs font-mono text-rp-primary">{{"{{content}}"}}</code>
+    <code
+      class="bg-rp-secondary/5 border border-rp-secondary/20 px-2 py-1 rounded text-xs font-mono text-rp-secondary">{{"{{slug}}"}}</code>
+    <code
+      class="bg-rp-secondary/5 border border-rp-secondary/20 px-2 py-1 rounded text-xs font-mono text-rp-secondary">{{"{{kind}}"}}</code>
+  </div>
+</div>
 {% endblock %}

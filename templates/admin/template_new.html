@@ -7,44 +7,286 @@
 {% endblock %}
 
 {% block content %}
-<div class="max-w-3xl">
-  <div class="flex items-center justify-between mb-6">
+<div class="flex items-center justify-between mb-8">
+  <div class="flex items-center gap-4">
+    <a class="p-2 rounded-lg text-rp-muted hover:text-rp-text hover:bg-rp-border/30 transition-colors"
+      href="/admin/templates" title="Back to Templates">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+      </svg>
+    </a>
     <div>
-      <h1 class="mb-2">New Template</h1>
-      <p class="text-rp-muted">Create a custom template for your sites.</p>
+      <h1 class="text-2xl font-bold mb-1">New Template</h1>
+      <p class="text-rp-muted text-sm">Create a custom template for your sites.</p>
     </div>
-    <a class="btn-secondary" href="/admin/templates">Back to Templates</a>
   </div>
-
-  <div class="card p-5">
-    <form method="post" action="/admin/templates" hx-post="/admin/templates" hx-trigger="submit" hx-swap="none">
-      <label>
-        Name
-        <input name="name" required placeholder="landing" />
-      </label>
-
-      <label>
-        Description
-        <input name="description" placeholder="Optional description..." />
-      </label>
-
-      <label>
-        HTML
-        <textarea name="html" rows="18" class="font-mono text-sm">{{ starter_html }}</textarea>
-      </label>
-
-      <div class="flex items-center gap-3 mt-6">
-        <button class="btn-primary" type="submit">Create Template</button>
-        <a class="btn-secondary" href="/admin/templates">Cancel</a>
-      </div>
-    </form>
-  </div>
-
-  <p class="text-rp-muted text-sm mt-4">
-    Placeholders: <code class="bg-rp-bg px-1 rounded text-sm">{{"{{title}}"}}</code>,
-    <code class="bg-rp-bg px-1 rounded text-sm">{{"{{content}}"}}</code>,
-    <code class="bg-rp-bg px-1 rounded text-sm">{{"{{slug}}"}}</code>,
-    <code class="bg-rp-bg px-1 rounded text-sm">{{"{{kind}}"}}</code>
-  </p>
+  <a class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
+    href="/admin/templates">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+    Cancel
+  </a>
 </div>
+
+<div class="grid lg:grid-cols-[1fr_380px] gap-6">
+  <!-- Left Column: Form -->
+  <div class="space-y-4">
+    <div class="card p-5">
+      <form id="tpl-form" method="post" action="/admin/templates" hx-post="/admin/templates" hx-trigger="submit"
+        hx-swap="none">
+        <label>
+          <span class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+            Name
+          </span>
+          <input name="name" required placeholder="landing" class="mt-1" />
+        </label>
+
+        <label class="mt-4 block">
+          <span class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+            </svg>
+            Description
+          </span>
+          <input name="description" placeholder="Optional description..." class="mt-1" />
+        </label>
+
+        <div class="mt-4 mb-2">
+          <span class="text-sm text-rp-muted flex items-center gap-2 mb-3">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+            </svg>
+            Insert placeholder
+          </span>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button"
+              class="px-3 py-1.5 rounded text-xs font-medium bg-rp-primary/10 text-rp-primary hover:bg-rp-primary/20 border border-rp-primary/20 hover:border-rp-primary/30 transition-colors inline-flex items-center gap-1"
+              onclick="insertPlaceholder('{{" {{title}}"}}')">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              {{"{{title}}"}}
+            </button>
+            <button type="button"
+              class="px-3 py-1.5 rounded text-xs font-medium bg-rp-primary/10 text-rp-primary hover:bg-rp-primary/20 border border-rp-primary/20 hover:border-rp-primary/30 transition-colors inline-flex items-center gap-1"
+              onclick="insertPlaceholder('{{" {{content}}"}}')">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              {{"{{content}}"}}
+            </button>
+            <button type="button"
+              class="px-3 py-1.5 rounded text-xs font-medium bg-rp-secondary/10 text-rp-secondary hover:bg-rp-secondary/20 border border-rp-secondary/20 hover:border-rp-secondary/30 transition-colors inline-flex items-center gap-1"
+              onclick="insertPlaceholder('{{" {{slug}}"}}')">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              {{"{{slug}}"}}
+            </button>
+            <button type="button"
+              class="px-3 py-1.5 rounded text-xs font-medium bg-rp-secondary/10 text-rp-secondary hover:bg-rp-secondary/20 border border-rp-secondary/20 hover:border-rp-secondary/30 transition-colors inline-flex items-center gap-1"
+              onclick="insertPlaceholder('{{" {{kind}}"}}')">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              {{"{{kind}}"}}
+            </button>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 mt-3">
+            <span class="text-xs text-rp-muted">History:</span>
+            <button type="button" id="undo-btn"
+              class="px-3 py-1.5 rounded text-xs font-medium bg-rp-bg border border-rp-border text-rp-text hover:bg-gray-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1"
+              onclick="undoMgr &amp;&amp; undoMgr.undo()" disabled title="Undo (Ctrl+Z)">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
+              Undo
+            </button>
+            <button type="button" id="redo-btn"
+              class="px-3 py-1.5 rounded text-xs font-medium bg-rp-bg border border-rp-border text-rp-text hover:bg-gray-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1"
+              onclick="undoMgr &amp;&amp; undoMgr.redo()" disabled title="Redo (Ctrl+Y)">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M21 10h-10a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" />
+              </svg>
+              Redo
+            </button>
+          </div>
+        </div>
+
+        <label class="mt-4 block">
+          <span class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+            </svg>
+            HTML
+          </span>
+          <textarea id="tpl-html" name="html" rows="20" class="font-mono text-sm mt-1">{{ starter_html }}</textarea>
+        </label>
+
+        <div class="flex items-center gap-3 mt-6">
+          <button
+            class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors inline-flex items-center gap-2"
+            type="submit">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Create Template
+          </button>
+          <a class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors inline-flex items-center gap-2"
+            href="/admin/templates">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Cancel
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Right Column: Sidebar -->
+  <div class="space-y-4">
+    <!-- Live Preview -->
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-medium flex items-center gap-2">
+          <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          Live Preview
+        </h3>
+        <span class="px-2 py-0.5 rounded-full text-xs bg-rp-secondary/10 text-rp-secondary">Auto-updates</span>
+      </div>
+      <label class="block mb-3">
+        <span class="text-sm text-rp-muted">Preview with content</span>
+        <select id="preview-content-id" name="preview_content_id" class="mt-1">
+          <option value="">Sample data</option>
+          {% for ci in content_items %}
+          <option value="{{ ci.id }}">{{ ci.title }} ({{ ci.kind }})</option>
+          {% endfor %}
+        </select>
+      </label>
+      <div id="preview" class="border border-rp-border rounded-lg overflow-hidden bg-white"
+        hx-post="/admin/templates/preview" hx-trigger="load, template-change from:body delay:500ms"
+        hx-include="#tpl-html, #preview-content-id" hx-target="this" hx-swap="innerHTML">
+        <p class="text-rp-muted text-sm p-4">Loading preview...</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  var undoMgr = null;
+
+  function triggerPreview() {
+    document.body.dispatchEvent(new CustomEvent('template-change'));
+  }
+
+  function insertPlaceholder(text) {
+    var ta = document.getElementById('tpl-html');
+    if (!ta) return;
+    if (undoMgr) undoMgr.save();
+    var start = ta.selectionStart;
+    var end = ta.selectionEnd;
+    ta.value = ta.value.substring(0, start) + text + ta.value.substring(end);
+    ta.selectionStart = ta.selectionEnd = start + text.length;
+    ta.focus();
+    if (undoMgr) undoMgr.save();
+    triggerPreview();
+  }
+
+  (function () {
+    var ta = document.getElementById('tpl-html');
+    var sel = document.getElementById('preview-content-id');
+    if (!ta) return;
+
+    // Undo/Redo manager
+    var history = [{ val: ta.value, ss: 0, se: 0 }];
+    var idx = 0;
+    var saveTimer = null;
+
+    function updateButtons() {
+      var undoBtn = document.getElementById('undo-btn');
+      var redoBtn = document.getElementById('redo-btn');
+      if (undoBtn) undoBtn.disabled = (idx <= 0);
+      if (redoBtn) redoBtn.disabled = (idx >= history.length - 1);
+    }
+
+    function save() {
+      if (history[idx] && history[idx].val === ta.value) return;
+      history.length = idx + 1;
+      history.push({ val: ta.value, ss: ta.selectionStart, se: ta.selectionEnd });
+      if (history.length > 200) history.shift();
+      idx = history.length - 1;
+      updateButtons();
+    }
+
+    function applyState(state) {
+      ta.value = state.val;
+      ta.selectionStart = state.ss;
+      ta.selectionEnd = state.se;
+      ta.focus();
+      updateButtons();
+      triggerPreview();
+    }
+
+    function undo() {
+      if (idx <= 0) return;
+      if (history[idx].val !== ta.value) save();
+      idx--;
+      applyState(history[idx]);
+    }
+
+    function redo() {
+      if (idx >= history.length - 1) return;
+      idx++;
+      applyState(history[idx]);
+    }
+
+    undoMgr = { save: save, undo: undo, redo: redo };
+
+    // Save state on input (debounced)
+    ta.addEventListener('input', function () {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(save, 400);
+      triggerPreview();
+    });
+
+    // Keyboard shortcuts
+    ta.addEventListener('keydown', function (e) {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if (e.key === 'z' && e.shiftKey) {
+        e.preventDefault();
+        redo();
+      } else if (e.key === 'y') {
+        e.preventDefault();
+        redo();
+      }
+    });
+
+    // Content selector triggers preview
+    if (sel) {
+      sel.addEventListener('change', triggerPreview);
+    }
+
+    updateButtons();
+  })();
+</script>
 {% endblock %}

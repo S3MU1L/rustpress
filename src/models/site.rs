@@ -22,7 +22,10 @@ pub struct Site {
 
 impl Site {
     pub fn validate_homepage(&self) -> Result<(), String> {
-        HomepageType::validate(self.homepage_type, self.homepage_page_id)
+        HomepageType::validate(
+            self.homepage_type,
+            self.homepage_page_id,
+        )
     }
 }
 
@@ -47,7 +50,10 @@ pub struct SiteUpdate {
 impl SiteUpdate {
     pub fn validate_homepage(&self) -> Result<(), String> {
         if let Some(typ) = self.homepage_type {
-            HomepageType::validate(typ, self.homepage_page_id.flatten())
+            HomepageType::validate(
+                typ,
+                self.homepage_page_id.flatten(),
+            )
         } else {
             Ok(())
         }

@@ -6,6 +6,7 @@ use rustpress::models::{ContentItem, ContentKind, HomepageType};
 
 use crate::web::helpers::{
     apply_site_template, normalize_builtin_template_html, render,
+    render_not_found,
 };
 use crate::web::state::AppState;
 use crate::web::templates::{
@@ -116,6 +117,7 @@ pub async fn blog_index(
 #[get("/blog/{slug}")]
 pub async fn blog_post(
     state: web::Data<AppState>,
+    req: actix_web::HttpRequest,
     path: web::Path<String>,
 ) -> impl Responder {
     let slug = path.into_inner();
@@ -130,13 +132,14 @@ pub async fn blog_post(
     .flatten()
     {
         Some(item) => render_content(&state.pool, &item).await,
-        None => HttpResponse::NotFound().body("Not found"),
+        None => render_not_found(&req),
     }
 }
 
 #[get("/{path:.*}")]
 pub async fn page_page(
     state: web::Data<AppState>,
+    req: actix_web::HttpRequest,
     path: web::Path<String>,
 ) -> impl Responder {
     let slug = path.into_inner();
@@ -147,7 +150,7 @@ pub async fn page_page(
         || slug == "blog"
         || slug.starts_with("blog/")
     {
-        return HttpResponse::NotFound().body("Not found");
+        return render_not_found(&req);
     }
 
     match db::get_published_by_slug(
@@ -160,7 +163,7 @@ pub async fn page_page(
     .flatten()
     {
         Some(item) => render_content(&state.pool, &item).await,
-        None => HttpResponse::NotFound().body("Not found"),
+        None => render_not_found(&req),
     }
 }
 

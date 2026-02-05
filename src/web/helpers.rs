@@ -1,9 +1,22 @@
-use actix_web::{HttpRequest, HttpResponse};
+use actix_web::{HttpMessage, HttpRequest, HttpResponse};
 use askama::Template;
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::web::templates::{NotFoundTemplate, UnauthorizedTemplate};
 use rustpress::models::User;
+
+/// Marker stored in request extensions by the admin middleware.
+#[derive(Clone, Copy)]
+pub struct AdminStatus(pub bool);
+
+/// Read the admin flag set by middleware. Returns `false` if middleware didn't run.
+pub fn get_is_admin(req: &HttpRequest) -> bool {
+    req.extensions()
+        .get::<AdminStatus>()
+        .map(|s| s.0)
+        .unwrap_or(false)
+}
 
 pub fn is_htmx(req: &HttpRequest) -> bool {
     req.headers()
@@ -60,16 +73,24 @@ pub fn require_user(req: &HttpRequest) -> Result<Uuid, HttpResponse> {
     }
 }
 
-pub async fn load_user(pool: &PgPool, uid: Uuid) -> Result<User, HttpResponse> {
-    let user = sqlx::query_as::<_, User>(r#"SELECT * FROM users WHERE id = $1"#)
-        .bind(uid)
-        .fetch_optional(pool)
-        .await;
+pub async fn load_user(
+    pool: &PgPool,
+    uid: Uuid,
+) -> Result<User, HttpResponse> {
+    let user = sqlx::query_as::<_, User>(
+        r#"SELECT * FROM users WHERE id = $1"#,
+    )
+    .bind(uid)
+    .fetch_optional(pool)
+    .await;
 
     match user {
         Ok(Some(u)) => Ok(u),
-        Ok(None) => Err(HttpResponse::Unauthorized().body("User not found")),
-        Err(e) => Err(HttpResponse::InternalServerError().body(format!("Database error: {e}"))),
+        Ok(None) => {
+            Err(HttpResponse::Unauthorized().body("User not found"))
+        }
+        Err(e) => Err(HttpResponse::InternalServerError()
+            .body(format!("Database error: {e}"))),
     }
 }
 
@@ -101,7 +122,9 @@ pub fn escape_html(input: &str) -> String {
 
 pub fn is_unique_violation(err: &sqlx::Error) -> bool {
     match err {
-        sqlx::Error::Database(db_err) => db_err.code().as_deref() == Some("23505"),
+        sqlx::Error::Database(db_err) => {
+            db_err.code().as_deref() == Some("23505")
+        }
         _ => false,
     }
 }
@@ -115,7 +138,9 @@ pub fn iframe_srcdoc(html: &str) -> String {
     )
 }
 
-pub fn normalize_builtin_template_html(html: &str) -> std::borrow::Cow<'_, str> {
+pub fn normalize_builtin_template_html(
+    html: &str,
+) -> std::borrow::Cow<'_, str> {
     if !(html.contains("\\n") || html.contains("\\t")) {
         return std::borrow::Cow::Borrowed(html);
     }
@@ -157,4 +182,32 @@ pub fn apply_site_template(
         out = out.replace(needle, replacement);
     }
     out
+}
+
+pub fn render_not_found(req: &HttpRequest) -> HttpResponse {
+    let is_admin = get_is_admin(req);
+    let template = NotFoundTemplate { is_admin };
+
+    match template.render() {
+        Ok(body) => HttpResponse::NotFound()
+            .content_type("text/html; charset=utf-8")
+            .body(body),
+        Err(e) => HttpResponse::NotFound()
+            .content_type("text/plain; charset=utf-8")
+            .body(format!("404 Not Found (template error: {e})")),
+    }
+}
+
+pub fn render_unauthorized(req: &HttpRequest) -> HttpResponse {
+    let is_admin = get_is_admin(req);
+    let template = UnauthorizedTemplate { is_admin };
+
+    match template.render() {
+        Ok(body) => HttpResponse::Unauthorized()
+            .content_type("text/html; charset=utf-8")
+            .body(body),
+        Err(e) => HttpResponse::Unauthorized()
+            .content_type("text/plain; charset=utf-8")
+            .body(format!("401 Unauthorized (template error: {e})")),
+    }
 }

@@ -1,3 +1,3 @@
-pub use {auth::*};
+pub use auth::*;
 
 mod auth;
