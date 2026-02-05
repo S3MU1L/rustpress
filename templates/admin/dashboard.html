@@ -7,72 +7,143 @@
 {% endblock %}
 
 {% block content %}
-<div class="mb-8">
-  <h1 class="mb-2">Dashboard</h1>
-  <p class="text-rp-muted">Welcome to your RustPress admin area.</p>
+<div class="mb-10">
+  <h1 class="text-3xl font-bold mb-3">Dashboard</h1>
+  <p class="text-rp-muted text-lg">Welcome to your RustPress admin area.</p>
 </div>
 
-<div class="grid md:grid-cols-2 gap-6">
+<!-- Stats Overview -->
+<div class="grid grid-cols-2 gap-4 mb-10">
+  <div class="card p-6 border-l-4 border-l-rp-accent">
+    <div class="text-3xl font-bold text-rp-accent">{{ posts.len() }}</div>
+    <div class="text-rp-muted text-sm mt-1">Total Posts</div>
+  </div>
+  <div class="card p-6 border-l-4 border-l-green-500">
+    <div class="text-3xl font-bold text-green-600">{{ pages.len() }}</div>
+    <div class="text-rp-muted text-sm mt-1">Total Pages</div>
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-2 gap-8 mb-10">
   <!-- Posts Section -->
-  <div class="card p-5">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg">Posts</h2>
-      <a class="btn-primary" href="/admin/posts/new">Add New</a>
+  <div class="card p-6">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h2 class="text-xl font-semibold">Recent Posts</h2>
+        <p class="text-rp-muted text-sm mt-1">Manage your blog posts</p>
+      </div>
+      <a class="btn-primary" href="/admin/posts/new">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        Add New
+      </a>
     </div>
     {% if posts.len() == 0 %}
-      <p class="text-rp-muted py-4">No posts yet. Create your first post to get started.</p>
+      <div class="py-12 text-center">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-rp-accent/10 mb-4">
+          <svg class="w-8 h-8 text-rp-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+        </div>
+        <p class="text-rp-muted mb-4">No posts yet. Create your first post to get started.</p>
+        <a href="/admin/posts/new" class="text-rp-accent hover:underline font-medium">Create your first post</a>
+      </div>
     {% else %}
       <ul class="divide-y divide-rp-border">
         {% for p in posts %}
-          <li class="py-3 flex items-center justify-between">
-            <a href="/admin/edit/{{ p.id }}" class="font-medium">{{ p.title }}</a>
-            <span class="badge {% if p.status == "published" %}badge-success{% endif %}">{{ p.status }}</span>
+          <li class="py-4 flex items-center justify-between hover:bg-rp-bg/50 -mx-2 px-2 rounded transition-colors">
+            <a href="/admin/edit/{{ p.id }}" class="font-medium hover:text-rp-accent transition-colors">{{ p.title }}</a>
+            <span class="px-3 py-1 rounded-full text-xs font-medium {% if p.status == "published" %}bg-green-500/10 text-green-600{% else %}bg-rp-warning/10 text-rp-warning{% endif %}">{{ p.status }}</span>
           </li>
         {% endfor %}
       </ul>
+      <div class="mt-4 pt-4 border-t border-rp-border">
+        <a href="/admin/posts" class="text-rp-accent hover:underline font-medium text-sm">View all posts</a>
+      </div>
     {% endif %}
   </div>
 
   <!-- Pages Section -->
-  <div class="card p-5">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg">Pages</h2>
-      <a class="btn-primary" href="/admin/pages/new">Add New</a>
+  <div class="card p-6">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h2 class="text-xl font-semibold">Recent Pages</h2>
+        <p class="text-rp-muted text-sm mt-1">Manage your static pages</p>
+      </div>
+      <a class="btn-primary" href="/admin/pages/new">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        Add New
+      </a>
     </div>
     {% if pages.len() == 0 %}
-      <p class="text-rp-muted py-4">No pages yet. Create your first page to get started.</p>
+      <div class="py-12 text-center">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/10 mb-4">
+          <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <p class="text-rp-muted mb-4">No pages yet. Create your first page to get started.</p>
+        <a href="/admin/pages/new" class="text-rp-accent hover:underline font-medium">Create your first page</a>
+      </div>
     {% else %}
       <ul class="divide-y divide-rp-border">
         {% for p in pages %}
-          <li class="py-3 flex items-center justify-between">
-            <a href="/admin/edit/{{ p.id }}" class="font-medium">{{ p.title }}</a>
-            <span class="badge {% if p.status == "published" %}badge-success{% endif %}">{{ p.status }}</span>
+          <li class="py-4 flex items-center justify-between hover:bg-rp-bg/50 -mx-2 px-2 rounded transition-colors">
+            <a href="/admin/edit/{{ p.id }}" class="font-medium hover:text-rp-accent transition-colors">{{ p.title }}</a>
+            <span class="px-3 py-1 rounded-full text-xs font-medium {% if p.status == "published" %}bg-green-500/10 text-green-600{% else %}bg-rp-warning/10 text-rp-warning{% endif %}">{{ p.status }}</span>
           </li>
         {% endfor %}
       </ul>
+      <div class="mt-4 pt-4 border-t border-rp-border">
+        <a href="/admin/pages" class="text-rp-accent hover:underline font-medium text-sm">View all pages</a>
+      </div>
     {% endif %}
   </div>
 </div>
 
 <!-- Quick Links -->
-<div class="mt-8 card p-5">
-  <h2 class="text-lg mb-4">Quick Links</h2>
+<div class="card p-6">
+  <h2 class="text-xl font-semibold mb-6">Quick Actions</h2>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-    <a href="/admin/posts" class="p-4 rounded bg-rp-bg hover:bg-rp-border/30 text-center transition-colors">
-      <div class="text-2xl mb-1">📝</div>
-      <div class="text-sm font-medium">All Posts</div>
+    <a href="/admin/posts" class="group p-6 rounded-xl bg-gradient-to-br from-rp-accent/5 to-rp-accent/10 border-2 border-transparent hover:border-rp-accent hover:shadow-lg hover:shadow-rp-accent/10 text-center transition-all duration-200">
+      <div class="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-rp-accent/10 group-hover:bg-rp-accent group-hover:text-white mb-4 transition-all duration-200">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+        </svg>
+      </div>
+      <div class="font-semibold text-rp-text group-hover:text-rp-accent transition-colors">All Posts</div>
+      <div class="text-sm text-rp-muted mt-1">Manage posts</div>
     </a>
-    <a href="/admin/pages" class="p-4 rounded bg-rp-bg hover:bg-rp-border/30 text-center transition-colors">
-      <div class="text-2xl mb-1">📄</div>
-      <div class="text-sm font-medium">All Pages</div>
+    <a href="/admin/pages" class="group p-6 rounded-xl bg-gradient-to-br from-green-500/5 to-green-500/10 border-2 border-transparent hover:border-green-500 hover:shadow-lg hover:shadow-green-500/10 text-center transition-all duration-200">
+      <div class="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-green-500/10 group-hover:bg-green-500 group-hover:text-white mb-4 transition-all duration-200">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      </div>
+      <div class="font-semibold text-rp-text group-hover:text-green-600 transition-colors">All Pages</div>
+      <div class="text-sm text-rp-muted mt-1">Manage pages</div>
     </a>
-    <a href="/admin/themes" class="p-4 rounded bg-rp-bg hover:bg-rp-border/30 text-center transition-colors">
-      <div class="text-2xl mb-1">🎨</div>
-      <div class="text-sm font-medium">Themes</div>
+    <a href="/admin/themes" class="group p-6 rounded-xl bg-gradient-to-br from-purple-500/5 to-purple-500/10 border-2 border-transparent hover:border-purple-500 hover:shadow-lg hover:shadow-purple-500/10 text-center transition-all duration-200">
+      <div class="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-purple-500/10 group-hover:bg-purple-500 group-hover:text-white mb-4 transition-all duration-200">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+        </svg>
+      </div>
+      <div class="font-semibold text-rp-text group-hover:text-purple-600 transition-colors">Themes</div>
+      <div class="text-sm text-rp-muted mt-1">Customize look</div>
     </a>
-    <a href="/" class="p-4 rounded bg-rp-bg hover:bg-rp-border/30 text-center transition-colors" target="_blank">
-      <div class="text-2xl mb-1">👁️</div>
-      <div class="text-sm font-medium">View Site</div>
+    <a href="/" class="group p-6 rounded-xl bg-gradient-to-br from-orange-500/5 to-orange-500/10 border-2 border-transparent hover:border-orange-500 hover:shadow-lg hover:shadow-orange-500/10 text-center transition-all duration-200" target="_blank">
+      <div class="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-orange-500/10 group-hover:bg-orange-500 group-hover:text-white mb-4 transition-all duration-200">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+      </div>
+      <div class="font-semibold text-rp-text group-hover:text-orange-600 transition-colors">View Site</div>
+      <div class="text-sm text-rp-muted mt-1">Open frontend</div>
     </a>
   </div>
 </div>
