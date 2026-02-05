@@ -194,3 +194,15 @@ pub struct AdminUserEditTemplate {
     pub error: Option<String>,
     pub success: Option<String>,
 }
+
+#[derive(Template)]
+#[template(path = "404.html")]
+pub struct NotFoundTemplate {
+    pub is_admin: bool,
+}
+
+#[derive(Template)]
+#[template(path = "401.html")]
+pub struct UnauthorizedTemplate {
+    pub is_admin: bool,
+}

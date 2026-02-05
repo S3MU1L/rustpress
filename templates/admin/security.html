@@ -14,15 +14,15 @@
   </div>
 
   {% if error.is_some() %}
-    <div class="notice notice-error mb-4">
-      <p class="m-0">{{ error.as_ref().unwrap() }}</p>
-    </div>
+  <div class="notice notice-error mb-4">
+    <p class="m-0">{{ error.as_ref().unwrap() }}</p>
+  </div>
   {% endif %}
 
   {% if success.is_some() %}
-    <div class="notice notice-success mb-4">
-      <p class="m-0">{{ success.as_ref().unwrap() }}</p>
-    </div>
+  <div class="notice notice-success mb-4">
+    <p class="m-0">{{ success.as_ref().unwrap() }}</p>
+  </div>
   {% endif %}
 
   <!-- Security Checklist -->
@@ -32,45 +32,28 @@
       <li class="flex items-center justify-between py-2 border-b border-rp-border">
         <span>Password set</span>
         {% if password_set %}
-          <span class="badge badge-success">Complete</span>
+        <span class="badge badge-success">Complete</span>
         {% else %}
-          <span class="badge badge-warning">Missing</span>
+        <span class="badge badge-warning">Missing</span>
         {% endif %}
       </li>
       <li class="flex items-center justify-between py-2">
         <span>Email verified</span>
         {% if email_verified %}
-          <span class="badge badge-success">Complete</span>
+        <span class="badge badge-success">Complete</span>
         {% else %}
-          <span class="badge badge-warning">Missing</span>
+        <span class="badge badge-warning">Missing</span>
         {% endif %}
       </li>
     </ul>
-  </div>
-
-  <!-- Change Password -->
-  <div class="card p-5 mb-6">
-    <h2 class="text-lg mb-4">Change Password</h2>
-    <form method="post" action="/admin/me/security/password" hx-post="/admin/me/security/password" hx-target="body" hx-swap="outerHTML">
-      <label>
-        Current Password
-        <input type="password" name="current_password" />
-      </label>
-      <label>
-        New Password
-        <input type="password" name="new_password" placeholder="At least 4 characters" />
-      </label>
-      <div class="mt-4">
-        <button class="btn-primary" type="submit">Update Password</button>
-      </div>
-    </form>
   </div>
 
   <!-- Email Verification (Dev) -->
   <div class="card p-5">
     <h2 class="text-lg mb-4">Email Verification</h2>
     <p class="text-rp-muted text-sm mb-4">Development only: Mark your email as verified immediately.</p>
-    <form method="post" action="/admin/me/security/verify-email" hx-post="/admin/me/security/verify-email" hx-target="body" hx-swap="outerHTML">
+    <form method="post" action="/admin/me/security/verify-email" hx-post="/admin/me/security/verify-email"
+      hx-target="body" hx-swap="outerHTML">
       <button class="btn-secondary" type="submit">Mark Email Verified</button>
     </form>
   </div>

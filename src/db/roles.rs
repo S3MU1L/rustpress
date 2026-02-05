@@ -165,7 +165,7 @@ pub async fn soft_delete_user(
     Ok(())
 }
 
-pub async fn get_user_emails(
+pub async fn get_user_email_map(
     pool: &PgPool,
     ids: &[Uuid],
 ) -> Result<std::collections::HashMap<Uuid, String>, sqlx::Error> {

@@ -1,39 +1,62 @@
-use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{
+    HttpRequest, HttpResponse, Responder, get, post, web,
+};
 use chrono::Utc;
 use uuid::Uuid;
 
 use rustpress::db;
-use rustpress::models::{ContentCreate, ContentKind, ContentStatus, ContentUpdate};
+use rustpress::models::{
+    ContentCreate, ContentKind, ContentStatus, ContentUpdate,
+};
 
 use crate::web::forms::{
-    AdminCreateForm, AdminLiveForm, AdminNewPreviewForm, AdminUpdateForm, SitesQuery,
+    AdminCreateForm, AdminLiveForm, AdminNewPreviewForm,
+    AdminUpdateForm, SitesQuery,
 };
 use crate::web::helpers::{
-    apply_site_template, escape_html, get_is_admin, iframe_srcdoc, is_htmx, is_unique_violation,
-    normalize_builtin_template_html, render, require_user,
+    apply_site_template, escape_html, get_is_admin, iframe_srcdoc,
+    is_htmx, is_unique_violation, normalize_builtin_template_html,
+    render, render_not_found, require_user,
 };
 use crate::web::state::AppState;
 use crate::web::templates::{
-    AdminDashboardTemplate, AdminEditTemplate, AdminNewTemplate, AdminPagesListTemplate,
-    AdminPostsListTemplate,
+    AdminDashboardTemplate, AdminEditTemplate, AdminNewTemplate,
+    AdminPagesListTemplate, AdminPostsListTemplate,
 };
 
 #[get("/admin")]
-pub async fn admin_dashboard(state: web::Data<AppState>, req: HttpRequest) -> impl Responder {
+pub async fn admin_dashboard(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+) -> impl Responder {
     let uid = match require_user(&req) {
         Ok(uid) => uid,
         Err(resp) => return resp,
     };
 
     let is_admin = get_is_admin(&req);
-    let posts = db::list_content_for_user(&state.pool, ContentKind::Post, true, uid)
-        .await
-        .unwrap_or_default();
-    let pages = db::list_content_for_user(&state.pool, ContentKind::Page, true, uid)
-        .await
-        .unwrap_or_default();
+    let posts = db::list_content_for_user(
+        &state.pool,
+        ContentKind::Post,
+        true,
+        uid,
+    )
+    .await
+    .unwrap_or_default();
+    let pages = db::list_content_for_user(
+        &state.pool,
+        ContentKind::Page,
+        true,
+        uid,
+    )
+    .await
+    .unwrap_or_default();
 
-    render(AdminDashboardTemplate { posts, pages, is_admin })
+    render(AdminDashboardTemplate {
+        posts,
+        pages,
+        is_admin,
+    })
 }
 
 #[get("/admin/posts")]
@@ -49,21 +72,35 @@ pub async fn admin_posts_list(
 
     let is_admin = get_is_admin(&req);
     let q = query.q.clone().unwrap_or_default();
-    let posts = db::list_content_for_user(&state.pool, ContentKind::Post, true, uid)
-        .await
-        .unwrap_or_default();
+    let posts = db::list_content_for_user(
+        &state.pool,
+        ContentKind::Post,
+        true,
+        uid,
+    )
+    .await
+    .unwrap_or_default();
 
     let posts: Vec<_> = posts
         .into_iter()
-        .filter(|c| q.is_empty() || c.title.to_lowercase().contains(&q.to_lowercase()))
+        .filter(|c| {
+            q.is_empty()
+                || c.title.to_lowercase().contains(&q.to_lowercase())
+        })
         .collect();
 
-    let owner_ids: Vec<_> = posts.iter().filter_map(|p| p.owner_user_id).collect();
-    let authors = db::get_user_emails(&state.pool, &owner_ids)
+    let owner_ids: Vec<_> =
+        posts.iter().filter_map(|p| p.owner_user_id).collect();
+    let authors = db::get_user_email_map(&state.pool, &owner_ids)
         .await
         .unwrap_or_default();
 
-    render(AdminPostsListTemplate { posts, authors, query: q, is_admin })
+    render(AdminPostsListTemplate {
+        posts,
+        authors,
+        query: q,
+        is_admin,
+    })
 }
 
 #[get("/admin/pages")]
@@ -79,21 +116,35 @@ pub async fn admin_pages_list(
 
     let is_admin = get_is_admin(&req);
     let q = query.q.clone().unwrap_or_default();
-    let pages = db::list_content_for_user(&state.pool, ContentKind::Page, true, uid)
-        .await
-        .unwrap_or_default();
+    let pages = db::list_content_for_user(
+        &state.pool,
+        ContentKind::Page,
+        true,
+        uid,
+    )
+    .await
+    .unwrap_or_default();
 
     let pages: Vec<_> = pages
         .into_iter()
-        .filter(|c| q.is_empty() || c.title.to_lowercase().contains(&q.to_lowercase()))
+        .filter(|c| {
+            q.is_empty()
+                || c.title.to_lowercase().contains(&q.to_lowercase())
+        })
         .collect();
 
-    let owner_ids: Vec<_> = pages.iter().filter_map(|p| p.owner_user_id).collect();
-    let authors = db::get_user_emails(&state.pool, &owner_ids)
+    let owner_ids: Vec<_> =
+        pages.iter().filter_map(|p| p.owner_user_id).collect();
+    let authors = db::get_user_email_map(&state.pool, &owner_ids)
         .await
         .unwrap_or_default();
 
-    render(AdminPagesListTemplate { pages, authors, query: q, is_admin })
+    render(AdminPagesListTemplate {
+        pages,
+        authors,
+        query: q,
+        is_admin,
+    })
 }
 
 #[get("/admin/{kind:posts|pages}/new")]
@@ -110,9 +161,10 @@ pub async fn admin_new(
     let is_admin = get_is_admin(&req);
     let kind = path.into_inner();
 
-    let templates = db::list_site_templates_for_user(&state.pool, uid)
-        .await
-        .unwrap_or_default();
+    let templates =
+        db::list_site_templates_for_user(&state.pool, uid)
+            .await
+            .unwrap_or_default();
 
     render(AdminNewTemplate {
         kind,
@@ -137,7 +189,7 @@ pub async fn admin_create(
     let kind = match path.into_inner().as_str() {
         "posts" => ContentKind::Post,
         "pages" => ContentKind::Page,
-        _ => return HttpResponse::NotFound().body("Unknown kind"),
+        _ => return render_not_found(&req),
     };
 
     let data = ContentCreate {
@@ -158,7 +210,10 @@ pub async fn admin_create(
             if is_unique_violation(&e) {
                 return HttpResponse::Conflict()
                     .content_type("text/plain; charset=utf-8")
-                    .body("Slug already exists for this content type".to_string());
+                    .body(
+                        "Slug already exists for this content type"
+                            .to_string(),
+                    );
             }
 
             return HttpResponse::BadRequest()
@@ -168,17 +223,30 @@ pub async fn admin_create(
     };
 
     // Seed history immediately so undo/redo works from the moment the item exists.
-    if let Err(e) = db::ensure_initial_revision(&state.pool, created.id, Some(uid)).await {
-        return HttpResponse::InternalServerError().body(e.to_string());
+    if let Err(e) = db::ensure_initial_revision(
+        &state.pool,
+        created.id,
+        Some(uid),
+    )
+    .await
+    {
+        return HttpResponse::InternalServerError()
+            .body(e.to_string());
     }
 
     if is_htmx(&req) {
         HttpResponse::Ok()
-            .insert_header(("HX-Redirect", format!("/admin/edit/{}", created.id)))
+            .insert_header((
+                "HX-Redirect",
+                format!("/admin/edit/{}", created.id),
+            ))
             .finish()
     } else {
         HttpResponse::SeeOther()
-            .insert_header(("Location", format!("/admin/edit/{}", created.id)))
+            .insert_header((
+                "Location",
+                format!("/admin/edit/{}", created.id),
+            ))
             .finish()
     }
 }
@@ -197,37 +265,54 @@ pub async fn admin_edit(
     let id = path.into_inner();
     let item = match db::get_content_by_id(&state.pool, id).await {
         Ok(Some(item)) => item,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(None) => return render_not_found(&req),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(e.to_string());
+        }
     };
 
-    let can_view = match db::can_view_content(&state.pool, &item, uid).await {
-        Ok(v) => v,
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
-    };
+    let can_view =
+        match db::can_view_content(&state.pool, &item, uid).await {
+            Ok(v) => v,
+            Err(e) => {
+                return HttpResponse::InternalServerError()
+                    .body(e.to_string());
+            }
+        };
 
     if !can_view {
         return HttpResponse::Forbidden().body("Forbidden");
     }
 
     // Ensure legacy items have a baseline revision.
-    if let Err(e) = db::ensure_initial_revision(&state.pool, item.id, Some(uid)).await {
-        return HttpResponse::InternalServerError().body(e.to_string());
+    if let Err(e) =
+        db::ensure_initial_revision(&state.pool, item.id, Some(uid))
+            .await
+    {
+        return HttpResponse::InternalServerError()
+            .body(e.to_string());
     }
 
     let is_admin = get_is_admin(&req);
     let author = match item.owner_user_id {
-        Some(oid) => db::get_user_emails(&state.pool, &[oid])
+        Some(oid) => db::get_user_email_map(&state.pool, &[oid])
             .await
             .ok()
             .and_then(|m| m.into_values().next())
             .unwrap_or_else(|| "Unknown".to_string()),
         None => "Unknown".to_string(),
     };
-    let templates = db::list_site_templates_for_user(&state.pool, uid)
-        .await
-        .unwrap_or_default();
-    render(AdminEditTemplate { item, author, templates, is_admin })
+    let templates =
+        db::list_site_templates_for_user(&state.pool, uid)
+            .await
+            .unwrap_or_default();
+    render(AdminEditTemplate {
+        item,
+        author,
+        templates,
+        is_admin,
+    })
 }
 
 #[post("/admin/edit/{id}")]
@@ -245,16 +330,25 @@ pub async fn admin_update(
     let id = path.into_inner();
 
     // Enforce ownership before mutating.
-    let existing = match db::get_content_by_id(&state.pool, id).await {
+    let existing = match db::get_content_by_id(&state.pool, id).await
+    {
         Ok(Some(item)) => item,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(None) => return render_not_found(&req),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(e.to_string());
+        }
     };
 
-    let can_edit = match db::can_edit_content(&state.pool, &existing, uid).await {
-        Ok(v) => v,
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
-    };
+    let can_edit =
+        match db::can_edit_content(&state.pool, &existing, uid).await
+        {
+            Ok(v) => v,
+            Err(e) => {
+                return HttpResponse::InternalServerError()
+                    .body(e.to_string());
+            }
+        };
 
     if !can_edit {
         return HttpResponse::Forbidden().body("Forbidden");
@@ -273,46 +367,60 @@ pub async fn admin_update(
         title: form.title.as_ref().map(|s| s.trim().to_string()),
         slug: form.slug.as_ref().map(|s| s.trim().to_string()),
         content: form.content.clone(),
-        template: form.template.as_ref().map(|s| s.trim().to_string()),
+        template: form
+            .template
+            .as_ref()
+            .map(|s| s.trim().to_string()),
         status,
     };
 
-    let updated = match db::update_content(&state.pool, id, &update).await {
-        Ok(Some(item)) => item,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
-        Err(e) => {
-            if is_unique_violation(&e) {
-                return HttpResponse::Conflict()
+    let updated =
+        match db::update_content(&state.pool, id, &update).await {
+            Ok(Some(item)) => item,
+            Ok(None) => return render_not_found(&req),
+            Err(e) => {
+                if is_unique_violation(&e) {
+                    return HttpResponse::Conflict()
                     .content_type("text/plain; charset=utf-8")
-                    .body("Slug already exists for this content type".to_string());
+                    .body(
+                        "Slug already exists for this content type"
+                            .to_string(),
+                    );
+                }
+                return HttpResponse::BadRequest()
+                    .content_type("text/plain; charset=utf-8")
+                    .body(format!("Update failed: {e}"));
             }
-            return HttpResponse::BadRequest()
-                .content_type("text/plain; charset=utf-8")
-                .body(format!("Update failed: {e}"));
-        }
-    };
+        };
 
     // Record a new revision for explicit saves.
-    if let Err(e) = db::ensure_initial_revision(&state.pool, id, Some(uid)).await {
-        return HttpResponse::InternalServerError().body(e.to_string());
+    if let Err(e) =
+        db::ensure_initial_revision(&state.pool, id, Some(uid)).await
+    {
+        return HttpResponse::InternalServerError()
+            .body(e.to_string());
     }
-    if let Err(e) = db::record_revision(&state.pool, &updated, Some(uid)).await {
-        return HttpResponse::InternalServerError().body(e.to_string());
+    if let Err(e) =
+        db::record_revision(&state.pool, &updated, Some(uid)).await
+    {
+        return HttpResponse::InternalServerError()
+            .body(e.to_string());
     }
 
     if is_htmx(&req) {
         let is_admin = get_is_admin(&req);
         let author = match updated.owner_user_id {
-            Some(oid) => db::get_user_emails(&state.pool, &[oid])
+            Some(oid) => db::get_user_email_map(&state.pool, &[oid])
                 .await
                 .ok()
                 .and_then(|m| m.into_values().next())
                 .unwrap_or_else(|| "Unknown".to_string()),
             None => "Unknown".to_string(),
         };
-        let templates = db::list_site_templates_for_user(&state.pool, uid)
-            .await
-            .unwrap_or_default();
+        let templates =
+            db::list_site_templates_for_user(&state.pool, uid)
+                .await
+                .unwrap_or_default();
         render(AdminEditTemplate {
             item: updated,
             author,
@@ -321,7 +429,10 @@ pub async fn admin_update(
         })
     } else {
         HttpResponse::SeeOther()
-            .insert_header(("Location", format!("/admin/edit/{}", id)))
+            .insert_header((
+                "Location",
+                format!("/admin/edit/{}", id),
+            ))
             .finish()
     }
 }
@@ -340,16 +451,25 @@ pub async fn admin_publish(
     let id = path.into_inner();
 
     // Enforce ownership before mutating.
-    let existing = match db::get_content_by_id(&state.pool, id).await {
+    let existing = match db::get_content_by_id(&state.pool, id).await
+    {
         Ok(Some(item)) => item,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(None) => return render_not_found(&req),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(e.to_string());
+        }
     };
 
-    let can_edit = match db::can_edit_content(&state.pool, &existing, uid).await {
-        Ok(v) => v,
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
-    };
+    let can_edit =
+        match db::can_edit_content(&state.pool, &existing, uid).await
+        {
+            Ok(v) => v,
+            Err(e) => {
+                return HttpResponse::InternalServerError()
+                    .body(e.to_string());
+            }
+        };
 
     if !can_edit {
         return HttpResponse::Forbidden().body("Forbidden");
@@ -357,7 +477,7 @@ pub async fn admin_publish(
 
     let published = match db::publish_content(&state.pool, id).await {
         Ok(Some(item)) => item,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
+        Ok(None) => return render_not_found(&req),
         Err(e) => {
             return HttpResponse::BadRequest()
                 .content_type("text/plain; charset=utf-8")
@@ -365,26 +485,33 @@ pub async fn admin_publish(
         }
     };
 
-    if let Err(e) = db::ensure_initial_revision(&state.pool, id, Some(uid)).await {
-        return HttpResponse::InternalServerError().body(e.to_string());
+    if let Err(e) =
+        db::ensure_initial_revision(&state.pool, id, Some(uid)).await
+    {
+        return HttpResponse::InternalServerError()
+            .body(e.to_string());
     }
-    if let Err(e) = db::record_revision(&state.pool, &published, Some(uid)).await {
-        return HttpResponse::InternalServerError().body(e.to_string());
+    if let Err(e) =
+        db::record_revision(&state.pool, &published, Some(uid)).await
+    {
+        return HttpResponse::InternalServerError()
+            .body(e.to_string());
     }
 
     if is_htmx(&req) {
         let is_admin = get_is_admin(&req);
         let author = match published.owner_user_id {
-            Some(oid) => db::get_user_emails(&state.pool, &[oid])
+            Some(oid) => db::get_user_email_map(&state.pool, &[oid])
                 .await
                 .ok()
                 .and_then(|m| m.into_values().next())
                 .unwrap_or_else(|| "Unknown".to_string()),
             None => "Unknown".to_string(),
         };
-        let templates = db::list_site_templates_for_user(&state.pool, uid)
-            .await
-            .unwrap_or_default();
+        let templates =
+            db::list_site_templates_for_user(&state.pool, uid)
+                .await
+                .unwrap_or_default();
         render(AdminEditTemplate {
             item: published,
             author,
@@ -393,7 +520,10 @@ pub async fn admin_publish(
         })
     } else {
         HttpResponse::SeeOther()
-            .insert_header(("Location", format!("/admin/edit/{}", id)))
+            .insert_header((
+                "Location",
+                format!("/admin/edit/{}", id),
+            ))
             .finish()
     }
 }
@@ -414,14 +544,21 @@ pub async fn admin_autosave(
 
     let item = match db::get_content_by_id(&state.pool, id).await {
         Ok(Some(item)) => item,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(None) => return render_not_found(&req),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(e.to_string());
+        }
     };
 
-    let can_edit = match db::can_edit_content(&state.pool, &item, uid).await {
-        Ok(v) => v,
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
-    };
+    let can_edit =
+        match db::can_edit_content(&state.pool, &item, uid).await {
+            Ok(v) => v,
+            Err(e) => {
+                return HttpResponse::InternalServerError()
+                    .body(e.to_string());
+            }
+        };
 
     if !can_edit {
         return HttpResponse::Forbidden().body("Forbidden");
@@ -432,13 +569,22 @@ pub async fn admin_autosave(
         title: form.title.as_ref().map(|s| s.trim().to_string()),
         slug: form.slug.as_ref().map(|s| s.trim().to_string()),
         content: form.content.clone(),
-        template: form.template.as_ref().map(|s| s.trim().to_string()),
+        template: form
+            .template
+            .as_ref()
+            .map(|s| s.trim().to_string()),
         status: None,
     };
 
     match db::update_content(&state.pool, id, &update).await {
         Ok(Some(updated)) => {
-            if let Err(e) = db::ensure_initial_revision(&state.pool, id, Some(uid)).await {
+            if let Err(e) = db::ensure_initial_revision(
+                &state.pool,
+                id,
+                Some(uid),
+            )
+            .await
+            {
                 return HttpResponse::BadRequest()
                     .content_type("text/html; charset=utf-8")
                     .body(format!(
@@ -446,7 +592,10 @@ pub async fn admin_autosave(
                         escape_html(&e.to_string())
                     ));
             }
-            if let Err(e) = db::record_revision(&state.pool, &updated, Some(uid)).await {
+            if let Err(e) =
+                db::record_revision(&state.pool, &updated, Some(uid))
+                    .await
+            {
                 return HttpResponse::BadRequest()
                     .content_type("text/html; charset=utf-8")
                     .body(format!(
@@ -462,7 +611,7 @@ pub async fn admin_autosave(
                     Utc::now().format("%H:%M:%S")
                 ))
         }
-        Ok(None) => HttpResponse::NotFound().body("Not found"),
+        Ok(None) => render_not_found(&req),
         Err(e) => HttpResponse::BadRequest()
             .content_type("text/html; charset=utf-8")
             .body(format!(
@@ -487,14 +636,21 @@ pub async fn admin_preview(
     let id = path.into_inner();
     let item = match db::get_content_by_id(&state.pool, id).await {
         Ok(Some(item)) => item,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(None) => return render_not_found(&req),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(e.to_string());
+        }
     };
 
-    let can_view = match db::can_view_content(&state.pool, &item, uid).await {
-        Ok(v) => v,
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
-    };
+    let can_view =
+        match db::can_view_content(&state.pool, &item, uid).await {
+            Ok(v) => v,
+            Err(e) => {
+                return HttpResponse::InternalServerError()
+                    .body(e.to_string());
+            }
+        };
 
     if !can_view {
         return HttpResponse::Forbidden().body("Forbidden");
@@ -512,7 +668,8 @@ pub async fn admin_preview(
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| item.slug.clone());
-    let content = form.content.clone().unwrap_or_else(|| item.content.clone());
+    let content =
+        form.content.clone().unwrap_or_else(|| item.content.clone());
     let template_name = form
         .template
         .as_ref()
@@ -521,29 +678,37 @@ pub async fn admin_preview(
         .unwrap_or_else(|| item.template.clone());
 
     let mut tpl = match item.owner_user_id {
-        Some(owner_id) => {
-            db::get_site_template_by_name_for_user(&state.pool, owner_id, &template_name)
+        Some(owner_id) => db::get_site_template_by_name_for_user(
+            &state.pool,
+            owner_id,
+            &template_name,
+        )
+        .await
+        .ok()
+        .flatten(),
+        None => {
+            db::get_site_template_by_name(&state.pool, &template_name)
                 .await
                 .ok()
                 .flatten()
         }
-        None => db::get_site_template_by_name(&state.pool, &template_name)
-            .await
-            .ok()
-            .flatten(),
     };
     if tpl.is_none() {
         tpl = match item.owner_user_id {
-            Some(owner_id) => {
-                db::get_site_template_by_name_for_user(&state.pool, owner_id, "default")
+            Some(owner_id) => db::get_site_template_by_name_for_user(
+                &state.pool,
+                owner_id,
+                "default",
+            )
+            .await
+            .ok()
+            .flatten(),
+            None => {
+                db::get_site_template_by_name(&state.pool, "default")
                     .await
                     .ok()
                     .flatten()
             }
-            None => db::get_site_template_by_name(&state.pool, "default")
-                .await
-                .ok()
-                .flatten(),
         };
     }
 
@@ -554,7 +719,13 @@ pub async fn admin_preview(
             } else {
                 std::borrow::Cow::Borrowed(tpl.html.as_str())
             };
-            apply_site_template(tpl_html.as_ref(), &title, &content, &slug, item.kind.as_str())
+            apply_site_template(
+                tpl_html.as_ref(),
+                &title,
+                &content,
+                &slug,
+                item.kind.as_str(),
+            )
         }
         None => apply_site_template(
             "<!doctype html><html><head><meta charset=\"utf-8\"><title>{{title}}</title></head><body><h1>{{title}}</h1>{{content}}</body></html>",
@@ -585,14 +756,21 @@ pub async fn admin_preview_fullpage(
     let id = path.into_inner();
     let item = match db::get_content_by_id(&state.pool, id).await {
         Ok(Some(item)) => item,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(None) => return render_not_found(&req),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(e.to_string());
+        }
     };
 
-    let can_view = match db::can_view_content(&state.pool, &item, uid).await {
-        Ok(v) => v,
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
-    };
+    let can_view =
+        match db::can_view_content(&state.pool, &item, uid).await {
+            Ok(v) => v,
+            Err(e) => {
+                return HttpResponse::InternalServerError()
+                    .body(e.to_string());
+            }
+        };
 
     if !can_view {
         return HttpResponse::Forbidden().body("Forbidden");
@@ -601,29 +779,37 @@ pub async fn admin_preview_fullpage(
     let template_name = &item.template;
 
     let mut tpl = match item.owner_user_id {
-        Some(owner_id) => {
-            db::get_site_template_by_name_for_user(&state.pool, owner_id, template_name)
+        Some(owner_id) => db::get_site_template_by_name_for_user(
+            &state.pool,
+            owner_id,
+            template_name,
+        )
+        .await
+        .ok()
+        .flatten(),
+        None => {
+            db::get_site_template_by_name(&state.pool, template_name)
                 .await
                 .ok()
                 .flatten()
         }
-        None => db::get_site_template_by_name(&state.pool, template_name)
-            .await
-            .ok()
-            .flatten(),
     };
     if tpl.is_none() {
         tpl = match item.owner_user_id {
-            Some(owner_id) => {
-                db::get_site_template_by_name_for_user(&state.pool, owner_id, "default")
+            Some(owner_id) => db::get_site_template_by_name_for_user(
+                &state.pool,
+                owner_id,
+                "default",
+            )
+            .await
+            .ok()
+            .flatten(),
+            None => {
+                db::get_site_template_by_name(&state.pool, "default")
                     .await
                     .ok()
                     .flatten()
             }
-            None => db::get_site_template_by_name(&state.pool, "default")
-                .await
-                .ok()
-                .flatten(),
         };
     }
 
@@ -693,15 +879,23 @@ pub async fn admin_preview_new(
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| "default".to_string());
 
-    let mut tpl = db::get_site_template_by_name_for_user(&state.pool, uid, &template_name)
+    let mut tpl = db::get_site_template_by_name_for_user(
+        &state.pool,
+        uid,
+        &template_name,
+    )
+    .await
+    .ok()
+    .flatten();
+    if tpl.is_none() {
+        tpl = db::get_site_template_by_name_for_user(
+            &state.pool,
+            uid,
+            "default",
+        )
         .await
         .ok()
         .flatten();
-    if tpl.is_none() {
-        tpl = db::get_site_template_by_name_for_user(&state.pool, uid, "default")
-            .await
-            .ok()
-            .flatten();
     }
 
     let html = match tpl {
@@ -711,7 +905,13 @@ pub async fn admin_preview_new(
             } else {
                 std::borrow::Cow::Borrowed(tpl.html.as_str())
             };
-            apply_site_template(tpl_html.as_ref(), &title, &content, &slug, kind)
+            apply_site_template(
+                tpl_html.as_ref(),
+                &title,
+                &content,
+                &slug,
+                kind,
+            )
         }
         None => apply_site_template(
             "<!doctype html><html><head><meta charset=\"utf-8\"><title>{{title}}</title></head><body><h1>{{title}}</h1>{{content}}</body></html>",

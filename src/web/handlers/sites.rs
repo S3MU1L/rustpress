@@ -1,13 +1,21 @@
-use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{
+    HttpRequest, HttpResponse, Responder, get, post, web,
+};
 use uuid::Uuid;
 
 use rustpress::db;
 use rustpress::models::HomepageType;
 
-use crate::web::forms::{ApplyThemeForm, SiteCreateForm, SiteUpdateForm, SitesQuery};
-use crate::web::helpers::{get_is_admin, is_htmx, render, require_user};
+use crate::web::forms::{
+    ApplyThemeForm, SiteCreateForm, SiteUpdateForm, SitesQuery,
+};
+use crate::web::helpers::{
+    get_is_admin, is_htmx, render, render_not_found, require_user,
+};
 use crate::web::state::AppState;
-use crate::web::templates::{SiteEditTemplate, SiteNewTemplate, SitesListTemplate};
+use crate::web::templates::{
+    SiteEditTemplate, SiteNewTemplate, SitesListTemplate,
+};
 
 #[get("/admin/sites")]
 pub async fn sites_list(
@@ -22,24 +30,33 @@ pub async fn sites_list(
 
     let is_admin = get_is_admin(&req);
     let q = query.q.clone().unwrap_or_default();
-    let sites = db::list_sites_for_user(&state.pool, uid, query.q.as_deref())
-        .await
-        .unwrap_or_default();
+    let sites =
+        db::list_sites_for_user(&state.pool, uid, query.q.as_deref())
+            .await
+            .unwrap_or_default();
 
-    render(SitesListTemplate { sites, query: q, is_admin })
+    render(SitesListTemplate {
+        sites,
+        query: q,
+        is_admin,
+    })
 }
 
 #[get("/admin/sites/new")]
-pub async fn sites_new(state: web::Data<AppState>, req: HttpRequest) -> impl Responder {
+pub async fn sites_new(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+) -> impl Responder {
     let uid = match require_user(&req) {
         Ok(uid) => uid,
         Err(resp) => return resp,
     };
 
     let is_admin = get_is_admin(&req);
-    let templates = db::list_site_templates_for_user(&state.pool, uid)
-        .await
-        .unwrap_or_default();
+    let templates =
+        db::list_site_templates_for_user(&state.pool, uid)
+            .await
+            .unwrap_or_default();
 
     render(SiteNewTemplate {
         templates,
@@ -64,9 +81,10 @@ pub async fn sites_create(
     let name = form.name.trim().to_string();
     let slug = form.slug.trim().to_string();
     if name.is_empty() || slug.is_empty() {
-        let templates = db::list_site_templates_for_user(&state.pool, uid)
-            .await
-            .unwrap_or_default();
+        let templates =
+            db::list_site_templates_for_user(&state.pool, uid)
+                .await
+                .unwrap_or_default();
         return render(SiteNewTemplate {
             templates,
             default_template: form
@@ -100,18 +118,25 @@ pub async fn sites_create(
         Ok(site) => {
             if is_htmx(&req) {
                 HttpResponse::Ok()
-                    .insert_header(("HX-Redirect", format!("/admin/sites/{}", site.id)))
+                    .insert_header((
+                        "HX-Redirect",
+                        format!("/admin/sites/{}", site.id),
+                    ))
                     .finish()
             } else {
                 HttpResponse::SeeOther()
-                    .insert_header(("Location", format!("/admin/sites/{}", site.id)))
+                    .insert_header((
+                        "Location",
+                        format!("/admin/sites/{}", site.id),
+                    ))
                     .finish()
             }
         }
         Err(e) => {
-            let templates = db::list_site_templates_for_user(&state.pool, uid)
-                .await
-                .unwrap_or_default();
+            let templates =
+                db::list_site_templates_for_user(&state.pool, uid)
+                    .await
+                    .unwrap_or_default();
             render(SiteNewTemplate {
                 templates,
                 default_template: form
@@ -139,8 +164,11 @@ pub async fn sites_edit(
 
     let site = match db::get_site_by_id(&state.pool, id).await {
         Ok(Some(s)) => s,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(None) => return render_not_found(&req),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(e.to_string());
+        }
     };
 
     if site.owner_user_id != uid {
@@ -148,9 +176,10 @@ pub async fn sites_edit(
     }
 
     let is_admin = get_is_admin(&req);
-    let templates = db::list_site_templates_for_user(&state.pool, uid)
-        .await
-        .unwrap_or_default();
+    let templates =
+        db::list_site_templates_for_user(&state.pool, uid)
+            .await
+            .unwrap_or_default();
 
     render(SiteEditTemplate {
         site,
@@ -176,8 +205,11 @@ pub async fn sites_update(
 
     let existing = match db::get_site_by_id(&state.pool, id).await {
         Ok(Some(s)) => s,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(None) => return render_not_found(&req),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(e.to_string());
+        }
     };
 
     if existing.owner_user_id != uid {
@@ -200,10 +232,22 @@ pub async fn sites_update(
     };
 
     let update = rustpress::models::SiteUpdate {
-        name: form.name.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
-        slug: form.slug.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
+        name: form
+            .name
+            .as_ref()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty()),
+        slug: form
+            .slug
+            .as_ref()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty()),
         status: None,
-        default_template: form.default_template.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
+        default_template: form
+            .default_template
+            .as_ref()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty()),
         homepage_type,
         homepage_page_id,
     };
@@ -211,7 +255,10 @@ pub async fn sites_update(
     let is_admin = get_is_admin(&req);
 
     if let Err(e) = update.validate_homepage() {
-        let templates = db::list_site_templates_for_user(&state.pool, uid).await.unwrap_or_default();
+        let templates =
+            db::list_site_templates_for_user(&state.pool, uid)
+                .await
+                .unwrap_or_default();
         return render(SiteEditTemplate {
             site: existing,
             templates,
@@ -221,13 +268,16 @@ pub async fn sites_update(
         });
     }
 
-    let updated = match db::update_site(&state.pool, id, uid, &update).await {
+    let updated = match db::update_site(&state.pool, id, uid, &update)
+        .await
+    {
         Ok(Some(s)) => s,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
+        Ok(None) => return render_not_found(&req),
         Err(e) => {
-            let templates = db::list_site_templates_for_user(&state.pool, uid)
-                .await
-                .unwrap_or_default();
+            let templates =
+                db::list_site_templates_for_user(&state.pool, uid)
+                    .await
+                    .unwrap_or_default();
             return render(SiteEditTemplate {
                 site: existing,
                 templates,
@@ -238,9 +288,10 @@ pub async fn sites_update(
         }
     };
 
-    let templates = db::list_site_templates_for_user(&state.pool, uid)
-        .await
-        .unwrap_or_default();
+    let templates =
+        db::list_site_templates_for_user(&state.pool, uid)
+            .await
+            .unwrap_or_default();
 
     render(SiteEditTemplate {
         site: updated,
@@ -265,17 +316,24 @@ pub async fn sites_publish(
 
     let existing = match db::get_site_by_id(&state.pool, id).await {
         Ok(Some(s)) => s,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(None) => return render_not_found(&req),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(e.to_string());
+        }
     };
     if existing.owner_user_id != uid {
         return HttpResponse::Forbidden().body("Forbidden");
     }
 
-    let published = match db::publish_site(&state.pool, id, uid).await {
+    let published = match db::publish_site(&state.pool, id, uid).await
+    {
         Ok(Some(s)) => s,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
-        Err(e) => return HttpResponse::BadRequest().body(format!("Publish failed: {e}")),
+        Ok(None) => return render_not_found(&req),
+        Err(e) => {
+            return HttpResponse::BadRequest()
+                .body(format!("Publish failed: {e}"));
+        }
     };
 
     let is_admin = get_is_admin(&req);
@@ -305,8 +363,11 @@ pub async fn sites_apply_theme(
     let id = path.into_inner();
     let existing = match db::get_site_by_id(&state.pool, id).await {
         Ok(Some(s)) => s,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(None) => return render_not_found(&req),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(e.to_string());
+        }
     };
 
     if existing.owner_user_id != uid {
@@ -315,14 +376,19 @@ pub async fn sites_apply_theme(
 
     let template_name = form.template.trim();
     if template_name.is_empty() {
-        return HttpResponse::BadRequest().body("Template is required");
+        return HttpResponse::BadRequest()
+            .body("Template is required");
     }
 
     // Only allow selecting templates visible to this user.
-    let allowed = db::get_site_template_by_name_for_user(&state.pool, uid, template_name)
-        .await
-        .ok()
-        .flatten();
+    let allowed = db::get_site_template_by_name_for_user(
+        &state.pool,
+        uid,
+        template_name,
+    )
+    .await
+    .ok()
+    .flatten();
     if allowed.is_none() {
         return HttpResponse::BadRequest().body("Unknown template");
     }
@@ -336,19 +402,29 @@ pub async fn sites_apply_theme(
         homepage_page_id: None,
     };
 
-    let updated = match db::update_site(&state.pool, id, uid, &update).await {
-        Ok(Some(s)) => s,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
-        Err(e) => return HttpResponse::BadRequest().body(format!("Update failed: {e}")),
-    };
+    let updated =
+        match db::update_site(&state.pool, id, uid, &update).await {
+            Ok(Some(s)) => s,
+            Ok(None) => return render_not_found(&req),
+            Err(e) => {
+                return HttpResponse::BadRequest()
+                    .body(format!("Update failed: {e}"));
+            }
+        };
 
     if is_htmx(&req) {
         HttpResponse::Ok()
-            .insert_header(("HX-Redirect", format!("/admin/sites/{}", updated.id)))
+            .insert_header((
+                "HX-Redirect",
+                format!("/admin/sites/{}", updated.id),
+            ))
             .finish()
     } else {
         HttpResponse::SeeOther()
-            .insert_header(("Location", format!("/admin/sites/{}", updated.id)))
+            .insert_header((
+                "Location",
+                format!("/admin/sites/{}", updated.id),
+            ))
             .finish()
     }
 }

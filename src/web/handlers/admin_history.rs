@@ -1,10 +1,12 @@
-use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{
+    HttpRequest, HttpResponse, Responder, get, post, web,
+};
 use serde::Deserialize;
 use uuid::Uuid;
 
 use rustpress::db;
 
-use crate::web::helpers::require_user;
+use crate::web::helpers::{render_not_found, require_user};
 use crate::web::state::AppState;
 
 #[derive(Deserialize)]
@@ -27,28 +29,40 @@ pub async fn admin_list_revisions(
     let id = path.into_inner();
     let item = match db::get_content_by_id(&state.pool, id).await {
         Ok(Some(item)) => item,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(None) => return render_not_found(&req),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(e.to_string());
+        }
     };
 
-    let can_view = match db::can_view_content(&state.pool, &item, uid).await {
-        Ok(v) => v,
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
-    };
+    let can_view =
+        match db::can_view_content(&state.pool, &item, uid).await {
+            Ok(v) => v,
+            Err(e) => {
+                return HttpResponse::InternalServerError()
+                    .body(e.to_string());
+            }
+        };
 
     if !can_view {
         return HttpResponse::Forbidden().body("Forbidden");
     }
 
     // Ensure legacy items have a baseline revision.
-    if let Err(e) = db::ensure_initial_revision(&state.pool, id, Some(uid)).await {
-        return HttpResponse::InternalServerError().body(e.to_string());
+    if let Err(e) =
+        db::ensure_initial_revision(&state.pool, id, Some(uid)).await
+    {
+        return HttpResponse::InternalServerError()
+            .body(e.to_string());
     }
 
     let limit = query.limit.unwrap_or(50).clamp(1, 200);
     match db::list_revisions(&state.pool, id, limit).await {
         Ok(revs) => HttpResponse::Ok().json(revs),
-        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => {
+            HttpResponse::InternalServerError().body(e.to_string())
+        }
     }
 }
 
@@ -66,14 +80,21 @@ pub async fn admin_restore_revision(
     let (id, rev) = path.into_inner();
     let item = match db::get_content_by_id(&state.pool, id).await {
         Ok(Some(item)) => item,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(None) => return render_not_found(&req),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(e.to_string());
+        }
     };
 
-    let can_edit = match db::can_edit_content(&state.pool, &item, uid).await {
-        Ok(v) => v,
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
-    };
+    let can_edit =
+        match db::can_edit_content(&state.pool, &item, uid).await {
+            Ok(v) => v,
+            Err(e) => {
+                return HttpResponse::InternalServerError()
+                    .body(e.to_string());
+            }
+        };
 
     if !can_edit {
         return HttpResponse::Forbidden().body("Forbidden");
@@ -81,8 +102,10 @@ pub async fn admin_restore_revision(
 
     match db::restore_revision(&state.pool, id, rev).await {
         Ok(Some(item)) => HttpResponse::Ok().json(item),
-        Ok(None) => HttpResponse::NotFound().body("Revision not found"),
-        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(None) => render_not_found(&req),
+        Err(e) => {
+            HttpResponse::InternalServerError().body(e.to_string())
+        }
     }
 }
 
@@ -100,27 +123,39 @@ pub async fn admin_undo(
     let id = path.into_inner();
     let item = match db::get_content_by_id(&state.pool, id).await {
         Ok(Some(item)) => item,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(None) => return render_not_found(&req),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(e.to_string());
+        }
     };
 
-    let can_edit = match db::can_edit_content(&state.pool, &item, uid).await {
-        Ok(v) => v,
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
-    };
+    let can_edit =
+        match db::can_edit_content(&state.pool, &item, uid).await {
+            Ok(v) => v,
+            Err(e) => {
+                return HttpResponse::InternalServerError()
+                    .body(e.to_string());
+            }
+        };
 
     if !can_edit {
         return HttpResponse::Forbidden().body("Forbidden");
     }
 
-    if let Err(e) = db::ensure_initial_revision(&state.pool, id, Some(uid)).await {
-        return HttpResponse::InternalServerError().body(e.to_string());
+    if let Err(e) =
+        db::ensure_initial_revision(&state.pool, id, Some(uid)).await
+    {
+        return HttpResponse::InternalServerError()
+            .body(e.to_string());
     }
 
     match db::undo(&state.pool, id).await {
         Ok(Some(item)) => HttpResponse::Ok().json(item),
-        Ok(None) => HttpResponse::NotFound().body("Not found"),
-        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(None) => render_not_found(&req),
+        Err(e) => {
+            HttpResponse::InternalServerError().body(e.to_string())
+        }
     }
 }
 
@@ -138,27 +173,39 @@ pub async fn admin_redo(
     let id = path.into_inner();
     let item = match db::get_content_by_id(&state.pool, id).await {
         Ok(Some(item)) => item,
-        Ok(None) => return HttpResponse::NotFound().body("Not found"),
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(None) => return render_not_found(&req),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(e.to_string());
+        }
     };
 
-    let can_edit = match db::can_edit_content(&state.pool, &item, uid).await {
-        Ok(v) => v,
-        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
-    };
+    let can_edit =
+        match db::can_edit_content(&state.pool, &item, uid).await {
+            Ok(v) => v,
+            Err(e) => {
+                return HttpResponse::InternalServerError()
+                    .body(e.to_string());
+            }
+        };
 
     if !can_edit {
         return HttpResponse::Forbidden().body("Forbidden");
     }
 
-    if let Err(e) = db::ensure_initial_revision(&state.pool, id, Some(uid)).await {
-        return HttpResponse::InternalServerError().body(e.to_string());
+    if let Err(e) =
+        db::ensure_initial_revision(&state.pool, id, Some(uid)).await
+    {
+        return HttpResponse::InternalServerError()
+            .body(e.to_string());
     }
 
     match db::redo(&state.pool, id).await {
         Ok(Some(item)) => HttpResponse::Ok().json(item),
-        Ok(None) => HttpResponse::NotFound().body("Not found"),
-        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(None) => render_not_found(&req),
+        Err(e) => {
+            HttpResponse::InternalServerError().body(e.to_string())
+        }
     }
 }
 
