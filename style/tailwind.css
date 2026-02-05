@@ -4,19 +4,40 @@
 @source "../src/**/*.rs";
 
 @theme {
-  /* Light theme - WordPress-inspired */
+  /* Base colors */
   --color-rp-bg: #f0f0f1;
   --color-rp-card: #ffffff;
   --color-rp-text: #1d2327;
   --color-rp-muted: #50575e;
   --color-rp-border: #c3c4c7;
-  --color-rp-accent: #2271b1;
-  --color-rp-accent-hover: #135e96;
-  --color-rp-accent2: #00a32a;
+
+  /* Primary - Blue (main actions, links, header accent) */
+  --color-rp-primary: #2271b1;
+  --color-rp-primary-hover: #135e96;
+  --color-rp-primary-light: #e5f0f8;
+
+  /* Secondary - Green (success, pages, positive actions) */
+  --color-rp-secondary: #00a32a;
+  --color-rp-secondary-hover: #008a23;
+  --color-rp-secondary-light: #edfaef;
+
+  /* Tertiary - Orange (view site, external links) */
+  --color-rp-tertiary: #e65100;
+  --color-rp-tertiary-hover: #cc4700;
+  --color-rp-tertiary-light: #fff3e0;
+
+  /* Quaternary - Purple (themes, customization) */
+  --color-rp-quaternary: #7c3aed;
+  --color-rp-quaternary-hover: #6d28d9;
+  --color-rp-quaternary-light: #f3e8ff;
+
+  /* Semantic aliases */
+  --color-rp-accent: var(--color-rp-primary);
+  --color-rp-accent-hover: var(--color-rp-primary-hover);
+  --color-rp-success: var(--color-rp-secondary);
+  --color-rp-success-bg: var(--color-rp-secondary-light);
   --color-rp-error: #d63638;
   --color-rp-error-bg: #fcf0f1;
-  --color-rp-success: #00a32a;
-  --color-rp-success-bg: #edfaef;
   --color-rp-warning: #dba617;
   --color-rp-warning-bg: #fcf9e8;
 
