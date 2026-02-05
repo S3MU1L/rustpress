@@ -13,13 +13,13 @@
   <input type="hidden" name="kind" value="{{ kind }}" />
 
   <!-- Top Bar -->
-  <div class="space-y-4 mb-8">
-    <!-- Row 1: Title and Action Buttons -->
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-4">
+  <div class="mb-6">
+    <!-- Compact Header -->
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-3">
         {{ macros::back_button() }}
         <div>
-          <h1 class="text-2xl font-bold mb-0">New {{ kind|capitalize }}</h1>
+          <h1 class="text-2xl font-bold text-rp-text">New {{ kind|capitalize }}</h1>
           <p class="text-rp-muted text-sm mt-1">Create a new {{ kind }} for your site</p>
         </div>
       </div>
@@ -35,8 +35,10 @@
       </div>
     </div>
 
-    <!-- Row 2: Settings -->
-    {{ macros::settings_row(slug_value="", slug_required=true, template_value=default_template, show_status=false, status_value="") }}
+    <!-- Settings -->
+    <div class="bg-rp-surface border border-rp-border rounded-lg p-4">
+      {{ macros::settings_row(slug_value="", slug_required=true, template_value=default_template, show_status=false, status_value="") }}
+    </div>
   </div>
 
   <div class="grid lg:grid-cols-[1fr_380px] gap-6">

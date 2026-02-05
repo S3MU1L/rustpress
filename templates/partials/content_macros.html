@@ -8,17 +8,17 @@
 {% endmacro %}
 
 {% macro settings_row(slug_value, slug_required, template_value, show_status, status_value) %}
-<div class="flex items-center justify-end gap-3 px-2">
+<div class="flex flex-wrap items-center gap-4">
     <label class="flex items-center gap-2">
-        <span class="text-sm text-rp-muted whitespace-nowrap">Slug:</span>
+        <span class="text-sm font-medium text-rp-text whitespace-nowrap">Slug:</span>
         <input id="slug" name="slug" value="{{ slug_value }}" {% if slug_required %}required{% endif %}
             placeholder="url-friendly-slug"
-            class="px-3 py-2 text-sm rounded-lg border border-rp-border bg-rp-surface focus:outline-none focus:ring-2 focus:ring-rp-primary/50 w-64" />
+            class="px-3 py-2 text-sm rounded-lg border border-rp-border bg-white focus:outline-none focus:ring-2 focus:ring-rp-primary/50 w-64" />
     </label>
     <label class="flex items-center gap-2">
-        <span class="text-sm text-rp-muted whitespace-nowrap">Template:</span>
+        <span class="text-sm font-medium text-rp-text whitespace-nowrap">Template:</span>
         <select name="template"
-            class="px-3 py-2 text-sm rounded-lg border border-rp-border bg-rp-surface focus:outline-none focus:ring-2 focus:ring-rp-primary/50 w-40">
+            class="px-3 py-2 text-sm rounded-lg border border-rp-border bg-white focus:outline-none focus:ring-2 focus:ring-rp-primary/50 w-40">
             {% for t in templates %}
             {% if t.name.as_str() == template_value %}
             <option value="{{ t.name }}" selected>{{ t.name }}</option>
@@ -30,9 +30,9 @@
     </label>
     {% if show_status %}
     <label class="flex items-center gap-2">
-        <span class="text-sm text-rp-muted whitespace-nowrap">Status:</span>
+        <span class="text-sm font-medium text-rp-text whitespace-nowrap">Status:</span>
         <select name="status"
-            class="px-3 py-2 text-sm rounded-lg border border-rp-border bg-rp-surface focus:outline-none focus:ring-2 focus:ring-rp-primary/50 w-32">
+            class="px-3 py-2 text-sm rounded-lg border border-rp-border bg-white focus:outline-none focus:ring-2 focus:ring-rp-primary/50 w-32">
             {% if status_value == "draft" %}
             <option value="draft" selected>Draft</option>
             <option value="published">Published</option>

@@ -11,28 +11,24 @@
 <form id="edit-form" method="post" action="/admin/edit/{{ item.id }}" hx-post="/admin/edit/{{ item.id }}"
   hx-target="body" hx-swap="outerHTML">
   <!-- Top Bar -->
-  <div class="space-y-4 mb-8">
-    <!-- Row 1: Title and Action Buttons -->
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-4">
+  <div class="mb-6">
+    <!-- Compact Header -->
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-3">
         {{ macros::back_button() }}
-        <div>
-          <h1 class="text-2xl font-bold mb-0">{{ item.title }}</h1>
-          <div class="flex items-center gap-2 mt-1">
-            <span class="px-3 py-1 rounded-full text-xs font-medium bg-rp-primary/10 text-rp-primary">{{ item.kind
-              }}</span>
-            {% if item.status == "published" %}
-            <span class="px-3 py-1 rounded-full text-xs font-medium bg-rp-secondary/10 text-rp-secondary">{{ item.status
-              }}</span>
-            {% else %}
-            <span class="px-3 py-1 rounded-full text-xs font-medium bg-rp-tertiary/10 text-rp-tertiary">{{ item.status
-              }}</span>
-            {% endif %}
-            <span id="autosave-status" class="text-rp-muted text-xs"></span>
-          </div>
+        <div class="flex items-center gap-3">
+          <h1 class="text-2xl font-bold text-rp-text">{{ item.title }}</h1>
+          <span id="autosave-status" class="text-rp-muted text-xs"></span>
         </div>
       </div>
       <div class="flex items-center gap-2">
+        <button type="button" id="toggle-header"
+          class="p-2 rounded-lg text-rp-muted hover:text-rp-text hover:bg-rp-border/30 transition-colors"
+          title="Toggle Settings">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
         <a class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
           href="/admin/content/{{ item.id }}/preview" target="_blank">
           {{ macros::preview_button() }}
@@ -75,10 +71,32 @@
       </div>
     </div>
 
-    <!-- Row 2: Settings -->
-    {{ macros::settings_row(slug_value=item.slug, slug_required=false, template_value=item.template, show_status=true,
-    status_value=item.status.as_str()) }}
+    <!-- Collapsible Settings -->
+    <div id="header-settings" class="bg-rp-surface border border-rp-border rounded-lg p-4 transition-all duration-300">
+      {{ macros::settings_row(slug_value=item.slug, slug_required=false, template_value=item.template, show_status=true,
+      status_value=item.status.as_str()) }}
+    </div>
   </div>
+
+  <script>
+    (function () {
+      const toggle = document.getElementById('toggle-header');
+      const settings = document.getElementById('header-settings');
+      const isCollapsed = localStorage.getItem('header-collapsed') === 'true';
+
+      if (isCollapsed) {
+        settings.style.display = 'none';
+        toggle.querySelector('svg').style.transform = 'rotate(-90deg)';
+      }
+
+      toggle.addEventListener('click', function () {
+        const isHidden = settings.style.display === 'none';
+        settings.style.display = isHidden ? 'block' : 'none';
+        toggle.querySelector('svg').style.transform = isHidden ? 'rotate(0deg)' : 'rotate(-90deg)';
+        localStorage.setItem('header-collapsed', !isHidden);
+      });
+    })();
+  </script>
 
   <div class="grid lg:grid-cols-[1fr_380px] gap-6">
     <!-- Main Editor Area -->
