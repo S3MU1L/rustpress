@@ -15,14 +15,14 @@
 </div>
 
 {% if let Some(err) = error %}
-  <div class="card bg-red-500/10 border-red-500 p-4 mb-6">
-    <p class="text-red-400">{{ err }}</p>
+  <div class="card bg-rp-error/10 border-rp-error p-4 mb-6">
+    <p class="text-rp-error">{{ err }}</p>
   </div>
 {% endif %}
 
 {% if let Some(msg) = success %}
-  <div class="card bg-green-500/10 border-green-500 p-4 mb-6">
-    <p class="text-green-400">{{ msg }}</p>
+  <div class="card bg-rp-secondary/10 border-rp-secondary p-4 mb-6">
+    <p class="text-rp-secondary">{{ msg }}</p>
   </div>
 {% endif %}
 
@@ -37,19 +37,45 @@
         Homepage Type
         <select name="homepage_type" id="homepage-type">
           <option value="posts" {% if s.homepage_type.to_string() == "posts" %}selected{% endif %}>Latest Posts</option>
+          {% if !pages.is_empty() %}
           <option value="page" {% if s.homepage_type.to_string() == "page" %}selected{% endif %}>Static Page</option>
+          {% endif %}
         </select>
       </label>
 
-      <label id="homepage-page-label" {% if s.homepage_type.to_string() == "posts" %}style="display: none;"{% endif %}>
-        Homepage Page
-        <select name="homepage_page_id">
-          <option value="">(Select a page)</option>
-          {% for page in pages %}
-            <option value="{{ page.id }}" {% if s.homepage_page_id.is_some() && s.homepage_page_id.unwrap() == page.id %}selected{% endif %}>{{ page.title }}</option>
-          {% endfor %}
-        </select>
-      </label>
+      {% if pages.is_empty() %}
+      <div class="p-6 rounded-lg bg-rp-secondary/10 border-2 border-rp-secondary/30">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-10 h-10 rounded-full bg-rp-secondary/20 flex items-center justify-center">
+            <svg class="w-5 h-5 text-rp-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <div>
+            <p class="font-semibold text-rp-text">No pages yet</p>
+            <p class="text-sm text-rp-muted">Create a page to enable the static homepage option</p>
+          </div>
+        </div>
+        <a href="/admin/pages/new" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Create your first page
+        </a>
+      </div>
+      {% else %}
+      <div id="homepage-page-label" {% if s.homepage_type.to_string() == "posts" %}style="display: none;"{% endif %}>
+        <label>
+          Homepage Page
+          <select name="homepage_page_id">
+            <option value="">(Select a page)</option>
+            {% for page in pages %}
+              <option value="{{ page.id }}" {% if s.homepage_page_id.is_some() && s.homepage_page_id.unwrap() == page.id %}selected{% endif %}>{{ page.title }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      {% endif %}
 
       <div class="pt-2">
         <button type="submit" class="btn-primary">Save Configuration</button>
