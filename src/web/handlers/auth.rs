@@ -266,12 +266,10 @@ pub async fn register_submit(
 
         if let Ok(site) =
             db::create_site(&state.pool, &site_data).await
-        {
-            if let Err(e) =
+            && let Err(e) =
                 db::publish_site(&state.pool, site.id, user.id).await
-            {
-                log::error!("Failed to publish default site: {}", e);
-            }
+        {
+            log::error!("Failed to publish default site: {}", e);
         }
     }
 

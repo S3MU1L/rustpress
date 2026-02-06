@@ -125,8 +125,6 @@ pub fn escape_html(input: &str) -> String {
 /// This is used for sandboxed iframe previews (`srcdoc` + `sandbox` without `allow-scripts`).
 /// Keeping scripts in the HTML would cause browsers to spam the console with
 /// "Blocked script execution in 'about:srcdoc' ..." messages.
-///
-/// Note: This is a best-effort string-based stripper, not a full HTML parser.
 pub fn strip_script_tags(html: &str) -> String {
     let lower = html.to_ascii_lowercase();
     let mut out = String::with_capacity(html.len());

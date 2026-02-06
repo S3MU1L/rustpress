@@ -64,7 +64,7 @@ impl RateLimiter {
             .unwrap_or_else(|poisoned| poisoned.into_inner());
 
         let entry =
-            requests.entry(key.to_string()).or_insert_with(Vec::new);
+            requests.entry(key.to_string()).or_default();
 
         // Remove old requests outside the window
         entry.retain(|&time| {
