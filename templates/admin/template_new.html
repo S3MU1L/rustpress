@@ -57,70 +57,7 @@
           <input name="description" placeholder="Optional description..." class="mt-1" />
         </label>
 
-        <div class="mt-4 mb-2">
-          <span class="text-sm text-rp-muted flex items-center gap-2 mb-3">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-            </svg>
-            Insert placeholder
-          </span>
-          <div class="flex flex-wrap items-center gap-2">
-            <button type="button"
-              class="px-3 py-1.5 rounded text-xs font-medium bg-rp-primary/10 text-rp-primary hover:bg-rp-primary/20 border border-rp-primary/20 hover:border-rp-primary/30 transition-colors inline-flex items-center gap-1"
-              onclick="insertPlaceholder('{{" {{title}}"}}')">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
-              {{"{{title}}"}}
-            </button>
-            <button type="button"
-              class="px-3 py-1.5 rounded text-xs font-medium bg-rp-primary/10 text-rp-primary hover:bg-rp-primary/20 border border-rp-primary/20 hover:border-rp-primary/30 transition-colors inline-flex items-center gap-1"
-              onclick="insertPlaceholder('{{" {{content}}"}}')">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
-              {{"{{content}}"}}
-            </button>
-            <button type="button"
-              class="px-3 py-1.5 rounded text-xs font-medium bg-rp-secondary/10 text-rp-secondary hover:bg-rp-secondary/20 border border-rp-secondary/20 hover:border-rp-secondary/30 transition-colors inline-flex items-center gap-1"
-              onclick="insertPlaceholder('{{" {{slug}}"}}')">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
-              {{"{{slug}}"}}
-            </button>
-            <button type="button"
-              class="px-3 py-1.5 rounded text-xs font-medium bg-rp-secondary/10 text-rp-secondary hover:bg-rp-secondary/20 border border-rp-secondary/20 hover:border-rp-secondary/30 transition-colors inline-flex items-center gap-1"
-              onclick="insertPlaceholder('{{" {{kind}}"}}')">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
-              {{"{{kind}}"}}
-            </button>
-          </div>
-          <div class="flex flex-wrap items-center gap-2 mt-3">
-            <span class="text-xs text-rp-muted">History:</span>
-            <button type="button" id="undo-btn"
-              class="px-3 py-1.5 rounded text-xs font-medium bg-rp-bg border border-rp-border text-rp-text hover:bg-rp-border/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1"
-              onclick="undoMgr &amp;&amp; undoMgr.undo()" disabled title="Undo (Ctrl+Z)">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-              </svg>
-              Undo
-            </button>
-            <button type="button" id="redo-btn"
-              class="px-3 py-1.5 rounded text-xs font-medium bg-rp-bg border border-rp-border text-rp-text hover:bg-rp-border/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1"
-              onclick="undoMgr &amp;&amp; undoMgr.redo()" disabled title="Redo (Ctrl+Y)">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M21 10h-10a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" />
-              </svg>
-              Redo
-            </button>
-          </div>
-        </div>
+        {% include "partials/template_placeholders.html" %}
 
         <label class="mt-4 block">
           <span class="flex items-center gap-2">
@@ -169,7 +106,8 @@
         </select>
       </label>
       <div class="preview-wrapper relative cursor-pointer group" onclick="openPreviewModal()">
-        <div class="absolute top-2 right-2 p-1.5 rounded-lg bg-black/50 text-white opacity-0 group-hover:opacity-100 z-10 pointer-events-none transition-opacity">
+        <div
+          class="absolute top-2 right-2 p-1.5 rounded-lg bg-black/50 text-white opacity-0 group-hover:opacity-100 z-10 pointer-events-none transition-opacity">
           {{ macros::expand_icon() }}
         </div>
         <div id="preview" class="border border-rp-border rounded-lg overflow-hidden bg-white"
