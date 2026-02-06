@@ -24,7 +24,7 @@
         </div>
       </div>
       <div class="flex items-center gap-2">
-        <a class="px-4 py-2 rounded-lg bg-gray-200 text-rp-text font-medium hover:bg-gray-300 transition-colors text-sm inline-flex items-center gap-2" href="/admin">
+        <a class="btn-secondary text-sm inline-flex items-center gap-2" href="/admin">
           {{ macros::cancel_icon() }}
           Cancel
         </a>
@@ -61,23 +61,10 @@
     <div class="space-y-4">
       <!-- Live Preview -->
       <div class="card p-5">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-sm font-medium flex items-center gap-2">
-            <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-            Live Preview
-          </h3>
-          <span class="px-2 py-0.5 rounded-full text-xs bg-rp-secondary/10 text-rp-secondary">Auto-updates</span>
-        </div>
+        {{ macros::live_preview_header() }}
         <div class="preview-wrapper relative cursor-pointer group" onclick="openPreviewModal()">
           <div class="absolute top-2 right-2 p-1.5 rounded-lg bg-black/50 text-white opacity-0 group-hover:opacity-100 z-10 pointer-events-none transition-opacity">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
-            </svg>
+            {{ macros::expand_icon() }}
           </div>
           <div id="preview" class="border border-rp-border rounded-lg overflow-hidden bg-white"
             hx-post="/admin/preview"

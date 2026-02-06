@@ -12,9 +12,9 @@
         {% endif %}
       </span>
       {% if rev.status.as_str() == "published" %}
-      <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-green-100 text-green-700">published</span>
+      <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-rp-secondary/10 text-rp-secondary">published</span>
       {% else %}
-      <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-yellow-100 text-yellow-700">{{ rev.status.as_str() }}</span>
+      <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-rp-warning/10 text-rp-warning">{{ rev.status.as_str() }}</span>
       {% endif %}
     </div>
     <div class="text-rp-muted mb-1 truncate" title="{{ rev.title }}">{{ rev.title }}</div>

@@ -1,4 +1,5 @@
 {% extends "layouts/base.html" %}
+{% import "partials/content_macros.html" as macros %}
 
 {% block title %}Posts - RustPress{% endblock %}
 
@@ -25,24 +26,18 @@
   <form method="get" action="/admin/posts" class="flex flex-wrap gap-4 items-end">
     <div class="flex-1 min-w-[200px]">
       <label class="mb-0 flex items-center gap-2">
-        <svg class="w-4 h-4 text-rp-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
+        <span class="text-rp-secondary">{{ macros::search_icon() }}</span>
         Search
       </label>
       <input name="q" value="{{ query }}" placeholder="Search by title..." class="mt-2" />
     </div>
     <div class="flex items-center gap-2">
       <button class="btn-primary inline-flex items-center gap-2" type="submit">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
+        {{ macros::search_icon() }}
         Search
       </button>
       <a class="btn-secondary inline-flex items-center gap-2" href="/admin/posts">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
+        {{ macros::cancel_icon() }}
         Clear
       </a>
     </div>
@@ -50,71 +45,18 @@
 </div>
 
 <!-- Stats -->
-<div class="card p-5 mb-8 border-l-4 border-l-rp-secondary">
-  <div class="flex items-center gap-3">
-    <div class="w-10 h-10 rounded-lg bg-rp-secondary/10 flex items-center justify-center">
-      <svg class="w-5 h-5 text-rp-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-      </svg>
-    </div>
-    <div>
-      <div class="text-2xl font-bold text-rp-secondary">{{ posts.len() }}</div>
-      <div class="text-rp-muted text-sm">Total Posts</div>
-    </div>
-  </div>
+<div class="mb-8">
+{{ macros::stat_card(border_class="border-l-rp-secondary", bg_class="bg-rp-secondary/10", text_class="text-rp-secondary", icon_path="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z", count=posts.len(), label="Total Posts") }}
 </div>
 
 <!-- Posts List -->
 <div class="card overflow-hidden">
   {% if posts.len() == 0 %}
-    <div class="p-12 text-center">
-      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-rp-tertiary/10 mb-4">
-        <svg class="w-8 h-8 text-rp-tertiary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-        </svg>
-      </div>
-      <p class="text-rp-muted mb-4">No posts found.</p>
-      <a href="/admin/posts/new" class="text-rp-tertiary hover:underline font-medium">Create your first post</a>
-    </div>
+    {{ macros::empty_state(icon_path="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z", message="No posts found.", link_href="/admin/posts/new", link_text="Create your first post") }}
   {% else %}
     <ul class="divide-y divide-rp-border">
       {% for p in posts %}
-        <li class="group p-5 flex items-center justify-between hover:bg-rp-tertiary/5 transition-colors cursor-pointer" onclick="window.location='/admin/edit/{{ p.id }}'">
-          <div class="flex items-center gap-4 flex-1">
-            <div class="w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform bg-rp-tertiary/10">
-              <svg class="w-6 h-6 text-rp-tertiary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-              </svg>
-            </div>
-            <div>
-              <span class="font-semibold text-rp-text group-hover:text-rp-tertiary transition-colors">{{ p.title }}</span>
-              <p class="text-rp-muted text-sm mt-0.5">/blog/{{ p.slug }}
-                {% if let Some(oid) = p.owner_user_id %}
-                  {% if let Some(email) = authors.get(&oid) %}
-                    <span class="ml-2">by {{ email }}</span>
-                  {% endif %}
-                {% endif %}
-              </p>
-            </div>
-          </div>
-          <div class="flex items-center gap-3">
-            <span class="px-3 py-1 rounded-full text-xs font-medium {% if p.status == "published" %}bg-rp-secondary/10 text-rp-secondary{% else %}bg-rp-tertiary/10 text-rp-tertiary{% endif %}">{{ p.status }}</span>
-
-            <a href="/admin/edit/{{ p.id }}" class="p-2 rounded-lg hover:bg-rp-border/50 transition-colors" title="Edit post" onclick="event.stopPropagation()">
-              <svg class="w-5 h-5 text-rp-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-            </a>
-
-            {% if p.status == "published" %}
-            <a href="/blog/{{ p.slug }}" target="_blank" class="p-2 rounded-lg hover:bg-rp-border/50 transition-colors" title="View post" onclick="event.stopPropagation()">
-              <svg class="w-5 h-5 text-rp-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-            </a>
-            {% endif %}
-          </div>
-        </li>
+        {{ macros::content_list_item(id=p.id, title=p.title, slug=p.slug, status=p.status, url_prefix="/blog/", icon_path="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z", owner_user_id=p.owner_user_id, authors=authors) }}
       {% endfor %}
     </ul>
   {% endif %}

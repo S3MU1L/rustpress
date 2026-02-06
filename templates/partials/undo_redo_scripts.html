@@ -1,0 +1,144 @@
+<script>
+  // Global undo manager for button compatibility
+  var undoMgr = null;
+
+  function triggerPreview() {
+    document.body.dispatchEvent(new CustomEvent('template-change'));
+  }
+
+  function insertPlaceholder(text) {
+    var ta = document.getElementById('tpl-html');
+    if (!ta) return;
+
+    // Use native browser undo stack via setRangeText
+    var start = ta.selectionStart;
+    var end = ta.selectionEnd;
+    ta.setRangeText(text, start, end, 'end');
+
+    // Trigger input event for preview and native undo integration
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+    ta.focus();
+  }
+
+  (function () {
+    var ta = document.getElementById('tpl-html');
+    var sel = document.getElementById('preview-content-id');
+    if (!ta) return;
+
+    // Trigger preview on input (native undo/redo handled by browser)
+    ta.addEventListener('input', function () {
+      triggerPreview();
+    });
+
+    // Content selector triggers preview
+    if (sel) {
+      sel.addEventListener('change', triggerPreview);
+    }
+
+    // Wire up undo/redo buttons to native browser commands with state tracking
+    if (!ta.readOnly && !ta.disabled) {
+      var undoBtn = document.getElementById('undo-btn');
+      var redoBtn = document.getElementById('redo-btn');
+
+      // Track undo/redo availability
+      var canUndo = false;
+      var canRedo = false;
+      var initialValue = ta.value;
+
+      function updateButtons() {
+        if (undoBtn) undoBtn.disabled = !canUndo;
+        if (redoBtn) redoBtn.disabled = !canRedo;
+      }
+
+      function performUndo() {
+        if (!canUndo) return;
+        var beforeValue = ta.value;
+        document.execCommand('undo');
+        var afterValue = ta.value;
+
+        // Check if undo actually did something
+        if (beforeValue !== afterValue) {
+          canRedo = true;
+          // Try to detect if we can still undo more
+          var testValue = afterValue;
+          document.execCommand('undo');
+          canUndo = (ta.value !== testValue);
+          if (canUndo) {
+            // Restore the state we just tested
+            document.execCommand('redo');
+          }
+          triggerPreview();
+        } else {
+          canUndo = false;
+        }
+        updateButtons();
+      }
+
+      function performRedo() {
+        if (!canRedo) return;
+        var beforeValue = ta.value;
+        document.execCommand('redo');
+        var afterValue = ta.value;
+
+        // Check if redo actually did something
+        if (beforeValue !== afterValue) {
+          canUndo = true;
+          // Try to detect if we can still redo more
+          var testValue = afterValue;
+          document.execCommand('redo');
+          canRedo = (ta.value !== testValue);
+          if (canRedo) {
+            // Restore the state we just tested
+            document.execCommand('undo');
+          }
+          triggerPreview();
+        } else {
+          canRedo = false;
+        }
+        updateButtons();
+      }
+
+      // Expose for button onclick handlers
+      undoMgr = {
+        undo: performUndo,
+        redo: performRedo
+      };
+
+      // Track input changes
+      ta.addEventListener('input', function () {
+        canUndo = true;
+        canRedo = false;
+        updateButtons();
+      });
+
+      // Track keyboard undo/redo
+      ta.addEventListener('keydown', function (e) {
+        if (!(e.ctrlKey || e.metaKey)) return;
+        if (e.key === 'z' && !e.shiftKey) {
+          // Ctrl+Z (undo)
+          setTimeout(function () {
+            canRedo = true;
+            var testValue = ta.value;
+            document.execCommand('undo');
+            canUndo = (ta.value !== testValue);
+            if (canUndo) document.execCommand('redo');
+            updateButtons();
+          }, 0);
+        } else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') {
+          // Ctrl+Shift+Z or Ctrl+Y (redo)
+          setTimeout(function () {
+            canUndo = true;
+            var testValue = ta.value;
+            document.execCommand('redo');
+            canRedo = (ta.value !== testValue);
+            if (canRedo) document.execCommand('undo');
+            updateButtons();
+          }, 0);
+        }
+      });
+
+      // Initial state
+      updateButtons();
+    }
+  })();
+</script>
