@@ -2,7 +2,8 @@ use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
 use crate::models::{
-    ContentItem, ContentItemRevisionMeta, ContentStatus,
+    ContentItem, ContentItemRevision, ContentItemRevisionMeta,
+    ContentStatus,
 };
 
 pub async fn ensure_initial_revision(
@@ -68,7 +69,9 @@ pub async fn record_revision(
 ) -> Result<i32, sqlx::Error> {
     let mut tx = pool.begin().await?;
 
-    // Make sure rev=1 exists for this item.
+    // Lock first to prevent race conditions
+    let mut current = lock_current_rev(&mut tx, item.id).await?;
+
     let rev1_exists = sqlx::query_scalar::<_, bool>(
         r#"
         SELECT EXISTS(
@@ -95,9 +98,9 @@ pub async fn record_revision(
         .bind(item.id)
         .execute(&mut *tx)
         .await?;
+        current = 1;
     }
 
-    let current = lock_current_rev(&mut tx, item.id).await?;
     let max_rev = max_rev(&mut tx, item.id).await?;
 
     if current < max_rev {
@@ -115,6 +118,12 @@ pub async fn record_revision(
     }
 
     let next = current.saturating_add(1);
+    if next == current {
+        return Err(sqlx::Error::Protocol(
+            "Revision limit reached (i32::MAX)".into(),
+        ));
+    }
+
     insert_revision_snapshot(&mut tx, item, next, actor_user_id)
         .await?;
 
@@ -159,12 +168,58 @@ pub async fn list_revisions(
     .await
 }
 
+pub async fn get_revision(
+    pool: &PgPool,
+    content_item_id: Uuid,
+    rev_num: i32,
+) -> Result<Option<ContentItemRevision>, sqlx::Error> {
+    sqlx::query_as::<_, ContentItemRevision>(
+        r#"
+        SELECT *
+        FROM content_item_revisions
+        WHERE content_item_id = $1 AND rev = $2
+        "#,
+    )
+    .bind(content_item_id)
+    .bind(rev_num)
+    .fetch_optional(pool)
+    .await
+}
+
 pub async fn restore_revision(
     pool: &PgPool,
     content_item_id: Uuid,
     rev_num: i32,
 ) -> Result<Option<ContentItem>, sqlx::Error> {
     let mut tx = pool.begin().await?;
+    let item =
+        restore_revision_in_tx(&mut tx, content_item_id, rev_num)
+            .await?;
+    tx.commit().await?;
+    Ok(item)
+}
+
+async fn restore_revision_in_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    content_item_id: Uuid,
+    rev_num: i32,
+) -> Result<Option<ContentItem>, sqlx::Error> {
+    // Lock the content_items row first
+    let _current = sqlx::query_scalar::<_, i32>(
+        r#"
+        SELECT current_rev
+        FROM content_items
+        WHERE id = $1
+        FOR UPDATE
+        "#,
+    )
+    .bind(content_item_id)
+    .fetch_optional(&mut **tx)
+    .await?;
+
+    if _current.is_none() {
+        return Ok(None);
+    }
 
     let rev = sqlx::query_as::<
         _,
@@ -178,11 +233,10 @@ pub async fn restore_revision(
     )
     .bind(content_item_id)
     .bind(rev_num)
-    .fetch_optional(&mut *tx)
+    .fetch_optional(&mut **tx)
     .await?;
 
     let Some((title, slug, content, template, status)) = rev else {
-        tx.commit().await?;
         return Ok(None);
     };
 
@@ -209,10 +263,9 @@ pub async fn restore_revision(
     .bind(status.as_str())
     .bind(rev_num)
     .bind(content_item_id)
-    .fetch_optional(&mut *tx)
+    .fetch_optional(&mut **tx)
     .await?;
 
-    tx.commit().await?;
     Ok(item)
 }
 
@@ -220,49 +273,57 @@ pub async fn undo(
     pool: &PgPool,
     content_item_id: Uuid,
 ) -> Result<Option<ContentItem>, sqlx::Error> {
+    let mut tx = pool.begin().await?;
+
     let current = sqlx::query_scalar::<_, i32>(
         r#"
         SELECT current_rev
         FROM content_items
         WHERE id = $1
+        FOR UPDATE
         "#,
     )
     .bind(content_item_id)
-    .fetch_optional(pool)
+    .fetch_optional(&mut *tx)
     .await?;
 
     let Some(current) = current else {
         return Ok(None);
     };
 
-    if current <= 1 {
-        return restore_revision(pool, content_item_id, current)
-            .await;
-    }
+    // Go to previous revision, or stay at 1 if already there
+    let target_rev = if current <= 1 { 1 } else { current - 1 };
 
-    restore_revision(pool, content_item_id, current - 1).await
+    let item =
+        restore_revision_in_tx(&mut tx, content_item_id, target_rev)
+            .await?;
+    tx.commit().await?;
+    Ok(item)
 }
 
 pub async fn redo(
     pool: &PgPool,
     content_item_id: Uuid,
 ) -> Result<Option<ContentItem>, sqlx::Error> {
+    let mut tx = pool.begin().await?;
+
     let current = sqlx::query_scalar::<_, i32>(
         r#"
         SELECT current_rev
         FROM content_items
         WHERE id = $1
+        FOR UPDATE
         "#,
     )
     .bind(content_item_id)
-    .fetch_optional(pool)
+    .fetch_optional(&mut *tx)
     .await?;
 
     let Some(current) = current else {
         return Ok(None);
     };
 
-    // Redo only if next revision exists.
+    // Check if next revision exists
     let exists = sqlx::query_scalar::<_, bool>(
         r#"
         SELECT EXISTS(
@@ -274,15 +335,17 @@ pub async fn redo(
     )
     .bind(content_item_id)
     .bind(current + 1)
-    .fetch_one(pool)
+    .fetch_one(&mut *tx)
     .await?;
 
-    if !exists {
-        return restore_revision(pool, content_item_id, current)
-            .await;
-    }
+    // Go to next revision if it exists, otherwise stay at current
+    let target_rev = if exists { current + 1 } else { current };
 
-    restore_revision(pool, content_item_id, current + 1).await
+    let item =
+        restore_revision_in_tx(&mut tx, content_item_id, target_rev)
+            .await?;
+    tx.commit().await?;
+    Ok(item)
 }
 
 async fn lock_current_rev(

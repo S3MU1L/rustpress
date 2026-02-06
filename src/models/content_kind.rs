@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(
     Debug,
+    Default,
     Clone,
     Copy,
     Eq,
@@ -14,6 +15,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "lowercase")]
 pub enum ContentKind {
     Page,
+    #[default]
     Post,
 }
 
@@ -23,12 +25,6 @@ impl ContentKind {
             Self::Page => "page",
             Self::Post => "post",
         }
-    }
-}
-
-impl Default for ContentKind {
-    fn default() -> Self {
-        Self::Post
     }
 }
 

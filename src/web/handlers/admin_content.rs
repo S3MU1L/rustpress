@@ -9,9 +9,11 @@ use rustpress::models::{
     ContentCreate, ContentKind, ContentStatus, ContentUpdate,
 };
 
+use serde::Deserialize;
+
 use crate::web::forms::{
     AdminCreateForm, AdminLiveForm, AdminNewPreviewForm,
-    AdminUpdateForm, SitesQuery,
+    AdminUpdateForm, SearchQuery,
 };
 use crate::web::helpers::{
     apply_site_template, escape_html, get_is_admin, iframe_srcdoc,
@@ -22,6 +24,7 @@ use crate::web::state::AppState;
 use crate::web::templates::{
     AdminDashboardTemplate, AdminEditTemplate, AdminNewTemplate,
     AdminPagesListTemplate, AdminPostsListTemplate,
+    AdminRevisionPreviewTemplate,
 };
 
 #[get("/admin")]
@@ -63,7 +66,7 @@ pub async fn admin_dashboard(
 pub async fn admin_posts_list(
     state: web::Data<AppState>,
     req: HttpRequest,
-    query: web::Query<SitesQuery>,
+    query: web::Query<SearchQuery>,
 ) -> impl Responder {
     let uid = match require_user(&req) {
         Ok(uid) => uid,
@@ -107,7 +110,7 @@ pub async fn admin_posts_list(
 pub async fn admin_pages_list(
     state: web::Data<AppState>,
     req: HttpRequest,
-    query: web::Query<SitesQuery>,
+    query: web::Query<SearchQuery>,
 ) -> impl Responder {
     let uid = match require_user(&req) {
         Ok(uid) => uid,
@@ -258,11 +261,78 @@ pub async fn admin_create(
     }
 }
 
+/// Resolve a site template and render preview HTML as an `<iframe srcdoc>`.
+async fn compute_preview_html(
+    pool: &sqlx::PgPool,
+    owner_user_id: Option<Uuid>,
+    template_name: &str,
+    title: &str,
+    content: &str,
+    slug: &str,
+    kind_str: &str,
+) -> String {
+    let mut tpl = match owner_user_id {
+        Some(owner_id) => db::get_site_template_by_name_for_user(
+            pool,
+            owner_id,
+            template_name,
+        )
+        .await
+        .ok()
+        .flatten(),
+        None => db::get_site_template_by_name(pool, template_name)
+            .await
+            .ok()
+            .flatten(),
+    };
+    if tpl.is_none() {
+        tpl = match owner_user_id {
+            Some(owner_id) => db::get_site_template_by_name_for_user(
+                pool, owner_id, "default",
+            )
+            .await
+            .ok()
+            .flatten(),
+            None => db::get_site_template_by_name(pool, "default")
+                .await
+                .ok()
+                .flatten(),
+        };
+    }
+
+    let html = match tpl {
+        Some(tpl) => {
+            let tpl_html = if tpl.is_builtin {
+                normalize_builtin_template_html(&tpl.html)
+            } else {
+                std::borrow::Cow::Borrowed(tpl.html.as_str())
+            };
+            apply_site_template(
+                tpl_html.as_ref(),
+                title,
+                content,
+                slug,
+                kind_str,
+            )
+        }
+        None => apply_site_template(
+            "<!doctype html><html><head><meta charset=\"utf-8\"><title>{{title}}</title></head><body><h1>{{title}}</h1>{{content}}</body></html>",
+            title,
+            content,
+            slug,
+            kind_str,
+        ),
+    };
+
+    iframe_srcdoc(&html)
+}
+
 #[get("/admin/edit/{id}")]
 pub async fn admin_edit(
     state: web::Data<AppState>,
     req: HttpRequest,
     path: web::Path<Uuid>,
+    query: web::Query<PreviewQuery>,
 ) -> impl Responder {
     let uid = match require_user(&req) {
         Ok(uid) => uid,
@@ -302,6 +372,60 @@ pub async fn admin_edit(
     }
 
     let is_admin = get_is_admin(&req);
+
+    // Branch: revision preview vs normal edit
+    if let Some(rev) = query.rev {
+        if rev < 1 {
+            return render_not_found(&req);
+        }
+        if rev >= item.current_rev {
+            return HttpResponse::SeeOther()
+                .insert_header((
+                    "Location",
+                    format!("/admin/edit/{}", id),
+                ))
+                .finish();
+        }
+
+        let revision =
+            match db::get_revision(&state.pool, id, rev).await {
+                Ok(Some(r)) => r,
+                Ok(None) => return render_not_found(&req),
+                Err(e) => {
+                    return HttpResponse::InternalServerError()
+                        .body(e.to_string());
+                }
+            };
+
+        let revision_author = match revision.created_by_user_id {
+            Some(uid) => db::get_user_email_map(&state.pool, &[uid])
+                .await
+                .ok()
+                .and_then(|m| m.into_values().next())
+                .unwrap_or_else(|| "Unknown".to_string()),
+            None => "System".to_string(),
+        };
+
+        let preview_html = compute_preview_html(
+            &state.pool,
+            item.owner_user_id,
+            &revision.template,
+            &revision.title,
+            &revision.content,
+            &revision.slug,
+            item.kind.as_str(),
+        )
+        .await;
+
+        return render(AdminRevisionPreviewTemplate {
+            item,
+            revision,
+            revision_author,
+            preview_html,
+            is_admin,
+        });
+    }
+
     let author = match item.owner_user_id {
         Some(oid) => db::get_user_email_map(&state.pool, &[oid])
             .await
@@ -642,6 +766,30 @@ pub async fn admin_autosave(
         status: None,
     };
 
+    // Avoid creating a new revision when nothing actually changed.
+    // This prevents "future versions" from being created when the editor updates
+    // fields programmatically (e.g. revision preview navigation) or when autosave
+    // fires with identical content.
+    let mut changed = false;
+    if let Some(v) = update.title.as_ref() {
+        changed |= v != &item.title;
+    }
+    if let Some(v) = update.slug.as_ref() {
+        changed |= v != &item.slug;
+    }
+    if let Some(v) = update.template.as_ref() {
+        changed |= v != &item.template;
+    }
+    if let Some(v) = update.content.as_ref() {
+        changed |= v != &item.content;
+    }
+
+    if !changed {
+        return HttpResponse::Ok()
+            .content_type("text/html; charset=utf-8")
+            .body("<span class=\"muted\">No changes</span>");
+    }
+
     match db::update_content(&state.pool, id, &update).await {
         Ok(Some(updated)) => {
             if let Err(e) = db::ensure_initial_revision(
@@ -743,6 +891,90 @@ pub async fn admin_preview(
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| item.template.clone());
 
+    let preview = compute_preview_html(
+        &state.pool,
+        item.owner_user_id,
+        &template_name,
+        &title,
+        &content,
+        &slug,
+        item.kind.as_str(),
+    )
+    .await;
+
+    HttpResponse::Ok()
+        .content_type("text/html; charset=utf-8")
+        .body(preview)
+}
+
+#[derive(Deserialize)]
+pub struct PreviewQuery {
+    pub rev: Option<i32>,
+}
+
+/// Full-page preview in a new tab (does NOT publish).
+/// Accepts optional `?rev=N` to preview a specific revision.
+#[get("/admin/content/{id}/preview")]
+pub async fn admin_preview_fullpage(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<Uuid>,
+    query: web::Query<PreviewQuery>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let id = path.into_inner();
+    let item = match db::get_content_by_id(&state.pool, id).await {
+        Ok(Some(item)) => item,
+        Ok(None) => return render_not_found(&req),
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(e.to_string());
+        }
+    };
+
+    let can_view =
+        match db::can_view_content(&state.pool, &item, uid).await {
+            Ok(v) => v,
+            Err(e) => {
+                return HttpResponse::InternalServerError()
+                    .body(e.to_string());
+            }
+        };
+
+    if !can_view {
+        return HttpResponse::Forbidden().body("Forbidden");
+    }
+
+    // If a specific revision is requested, use its content instead.
+    let (title, slug, content, template_name) =
+        if let Some(rev) = query.rev {
+            match db::get_revision(&state.pool, id, rev).await {
+                Ok(Some(revision)) => (
+                    revision.title,
+                    revision.slug,
+                    revision.content,
+                    revision.template,
+                ),
+                Ok(None) => return render_not_found(&req),
+                Err(e) => {
+                    return HttpResponse::InternalServerError()
+                        .body(e.to_string());
+                }
+            }
+        } else {
+            (
+                item.title.clone(),
+                item.slug.clone(),
+                item.content.clone(),
+                item.template.clone(),
+            )
+        };
+
+    // compute_preview_html wraps in iframe_srcdoc; we need raw HTML here.
     let mut tpl = match item.owner_user_id {
         Some(owner_id) => db::get_site_template_by_name_for_user(
             &state.pool,
@@ -804,107 +1036,6 @@ pub async fn admin_preview(
 
     HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
-        .body(iframe_srcdoc(&html))
-}
-
-/// Full-page preview in a new tab (does NOT publish)
-#[get("/admin/content/{id}/preview")]
-pub async fn admin_preview_fullpage(
-    state: web::Data<AppState>,
-    req: HttpRequest,
-    path: web::Path<Uuid>,
-) -> impl Responder {
-    let uid = match require_user(&req) {
-        Ok(uid) => uid,
-        Err(resp) => return resp,
-    };
-
-    let id = path.into_inner();
-    let item = match db::get_content_by_id(&state.pool, id).await {
-        Ok(Some(item)) => item,
-        Ok(None) => return render_not_found(&req),
-        Err(e) => {
-            return HttpResponse::InternalServerError()
-                .body(e.to_string());
-        }
-    };
-
-    let can_view =
-        match db::can_view_content(&state.pool, &item, uid).await {
-            Ok(v) => v,
-            Err(e) => {
-                return HttpResponse::InternalServerError()
-                    .body(e.to_string());
-            }
-        };
-
-    if !can_view {
-        return HttpResponse::Forbidden().body("Forbidden");
-    }
-
-    let template_name = &item.template;
-
-    let mut tpl = match item.owner_user_id {
-        Some(owner_id) => db::get_site_template_by_name_for_user(
-            &state.pool,
-            owner_id,
-            template_name,
-        )
-        .await
-        .ok()
-        .flatten(),
-        None => {
-            db::get_site_template_by_name(&state.pool, template_name)
-                .await
-                .ok()
-                .flatten()
-        }
-    };
-    if tpl.is_none() {
-        tpl = match item.owner_user_id {
-            Some(owner_id) => db::get_site_template_by_name_for_user(
-                &state.pool,
-                owner_id,
-                "default",
-            )
-            .await
-            .ok()
-            .flatten(),
-            None => {
-                db::get_site_template_by_name(&state.pool, "default")
-                    .await
-                    .ok()
-                    .flatten()
-            }
-        };
-    }
-
-    let html = match tpl {
-        Some(tpl) => {
-            let tpl_html = if tpl.is_builtin {
-                normalize_builtin_template_html(&tpl.html)
-            } else {
-                std::borrow::Cow::Borrowed(tpl.html.as_str())
-            };
-            apply_site_template(
-                tpl_html.as_ref(),
-                &item.title,
-                &item.content,
-                &item.slug,
-                item.kind.as_str(),
-            )
-        }
-        None => apply_site_template(
-            "<!doctype html><html><head><meta charset=\"utf-8\"><title>{{title}}</title></head><body><h1>{{title}}</h1>{{content}}</body></html>",
-            &item.title,
-            &item.content,
-            &item.slug,
-            item.kind.as_str(),
-        ),
-    };
-
-    HttpResponse::Ok()
-        .content_type("text/html; charset=utf-8")
         .body(html)
 }
 
@@ -945,52 +1076,20 @@ pub async fn admin_preview_new(
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| "default".to_string());
 
-    let mut tpl = db::get_site_template_by_name_for_user(
+    let preview = compute_preview_html(
         &state.pool,
-        uid,
+        Some(uid),
         &template_name,
+        &title,
+        &content,
+        &slug,
+        kind,
     )
-    .await
-    .ok()
-    .flatten();
-    if tpl.is_none() {
-        tpl = db::get_site_template_by_name_for_user(
-            &state.pool,
-            uid,
-            "default",
-        )
-        .await
-        .ok()
-        .flatten();
-    }
-
-    let html = match tpl {
-        Some(tpl) => {
-            let tpl_html = if tpl.is_builtin {
-                normalize_builtin_template_html(&tpl.html)
-            } else {
-                std::borrow::Cow::Borrowed(tpl.html.as_str())
-            };
-            apply_site_template(
-                tpl_html.as_ref(),
-                &title,
-                &content,
-                &slug,
-                kind,
-            )
-        }
-        None => apply_site_template(
-            "<!doctype html><html><head><meta charset=\"utf-8\"><title>{{title}}</title></head><body><h1>{{title}}</h1>{{content}}</body></html>",
-            &title,
-            &content,
-            &slug,
-            kind,
-        ),
-    };
+    .await;
 
     HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
-        .body(iframe_srcdoc(&html))
+        .body(preview)
 }
 
 pub fn configure(cfg: &mut web::ServiceConfig) {

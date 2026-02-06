@@ -1,0 +1,50 @@
+{% if revisions.is_empty() %}
+<p class="text-rp-muted text-xs">No revisions yet.</p>
+{% else %}
+<div class="space-y-2 max-h-80 overflow-y-auto pr-1">
+  {% for rev in revisions %}
+  <div class="border border-rp-border rounded-lg p-3 text-xs {% if rev.rev == current_rev %}bg-rp-primary/10 border-rp-primary/40{% else %}bg-rp-surface{% endif %}">
+    <div class="flex items-center justify-between mb-1">
+      <span class="font-semibold">
+        Rev {{ rev.rev }}
+        {% if rev.rev == current_rev %}
+        <span class="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-rp-primary text-white">Current</span>
+        {% endif %}
+      </span>
+      {% if rev.status.as_str() == "published" %}
+      <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-rp-secondary/10 text-rp-secondary">published</span>
+      {% else %}
+      <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-rp-warning/10 text-rp-warning">{{ rev.status.as_str() }}</span>
+      {% endif %}
+    </div>
+    <div class="text-rp-muted mb-1 truncate" title="{{ rev.title }}">{{ rev.title }}</div>
+    <div class="text-rp-muted mb-2">
+      {% match rev.created_by_user_id %}
+        {% when Some with (uid) %}
+          {% match authors.get(uid) %}
+            {% when Some with (email) %}{{ email }}
+            {% when None %}Unknown
+          {% endmatch %}
+        {% when None %}System
+      {% endmatch %}
+      &middot; {{ rev.created_at.format("%b %d, %H:%M") }}
+    </div>
+    {% if rev.rev != current_rev %}
+    <div class="flex gap-1">
+      <a href="/admin/edit/{{ content_item_id }}?rev={{ rev.rev }}"
+        class="px-2 py-1 rounded bg-rp-border/50 hover:bg-rp-border text-rp-text text-[11px] transition-colors">
+        Preview
+      </a>
+      <button type="button"
+        class="px-2 py-1 rounded bg-rp-primary/80 hover:bg-rp-primary text-white text-[11px] transition-colors"
+        hx-post="/admin/content/{{ content_item_id }}/revisions/{{ rev.rev }}/restore"
+        hx-confirm="Restore to revision #{{ rev.rev }}? Current content will be saved as a new revision first."
+        hx-swap="none">
+        Restore
+      </button>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}

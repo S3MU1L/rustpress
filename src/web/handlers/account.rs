@@ -1,3 +1,4 @@
+use actix_web::cookie::{Cookie, SameSite};
 use actix_web::{
     HttpRequest, HttpResponse, Responder, get, post, web,
 };
@@ -7,12 +8,16 @@ use rustpress::db;
 use rustpress::models::User;
 use rustpress::services::PasswordManager;
 
-use crate::web::forms::{AccountEmailForm, ChangePasswordForm};
+use crate::web::forms::{
+    AccountEmailForm, ChangePasswordForm, DeleteAccountForm,
+};
 use crate::web::helpers::{
-    get_is_admin, is_unique_violation, load_user, render,
+    get_is_admin, is_htmx, is_unique_violation, load_user, render,
     require_user,
 };
-use crate::web::security::{PasswordValidator, validate_email, generic_error_message};
+use crate::web::security::{
+    PasswordValidator, generic_error_message, validate_email,
+};
 use crate::web::state::AppState;
 use crate::web::templates::{MeAccountTemplate, MeSecurityTemplate};
 
@@ -126,7 +131,12 @@ pub async fn me_account_change_password(
             Err(resp) => return resp,
         };
         let is_admin = get_is_admin(&req);
-        return render_account(user, is_admin, Some(e.to_string()), None);
+        return render_account(
+            user,
+            is_admin,
+            Some(e.to_string()),
+            None,
+        );
     }
 
     let user = match load_user(&state.pool, uid).await {
@@ -243,7 +253,8 @@ pub async fn me_security_change_password(
     let is_admin = get_is_admin(&req);
 
     // Validate new password strength
-    if let Err(msg) = PasswordValidator::validate(&form.new_password) {
+    if let Err(msg) = PasswordValidator::validate(&form.new_password)
+    {
         return render(MeSecurityTemplate {
             password_set: !user.password_hash.trim().is_empty(),
             email_verified: user.email_verified_at.is_some(),
@@ -263,7 +274,9 @@ pub async fn me_security_change_password(
             return render(MeSecurityTemplate {
                 password_set: !user.password_hash.trim().is_empty(),
                 email_verified: user.email_verified_at.is_some(),
-                error: Some(generic_error_message("password verification")),
+                error: Some(generic_error_message(
+                    "password verification",
+                )),
                 success: None,
                 is_admin,
             });
@@ -291,7 +304,9 @@ pub async fn me_security_change_password(
                         .trim()
                         .is_empty(),
                     email_verified: user.email_verified_at.is_some(),
-                    error: Some(generic_error_message("password hashing")),
+                    error: Some(generic_error_message(
+                        "password hashing",
+                    )),
                     success: None,
                     is_admin,
                 });
@@ -336,17 +351,7 @@ pub async fn me_security_mark_email_verified(
 
     let is_admin = get_is_admin(&req);
 
-    let updated = sqlx::query_as::<_, User>(
-        r#"
-        UPDATE users
-        SET email_verified_at = COALESCE(email_verified_at, now()), edited_at = now()
-        WHERE id = $1
-        RETURNING *
-        "#,
-    )
-    .bind(uid)
-    .fetch_one(&state.pool)
-    .await;
+    let updated = db::mark_email_verified(&state.pool, uid).await;
 
     match updated {
         Ok(user) => render(MeSecurityTemplate {
@@ -363,10 +368,93 @@ pub async fn me_security_mark_email_verified(
     }
 }
 
+#[post("/admin/me/account/delete")]
+pub async fn me_account_delete(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    form: web::Form<DeleteAccountForm>,
+) -> impl Responder {
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+
+    let user = match load_user(&state.pool, uid).await {
+        Ok(u) => u,
+        Err(resp) => return resp,
+    };
+
+    let is_admin = get_is_admin(&req);
+
+    let ok = match PasswordManager::verify_password(
+        &form.password,
+        &user.password_hash,
+    ) {
+        Ok(v) => v,
+        Err(e) => {
+            return render_account(
+                user,
+                is_admin,
+                Some(format!("Password verification error: {e}")),
+                None,
+            );
+        }
+    };
+
+    if !ok {
+        return render_account(
+            user,
+            is_admin,
+            Some("Password is incorrect".into()),
+            None,
+        );
+    }
+
+    if is_admin
+        && db::count_admins(&state.pool).await.unwrap_or(0) <= 1
+    {
+        return render_account(
+            user,
+            is_admin,
+            Some("Cannot delete the last admin account".into()),
+            None,
+        );
+    }
+
+    if let Err(e) = db::soft_delete_user(&state.pool, uid).await {
+        return render_account(
+            user,
+            is_admin,
+            Some(format!("Failed to delete account: {e}")),
+            None,
+        );
+    }
+
+    let mut cookie = Cookie::build("rp_uid", "")
+        .path("/")
+        .http_only(true)
+        .same_site(SameSite::Lax)
+        .finish();
+    cookie.make_removal();
+
+    if is_htmx(&req) {
+        HttpResponse::Ok()
+            .cookie(cookie)
+            .insert_header(("HX-Redirect", "/admin/login"))
+            .finish()
+    } else {
+        HttpResponse::SeeOther()
+            .cookie(cookie)
+            .insert_header(("Location", "/admin/login"))
+            .finish()
+    }
+}
+
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(me_account)
         .service(me_account_update_email)
         .service(me_account_change_password)
+        .service(me_account_delete)
         .service(me_security)
         .service(me_security_change_password)
         .service(me_security_mark_email_verified);

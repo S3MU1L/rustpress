@@ -4,7 +4,10 @@ use askama::Template;
 use uuid::Uuid;
 
 use rustpress::db::UserWithRoles;
-use rustpress::models::{ContentItem, Site, SiteTemplate, User};
+use rustpress::models::{
+    ContentItem, ContentItemRevision, ContentItemRevisionMeta, Site,
+    SiteTemplate, User,
+};
 
 #[derive(Template)]
 #[template(path = "public/index.html")]
@@ -57,6 +60,16 @@ pub struct AdminEditTemplate {
     pub item: ContentItem,
     pub author: String,
     pub templates: Vec<SiteTemplate>,
+    pub is_admin: bool,
+}
+
+#[derive(Template)]
+#[template(path = "admin/revision_preview.html")]
+pub struct AdminRevisionPreviewTemplate {
+    pub item: ContentItem,
+    pub revision: ContentItemRevision,
+    pub revision_author: String,
+    pub preview_html: String,
     pub is_admin: bool,
 }
 
@@ -124,38 +137,9 @@ pub struct MeSecurityTemplate {
 }
 
 #[derive(Template)]
-#[template(path = "admin/sites_list.html")]
-pub struct SitesListTemplate {
-    pub sites: Vec<Site>,
-    pub query: String,
-    pub is_admin: bool,
-}
-
-#[derive(Template)]
-#[template(path = "admin/site_new.html")]
-pub struct SiteNewTemplate {
-    pub templates: Vec<SiteTemplate>,
-    pub default_template: String,
-    pub error: Option<String>,
-    pub is_admin: bool,
-}
-
-#[derive(Template)]
-#[template(path = "admin/site_edit.html")]
-pub struct SiteEditTemplate {
-    pub site: Site,
-    pub templates: Vec<SiteTemplate>,
-    pub error: Option<String>,
-    pub success: Option<String>,
-    pub is_admin: bool,
-}
-
-#[derive(Template)]
 #[template(path = "admin/themes.html")]
 pub struct ThemesTemplate {
     pub templates: Vec<SiteTemplate>,
-    pub sites: Vec<Site>,
-    pub selected_site_id: Option<uuid::Uuid>,
     pub query: String,
     pub category: String,
     pub is_admin: bool,
@@ -175,6 +159,7 @@ pub struct ConfigurationTemplate {
 #[template(path = "admin/users_list.html")]
 pub struct AdminUsersListTemplate {
     pub users: Vec<UserWithRoles>,
+    pub current_user_id: Uuid,
     pub is_admin: bool,
     pub error: Option<String>,
     pub success: Option<String>,
@@ -207,4 +192,13 @@ pub struct NotFoundTemplate {
 #[template(path = "401.html")]
 pub struct UnauthorizedTemplate {
     pub is_admin: bool,
+}
+
+#[derive(Template)]
+#[template(path = "partials/history_panel.html")]
+pub struct AdminHistoryPartialTemplate {
+    pub revisions: Vec<ContentItemRevisionMeta>,
+    pub authors: HashMap<Uuid, String>,
+    pub current_rev: i32,
+    pub content_item_id: Uuid,
 }

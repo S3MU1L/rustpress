@@ -1,7 +1,6 @@
 use actix_web::{
     HttpRequest, HttpResponse, Responder, get, post, web,
 };
-use sqlx::PgPool;
 use uuid::Uuid;
 
 use rustpress::db;
@@ -12,7 +11,9 @@ use super::super::forms::{AdminCreateUserForm, AdminUpdateUserForm};
 use super::super::helpers::{
     get_is_admin, load_user, render, require_user,
 };
-use super::super::security::{PasswordValidator, validate_email, generic_error_message};
+use super::super::security::{
+    PasswordValidator, generic_error_message, validate_email,
+};
 use super::super::state::AppState;
 use super::super::templates::{
     AdminUserEditTemplate, AdminUserNewTemplate,
@@ -20,7 +21,7 @@ use super::super::templates::{
 };
 
 async fn render_edit(
-    pool: &PgPool,
+    pool: &db::PgPool,
     user: User,
     is_admin: bool,
     error: Option<String>,
@@ -39,7 +40,8 @@ async fn render_edit(
 }
 
 async fn render_list(
-    pool: &PgPool,
+    pool: &db::PgPool,
+    current_user_id: Uuid,
     is_admin: bool,
     error: Option<String>,
     success: Option<String>,
@@ -49,6 +51,7 @@ async fn render_list(
         .unwrap_or_default();
     render(AdminUsersListTemplate {
         users,
+        current_user_id,
         is_admin,
         error,
         success,
@@ -60,10 +63,12 @@ pub async fn users_list(
     state: web::Data<AppState>,
     req: HttpRequest,
 ) -> impl Responder {
-    if let Err(resp) = require_user(&req) {
-        return resp;
-    }
-    render_list(&state.pool, get_is_admin(&req), None, None).await
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+    render_list(&state.pool, uid, get_is_admin(&req), None, None)
+        .await
 }
 
 #[get("/admin/users/new")]
@@ -88,7 +93,7 @@ pub async fn users_create(
     }
 
     let is_admin = get_is_admin(&req);
-    
+
     // Validate form before password hashing
     if let Err(e) = form.validate() {
         return render(AdminUserNewTemplate {
@@ -246,7 +251,9 @@ pub async fn users_update(
                             &state.pool,
                             user,
                             is_admin,
-                            Some(generic_error_message("password update")),
+                            Some(generic_error_message(
+                                "password update",
+                            )),
                             None,
                         )
                         .await;
@@ -261,7 +268,9 @@ pub async fn users_update(
                         &state.pool,
                         user,
                         is_admin,
-                        Some(generic_error_message("password hashing")),
+                        Some(generic_error_message(
+                            "password hashing",
+                        )),
                         None,
                     )
                     .await;
@@ -300,6 +309,7 @@ pub async fn users_delete(
     if target_id == uid {
         return render_list(
             &state.pool,
+            uid,
             is_admin,
             Some("You cannot delete your own account".into()),
             None,
@@ -316,6 +326,7 @@ pub async fn users_delete(
     {
         return render_list(
             &state.pool,
+            uid,
             is_admin,
             Some("Cannot delete the last admin".into()),
             None,
@@ -328,6 +339,7 @@ pub async fn users_delete(
         log::error!("Failed to delete user: {}", e);
         return render_list(
             &state.pool,
+            uid,
             is_admin,
             Some(generic_error_message("user deletion")),
             None,
@@ -337,6 +349,7 @@ pub async fn users_delete(
 
     render_list(
         &state.pool,
+        uid,
         is_admin,
         None,
         Some("User deleted".into()),

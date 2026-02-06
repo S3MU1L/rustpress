@@ -29,40 +29,49 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
           </svg>
         </button>
-        <a class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
+        <a id="btn-preview"
+          class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
           href="/admin/content/{{ item.id }}/preview" target="_blank">
           {{ macros::preview_button() }}
           Preview
         </a>
+        {% if item.status == "published" %}
         {% if item.kind == "post" %}
-        <a class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
+        <a id="btn-view-live"
+          class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
           href="/blog/{{ item.slug }}" target="_blank">
           {{ macros::external_link_icon() }}
           View Live
         </a>
         {% else %}
-        <a class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
+        <a id="btn-view-live"
+          class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
           href="/{{ item.slug }}" target="_blank">
           {{ macros::external_link_icon() }}
           View Live
         </a>
         {% endif %}
-        <button
+        {% endif %}
+        <button id="btn-save"
           class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
           type="submit">
           {{ macros::save_icon() }}
           Save
         </button>
         {% if item.status == "draft" %}
-        <button
+        <button id="btn-publish"
           class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
           type="button" hx-post="/admin/publish/{{ item.id }}" hx-target="body" hx-swap="outerHTML">
           {{ macros::publish_icon() }}
           Publish
         </button>
         {% endif %}
-        <button type="button"
-          class="px-4 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors text-sm inline-flex items-center gap-2"
+        <button type="button" onclick="openVersionsModal()"
+          class="px-4 py-2 rounded-lg bg-rp-surface border border-rp-border text-rp-text font-medium hover:bg-rp-border/30 transition-colors text-sm inline-flex items-center gap-2">
+          {{ macros::clock_icon() }}
+          Versions
+        </button>
+        <button id="btn-delete" type="button" class="btn-danger text-sm inline-flex items-center gap-2"
           hx-post="/admin/edit/{{ item.id }}/delete" hx-swap="none"
           hx-confirm="Delete '{{ item.title }}'? This cannot be undone.">
           {{ macros::delete_icon() }}
@@ -117,52 +126,44 @@
     <!-- Sidebar -->
     <div class="space-y-4">
       <!-- Live Preview -->
-      <div class="card p-5">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-sm font-medium flex items-center gap-2">
-            <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-            Live Preview
-          </h3>
-          <span class="px-2 py-0.5 rounded-full text-xs bg-rp-secondary/10 text-rp-secondary">Auto-updates</span>
-        </div>
-        <div id="preview" class="border border-rp-border rounded-lg overflow-hidden bg-white"
-          hx-post="/admin/edit/{{ item.id }}/preview" hx-trigger="load, editor-change from:body delay:500ms, every 3s"
-          hx-include="#edit-form" hx-target="this" hx-swap="innerHTML">
-          <p class="text-rp-muted text-sm p-4">Loading preview...</p>
+      <div id="live-preview-card" class="card p-5">
+        {{ macros::live_preview_header() }}
+        <div class="preview-wrapper relative cursor-pointer group" onclick="openPreviewModal()">
+          <div
+            class="absolute top-2 right-2 p-1.5 rounded-lg bg-black/50 text-white opacity-0 group-hover:opacity-100 z-10 pointer-events-none transition-opacity">
+            {{ macros::expand_icon() }}
+          </div>
+          <div id="preview" class="border border-rp-border rounded-lg overflow-hidden bg-white"
+            hx-post="/admin/edit/{{ item.id }}/preview" hx-trigger="load, editor-change from:body delay:500ms"
+            hx-include="#edit-form" hx-target="this" hx-swap="innerHTML">
+            <p class="text-rp-muted text-sm p-4">Loading preview...</p>
+          </div>
         </div>
       </div>
 
       <!-- Info -->
       <div class="card p-5">
         <h3 class="text-sm font-medium mb-3 flex items-center gap-2">
-          <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+          <span class="text-rp-primary">{{ macros::info_icon() }}</span>
           Info
         </h3>
-        <dl class="text-xs space-y-2">
+        <dl id="info-panel" class="text-xs space-y-2">
           <div class="flex justify-between">
             <dt class="text-rp-muted">Author</dt>
-            <dd>{{ author }}</dd>
+            <dd id="info-author">{{ author }}</dd>
           </div>
           <div class="flex justify-between">
             <dt class="text-rp-muted">Created</dt>
-            <dd>{{ item.created_at.format("%b %d, %Y") }}</dd>
+            <dd id="info-created">{{ item.created_at.format("%b %d, %Y %H:%M") }}</dd>
           </div>
-          <div class="flex justify-between">
+          <div id="info-edited-row" class="flex justify-between">
             <dt class="text-rp-muted">Last edited</dt>
-            <dd>{{ item.edited_at.format("%b %d, %Y %H:%M") }}</dd>
+            <dd id="info-edited">{{ item.edited_at.format("%b %d, %Y %H:%M") }}</dd>
           </div>
           {% if item.published_at.is_some() %}
-          <div class="flex justify-between">
+          <div id="info-published-row" class="flex justify-between">
             <dt class="text-rp-muted">Published</dt>
-            <dd>{{ item.published_at.unwrap().format("%b %d, %Y") }}</dd>
+            <dd id="info-published">{{ item.published_at.unwrap().format("%b %d, %Y") }}</dd>
           </div>
           {% endif %}
         </dl>
@@ -174,8 +175,124 @@
   <div id="autosave" hx-post="/admin/edit/{{ item.id }}/autosave" hx-trigger="autosave-trigger" hx-include="#edit-form"
     hx-target="#autosave-status" hx-swap="innerHTML"></div>
 </form>
+
+{% include "partials/preview_modal.html" %}
+
+<!-- Versions Modal -->
+<div id="versions-modal" class="hidden fixed inset-0 z-50">
+  <div class="absolute inset-0 bg-black/50" onclick="closeVersionsModal()"></div>
+  <div class="absolute inset-y-0 right-0 w-full max-w-md bg-rp-bg border-l border-rp-border shadow-xl flex flex-col">
+    <div class="flex items-center justify-between p-4 border-b border-rp-border">
+      <h2 class="text-lg font-semibold flex items-center gap-2">
+        <span class="text-rp-primary">{{ macros::clock_icon() }}</span>
+        Version History
+      </h2>
+      <button type="button" onclick="closeVersionsModal()"
+        class="p-1.5 rounded-lg text-rp-muted hover:text-rp-text hover:bg-rp-border/30 transition-colors">
+        {{ macros::close_icon() }}
+      </button>
+    </div>
+    <div id="versions-modal-body" class="flex-1 overflow-y-auto p-4">
+      <p class="text-rp-muted text-sm">Loading...</p>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
+<!-- Set editor to editable mode -->
+<script>
+  window.EDITOR_READ_ONLY = false;
+</script>
+
 {% include "partials/editor_scripts.html" %}
+
+<script>
+  const CONTENT_ITEM_ID = '{{ item.id }}';
+
+  // ── Auto-save configuration (backend only; preview always updates) ───────
+  const AUTO_SAVE_KEY = 'rustpress_auto_save_enabled';
+
+  function isAutoSaveEnabled() {
+    const stored = localStorage.getItem(AUTO_SAVE_KEY);
+    return stored === null ? true : stored === 'true';
+  }
+
+  function setAutoSaveEnabled(enabled) {
+    localStorage.setItem(AUTO_SAVE_KEY, enabled.toString());
+    applyAutoSaveSettingToDom();
+  }
+
+  function updateAutoSaveBadge() {
+    const badge = document.getElementById('auto-save-badge');
+    if (!badge) return;
+
+    if (isAutoSaveEnabled()) {
+      badge.textContent = 'Auto-save';
+      badge.className = 'px-2 py-0.5 rounded-full text-xs bg-rp-secondary/10 text-rp-secondary';
+    } else {
+      badge.textContent = 'Auto-save Disabled';
+      badge.className = 'px-2 py-0.5 rounded-full text-xs bg-rp-muted/10 text-rp-muted';
+    }
+  }
+
+  function applyAutoSaveSettingToDom() {
+    updateAutoSaveBadge();
+
+    const autosaveEl = document.getElementById('autosave');
+    if (!autosaveEl) return;
+
+    // Capture original attrs once so we can restore reliably.
+    if (!autosaveEl.dataset.rpHxPost) {
+      autosaveEl.dataset.rpHxPost = autosaveEl.getAttribute('hx-post') || '';
+      autosaveEl.dataset.rpHxTrigger = autosaveEl.getAttribute('hx-trigger') || '';
+    }
+
+    if (isAutoSaveEnabled()) {
+      if (autosaveEl.dataset.rpHxPost) autosaveEl.setAttribute('hx-post', autosaveEl.dataset.rpHxPost);
+      if (autosaveEl.dataset.rpHxTrigger) autosaveEl.setAttribute('hx-trigger', autosaveEl.dataset.rpHxTrigger);
+    } else {
+      autosaveEl.removeAttribute('hx-post');
+      autosaveEl.removeAttribute('hx-trigger');
+      const autosaveStatus = document.getElementById('autosave-status');
+      if (autosaveStatus) autosaveStatus.textContent = '';
+    }
+
+    if (window.htmx) htmx.process(autosaveEl);
+  }
+
+  // ── Modal ────────────────────────────────────────────────
+  function openVersionsModal() {
+    const modal = document.getElementById('versions-modal');
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    htmx.ajax('GET', `/admin/content/${CONTENT_ITEM_ID}/history`, '#versions-modal-body');
+  }
+
+  function closeVersionsModal() {
+    document.getElementById('versions-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !document.getElementById('versions-modal').classList.contains('hidden')) {
+      closeVersionsModal();
+    }
+  });
+
+  // ── Initialize Auto-save toggle ──────
+  document.addEventListener('DOMContentLoaded', function () {
+    // Initialize toggle state from localStorage
+    const toggle = document.getElementById('auto-save-toggle');
+    if (toggle) {
+      toggle.checked = isAutoSaveEnabled();
+      toggle.addEventListener('change', function () {
+        setAutoSaveEnabled(this.checked);
+      });
+    }
+
+    // Initialize Auto-save badge + autosave wiring
+    applyAutoSaveSettingToDom();
+  });
+</script>
 {% endblock %}

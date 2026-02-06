@@ -5,7 +5,7 @@ use actix_web::{
 use std::time::Duration;
 
 use rustpress::db;
-use rustpress::models::{RoleName, SiteCreate, User};
+use rustpress::models::{RoleName, SiteCreate};
 use rustpress::services::PasswordManager;
 
 use crate::web::forms::{AuthQuery, LoginForm, RegisterForm};
@@ -43,14 +43,30 @@ pub async fn login_submit(
         .realip_remote_addr()
         .unwrap_or("unknown")
         .to_string();
-    
+
     if !state.rate_limiter.check_rate_limit(
         &format!("login:{}", client_ip),
-        5, // 5 attempts
+        5,                        // 5 attempts
         Duration::from_secs(300), // per 5 minutes
     ) {
         return HttpResponse::TooManyRequests()
-            .insert_header(("Location", "/admin/login?error=rate_limit"))
+            .insert_header((
+                "Location",
+                "/admin/login?error=rate_limit",
+            ))
+            .finish();
+    }
+
+    // Validate form first
+    if let Err(e) = form.validate() {
+        return HttpResponse::SeeOther()
+            .insert_header((
+                "Location",
+                format!(
+                    "/admin/login?error={}",
+                    urlencoding::encode(e)
+                ),
+            ))
             .finish();
     }
 
@@ -58,12 +74,7 @@ pub async fn login_submit(
     let password = form.password.to_string();
 
     // Fetch user
-    let user = sqlx::query_as::<_, User>(
-        r#"SELECT * FROM users WHERE email = $1"#,
-    )
-    .bind(&email)
-    .fetch_optional(&state.pool)
-    .await;
+    let user = db::get_user_by_email(&state.pool, &email).await;
 
     // Constant-time response: always verify password even if user doesn't exist
     let (user_exists, stored_hash) = match user {
@@ -82,14 +93,18 @@ pub async fn login_submit(
         Err(e) => {
             log::error!("Database error during login: {}", e);
             return HttpResponse::SeeOther()
-                .insert_header(("Location", "/admin/login?error=internal"))
+                .insert_header((
+                    "Location",
+                    "/admin/login?error=internal",
+                ))
                 .finish();
         }
     };
 
     // Always perform password verification
-    let password_valid = PasswordManager::verify_password(&password, &stored_hash)
-        .unwrap_or(false);
+    let password_valid =
+        PasswordManager::verify_password(&password, &stored_hash)
+            .unwrap_or(false);
 
     // Only succeed if both user exists and password is valid
     if !user_exists || !password_valid {
@@ -99,13 +114,10 @@ pub async fn login_submit(
     }
 
     // Re-fetch user (we know it exists now)
-    let user = sqlx::query_as::<_, User>(
-        r#"SELECT * FROM users WHERE email = $1"#,
-    )
-    .bind(&email)
-    .fetch_one(&state.pool)
-    .await
-    .expect("User should exist");
+    let user = db::get_user_by_email(&state.pool, &email)
+        .await
+        .expect("Database error re-fetching user")
+        .expect("User should exist");
 
     let cookie = Cookie::build("rp_uid", user.id.to_string())
         .path("/")
@@ -134,7 +146,8 @@ pub async fn register_form(
             "An account with this email already exists".to_string()
         }
         "rate_limit" => {
-            "Too many registration attempts. Please try again later.".to_string()
+            "Too many registration attempts. Please try again later."
+                .to_string()
         }
         "db" => "Database error. Please try again.".to_string(),
         "internal" => "An internal error occurred. Please try again."
@@ -156,7 +169,10 @@ pub async fn register_submit(
         return HttpResponse::SeeOther()
             .insert_header((
                 "Location",
-                format!("/admin/register?error={}", urlencoding::encode(e)),
+                format!(
+                    "/admin/register?error={}",
+                    urlencoding::encode(e)
+                ),
             ))
             .finish();
     }
@@ -167,14 +183,17 @@ pub async fn register_submit(
         .realip_remote_addr()
         .unwrap_or("unknown")
         .to_string();
-    
+
     if !state.rate_limiter.check_rate_limit(
         &format!("register:{}", client_ip),
-        3, // 3 attempts
+        3,                         // 3 attempts
         Duration::from_secs(3600), // per hour
     ) {
         return HttpResponse::TooManyRequests()
-            .insert_header(("Location", "/admin/register?error=rate_limit"))
+            .insert_header((
+                "Location",
+                "/admin/register?error=rate_limit",
+            ))
             .finish();
     }
 
@@ -210,7 +229,10 @@ pub async fn register_submit(
                     .finish();
             }
             Err(e) => {
-                log::error!("Database error during registration: {}", e);
+                log::error!(
+                    "Database error during registration: {}",
+                    e
+                );
                 return HttpResponse::SeeOther()
                     .insert_header((
                         "Location",
@@ -249,12 +271,10 @@ pub async fn register_submit(
 
         if let Ok(site) =
             db::create_site(&state.pool, &site_data).await
-        {
-            if let Err(e) =
+            && let Err(e) =
                 db::publish_site(&state.pool, site.id, user.id).await
-            {
-                log::error!("Failed to publish default site: {}", e);
-            }
+        {
+            log::error!("Failed to publish default site: {}", e);
         }
     }
 

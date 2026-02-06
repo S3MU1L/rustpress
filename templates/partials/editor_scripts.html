@@ -1,125 +1,178 @@
 <!-- TipTap Editor Scripts (self-hosted, no API key) -->
 
 <script type="module">
-import { Editor } from 'https://esm.sh/@tiptap/core@2.1.13'
-import StarterKit from 'https://esm.sh/@tiptap/starter-kit@2.1.13'
-import Link from 'https://esm.sh/@tiptap/extension-link@2.1.13'
-import Image from 'https://esm.sh/@tiptap/extension-image@2.1.13'
-import Underline from 'https://esm.sh/@tiptap/extension-underline@2.1.13'
-import TextAlign from 'https://esm.sh/@tiptap/extension-text-align@2.1.13'
+  import { Editor } from 'https://esm.sh/@tiptap/core@2.1.13'
+  import StarterKit from 'https://esm.sh/@tiptap/starter-kit@2.1.13'
+  import Link from 'https://esm.sh/@tiptap/extension-link@2.1.13'
+  import Image from 'https://esm.sh/@tiptap/extension-image@2.1.13'
+  import Underline from 'https://esm.sh/@tiptap/extension-underline@2.1.13'
+  import TextAlign from 'https://esm.sh/@tiptap/extension-text-align@2.1.13'
 
-// Debounce helper
-function debounce(fn, delay) {
-  let timer = null;
-  return function(...args) {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn.apply(this, args), delay);
-  };
-}
+  // Check if editor should be read-only (set by page before including this script)
+  const isReadOnly = window.EDITOR_READ_ONLY === true;
 
-// Trigger custom events for HTMX
-const triggerEditorChange = debounce(() => {
-  document.body.dispatchEvent(new Event('editor-change', { bubbles: true }));
-}, 300);
-
-const triggerAutosave = debounce(() => {
-  const autosave = document.getElementById('autosave');
-  if (autosave) {
-    autosave.dispatchEvent(new Event('autosave-trigger', { bubbles: true }));
+  // Debounce helper
+  function debounce(fn, delay) {
+    let timer = null;
+    return function (...args) {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn.apply(this, args), delay);
+    };
   }
-}, 2000);
 
-// Get initial content from hidden textarea
-const textarea = document.getElementById('editor');
-const initialContent = textarea?.value || '<p></p>';
+  // Get initial content from hidden textarea
+  const textarea = document.getElementById('editor');
+  const initialContent = textarea?.value || '<p></p>';
 
-// Initialize TipTap
-const editor = new Editor({
-  element: document.querySelector('#tiptap-editor'),
-  extensions: [
-    StarterKit.configure({
-      heading: { levels: [1, 2, 3, 4] },
-    }),
-    Link.configure({ openOnClick: false }),
-    Image,
-    Underline,
-    TextAlign.configure({ types: ['heading', 'paragraph'] }),
-  ],
-  content: initialContent,
-  editorProps: {
-    attributes: {
-      class: 'prose prose-sm max-w-none focus:outline-none min-h-[400px] p-4',
+  // Initialize TipTap
+  const editorConfig = {
+    element: document.querySelector('#tiptap-editor'),
+    extensions: [
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3, 4] },
+      }),
+      Link.configure({ openOnClick: false }),
+      Image,
+      Underline,
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+    ],
+    content: initialContent,
+    editable: !isReadOnly,
+    editorProps: {
+      attributes: {
+        class: 'prose prose-sm max-w-none focus:outline-none min-h-[400px] p-4',
+      },
     },
-  },
-  onUpdate({ editor }) {
-    if (textarea) {
-      textarea.value = editor.getHTML();
+  };
+
+  // Only add onUpdate handler for editable mode
+  if (!isReadOnly) {
+    // Trigger custom events for HTMX
+    const triggerEditorChange = debounce(() => {
+      document.body.dispatchEvent(new Event('editor-change', { bubbles: true }));
+    }, 300);
+
+    // Auto-save is configurable per-browser (default: enabled)
+    const AUTO_SAVE_KEY = 'rustpress_auto_save_enabled';
+    function isAutoSaveEnabled() {
+      const stored = localStorage.getItem(AUTO_SAVE_KEY);
+      return stored === null ? true : stored === 'true';
     }
-    triggerEditorChange();
-    triggerAutosave();
-  },
-});
 
-// Toolbar button handlers
-window.editorCmd = {
-  bold: () => editor.chain().focus().toggleBold().run(),
-  italic: () => editor.chain().focus().toggleItalic().run(),
-  underline: () => editor.chain().focus().toggleUnderline().run(),
-  strike: () => editor.chain().focus().toggleStrike().run(),
-  h1: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
-  h2: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
-  h3: () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
-  paragraph: () => editor.chain().focus().setParagraph().run(),
-  bulletList: () => editor.chain().focus().toggleBulletList().run(),
-  orderedList: () => editor.chain().focus().toggleOrderedList().run(),
-  blockquote: () => editor.chain().focus().toggleBlockquote().run(),
-  codeBlock: () => editor.chain().focus().toggleCodeBlock().run(),
-  horizontalRule: () => editor.chain().focus().setHorizontalRule().run(),
-  alignLeft: () => editor.chain().focus().setTextAlign('left').run(),
-  alignCenter: () => editor.chain().focus().setTextAlign('center').run(),
-  alignRight: () => editor.chain().focus().setTextAlign('right').run(),
-  link: () => {
-    const url = prompt('Enter URL:');
-    if (url) editor.chain().focus().setLink({ href: url }).run();
-  },
-  unlink: () => editor.chain().focus().unsetLink().run(),
-  image: () => {
-    const url = prompt('Enter image URL:');
-    if (url) editor.chain().focus().setImage({ src: url }).run();
-  },
-  undo: () => editor.chain().focus().undo().run(),
-  redo: () => editor.chain().focus().redo().run(),
-};
+    const triggerAutosave = debounce(() => {
+      if (!isAutoSaveEnabled()) return;
+      const autosave = document.getElementById('autosave');
+      if (autosave) {
+        autosave.dispatchEvent(new Event('autosave-trigger', { bubbles: true }));
+      }
+    }, 2000);
 
-// Form field change handlers (trigger preview + autosave)
-const title = document.getElementById('title');
-const slug = document.getElementById('slug');
-const slugPreview = document.getElementById('slug-preview');
-const selects = document.querySelectorAll('select[name="template"], select[name="status"]');
-
-if (title) {
-  title.addEventListener('input', () => {
-    triggerEditorChange();
-    triggerAutosave();
-  });
-}
-
-if (slug) {
-  slug.addEventListener('input', () => {
-    if (slugPreview) {
-      slugPreview.textContent = slug.value || 'your-slug';
+    function scheduleAutosave() {
+      if (!isAutoSaveEnabled()) return;
+      triggerAutosave();
     }
-    triggerEditorChange();
-    triggerAutosave();
-  });
-}
 
-selects.forEach(sel => {
-  sel.addEventListener('change', () => {
-    triggerEditorChange();
-    triggerAutosave();
-  });
-});
+    editorConfig.onUpdate = function ({ editor }) {
+      if (textarea) {
+        textarea.value = editor.getHTML();
+      }
+      triggerEditorChange();
+      scheduleAutosave();
+    };
+  }
+
+  const editor = new Editor(editorConfig);
+
+  // Expose editor instance globally
+  window.tiptapEditor = editor;
+
+  // Only set up toolbar handlers and form field listeners for editable mode
+  if (!isReadOnly) {
+    // Toolbar button handlers
+    window.editorCmd = {
+      bold: () => editor.chain().focus().toggleBold().run(),
+      italic: () => editor.chain().focus().toggleItalic().run(),
+      underline: () => editor.chain().focus().toggleUnderline().run(),
+      strike: () => editor.chain().focus().toggleStrike().run(),
+      h1: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
+      h2: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
+      h3: () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
+      paragraph: () => editor.chain().focus().setParagraph().run(),
+      bulletList: () => editor.chain().focus().toggleBulletList().run(),
+      orderedList: () => editor.chain().focus().toggleOrderedList().run(),
+      blockquote: () => editor.chain().focus().toggleBlockquote().run(),
+      codeBlock: () => editor.chain().focus().toggleCodeBlock().run(),
+      horizontalRule: () => editor.chain().focus().setHorizontalRule().run(),
+      alignLeft: () => editor.chain().focus().setTextAlign('left').run(),
+      alignCenter: () => editor.chain().focus().setTextAlign('center').run(),
+      alignRight: () => editor.chain().focus().setTextAlign('right').run(),
+      link: () => {
+        const url = prompt('Enter URL:');
+        if (url) editor.chain().focus().setLink({ href: url }).run();
+      },
+      unlink: () => editor.chain().focus().unsetLink().run(),
+      image: () => {
+        const url = prompt('Enter image URL:');
+        if (url) editor.chain().focus().setImage({ src: url }).run();
+      },
+      undo: () => editor.chain().focus().undo().run(),
+      redo: () => editor.chain().focus().redo().run(),
+    };
+
+    // Form field change handlers (trigger preview + autosave)
+    const title = document.getElementById('title');
+    const slug = document.getElementById('slug');
+    const slugPreview = document.getElementById('slug-preview');
+    const selects = document.querySelectorAll('select[name="template"], select[name="status"]');
+
+    if (title) {
+      title.addEventListener('input', () => {
+        document.body.dispatchEvent(new Event('editor-change', { bubbles: true }));
+        const autosave = document.getElementById('autosave');
+        if (autosave) {
+          const AUTO_SAVE_KEY = 'rustpress_auto_save_enabled';
+          const stored = localStorage.getItem(AUTO_SAVE_KEY);
+          const isAutoSaveEnabled = stored === null ? true : stored === 'true';
+          if (isAutoSaveEnabled) {
+            setTimeout(() => autosave.dispatchEvent(new Event('autosave-trigger', { bubbles: true })), 2000);
+          }
+        }
+      });
+    }
+
+    if (slug) {
+      slug.addEventListener('input', () => {
+        if (slugPreview) {
+          slugPreview.textContent = slug.value || 'your-slug';
+        }
+        document.body.dispatchEvent(new Event('editor-change', { bubbles: true }));
+        const autosave = document.getElementById('autosave');
+        if (autosave) {
+          const AUTO_SAVE_KEY = 'rustpress_auto_save_enabled';
+          const stored = localStorage.getItem(AUTO_SAVE_KEY);
+          const isAutoSaveEnabled = stored === null ? true : stored === 'true';
+          if (isAutoSaveEnabled) {
+            setTimeout(() => autosave.dispatchEvent(new Event('autosave-trigger', { bubbles: true })), 2000);
+          }
+        }
+      });
+    }
+
+    selects.forEach(sel => {
+      sel.addEventListener('change', () => {
+        document.body.dispatchEvent(new Event('editor-change', { bubbles: true }));
+        const autosave = document.getElementById('autosave');
+        if (autosave) {
+          const AUTO_SAVE_KEY = 'rustpress_auto_save_enabled';
+          const stored = localStorage.getItem(AUTO_SAVE_KEY);
+          const isAutoSaveEnabled = stored === null ? true : stored === 'true';
+          if (isAutoSaveEnabled) {
+            setTimeout(() => autosave.dispatchEvent(new Event('autosave-trigger', { bubbles: true })), 2000);
+          }
+        }
+      });
+    });
+  }
 </script>
 
 <style>
@@ -132,6 +185,7 @@ selects.forEach(sel => {
     border-bottom: 1px solid var(--color-rp-border);
     background: var(--color-rp-bg);
   }
+
   .tiptap-toolbar button {
     padding: 6px 10px;
     border: 1px solid transparent;
@@ -141,34 +195,78 @@ selects.forEach(sel => {
     cursor: pointer;
     font-size: 13px;
   }
+
   .tiptap-toolbar button:hover {
     background: var(--color-rp-border);
   }
+
   .tiptap-toolbar .separator {
     width: 1px;
     background: var(--color-rp-border);
     margin: 0 4px;
   }
+
   .ProseMirror {
     min-height: 400px;
     padding: 16px;
     outline: none;
   }
-  .ProseMirror p { margin: 0 0 1em 0; }
-  .ProseMirror h1 { font-size: 2em; font-weight: 700; margin: 1em 0 0.5em; }
-  .ProseMirror h2 { font-size: 1.5em; font-weight: 600; margin: 1em 0 0.5em; }
-  .ProseMirror h3 { font-size: 1.25em; font-weight: 600; margin: 1em 0 0.5em; }
-  .ProseMirror h4 { font-size: 1.1em; font-weight: 600; margin: 1em 0 0.5em; }
-  .ProseMirror ul, .ProseMirror ol { margin: 0 0 1em 1.5em; }
-  .ProseMirror li { margin: 0.25em 0; }
-  .ProseMirror a { color: #2563eb; text-decoration: underline; }
-  .ProseMirror img { max-width: 100%; height: auto; border-radius: 4px; }
+
+  .ProseMirror p {
+    margin: 0 0 1em 0;
+  }
+
+  .ProseMirror h1 {
+    font-size: 2em;
+    font-weight: 700;
+    margin: 1em 0 0.5em;
+  }
+
+  .ProseMirror h2 {
+    font-size: 1.5em;
+    font-weight: 600;
+    margin: 1em 0 0.5em;
+  }
+
+  .ProseMirror h3 {
+    font-size: 1.25em;
+    font-weight: 600;
+    margin: 1em 0 0.5em;
+  }
+
+  .ProseMirror h4 {
+    font-size: 1.1em;
+    font-weight: 600;
+    margin: 1em 0 0.5em;
+  }
+
+  .ProseMirror ul,
+  .ProseMirror ol {
+    margin: 0 0 1em 1.5em;
+  }
+
+  .ProseMirror li {
+    margin: 0.25em 0;
+  }
+
+  .ProseMirror a {
+    color: var(--color-rp-accent);
+    text-decoration: underline;
+  }
+
+  .ProseMirror img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+  }
+
   .ProseMirror blockquote {
     border-left: 4px solid var(--color-rp-border);
     margin: 1em 0;
     padding-left: 1em;
     color: var(--color-rp-muted);
   }
+
   .ProseMirror pre {
     background: var(--color-rp-bg);
     padding: 1em;
@@ -176,12 +274,14 @@ selects.forEach(sel => {
     overflow-x: auto;
     font-family: monospace;
   }
+
   .ProseMirror code {
     background: var(--color-rp-bg);
     padding: 0.2em 0.4em;
     border-radius: 3px;
     font-size: 0.9em;
   }
+
   .ProseMirror hr {
     border: none;
     border-top: 2px solid var(--color-rp-border);

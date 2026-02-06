@@ -1,6 +1,8 @@
 use rustpress::models::RoleName;
 use serde::Deserialize;
 
+use crate::web::security::validate_slug;
+
 pub const MIN_PASSWORD_LENGTH: usize = 12;
 pub const MAX_PASSWORD_LENGTH: usize = 128; // Prevent DoS via huge passwords
 pub const MAX_EMAIL_LENGTH: usize = 255;
@@ -54,24 +56,33 @@ impl RegisterForm {
         if !email.contains('@') || !email.contains('.') {
             return Err("Invalid email format");
         }
-        
+
         if self.password.len() < MIN_PASSWORD_LENGTH {
             return Err("Password must be at least 12 characters");
         }
         if self.password.len() > MAX_PASSWORD_LENGTH {
             return Err("Password must not exceed 128 characters");
         }
-        
+
         // Check password complexity
-        let has_uppercase = self.password.chars().any(|c| c.is_uppercase());
-        let has_lowercase = self.password.chars().any(|c| c.is_lowercase());
+        let has_uppercase =
+            self.password.chars().any(|c| c.is_uppercase());
+        let has_lowercase =
+            self.password.chars().any(|c| c.is_lowercase());
         let has_digit = self.password.chars().any(|c| c.is_numeric());
-        let has_special = self.password.chars().any(|c| !c.is_alphanumeric());
-        
-        if !has_uppercase || !has_lowercase || !has_digit || !has_special {
-            return Err("Password must contain uppercase, lowercase, digit, and special character");
+        let has_special =
+            self.password.chars().any(|c| !c.is_alphanumeric());
+
+        if !has_uppercase
+            || !has_lowercase
+            || !has_digit
+            || !has_special
+        {
+            return Err(
+                "Password must contain uppercase, lowercase, digit, and special character",
+            );
         }
-        
+
         Ok(())
     }
 }
@@ -93,82 +104,49 @@ impl ChangePasswordForm {
             return Err("Current password too long");
         }
         if self.new_password.len() < MIN_PASSWORD_LENGTH {
-            return Err("New password must be at least 12 characters");
+            return Err(
+                "New password must be at least 12 characters",
+            );
         }
         if self.new_password.len() > MAX_PASSWORD_LENGTH {
-            return Err("New password must not exceed 128 characters");
+            return Err(
+                "New password must not exceed 128 characters",
+            );
         }
-        
+
         // Check new password complexity
-        let has_uppercase = self.new_password.chars().any(|c| c.is_uppercase());
-        let has_lowercase = self.new_password.chars().any(|c| c.is_lowercase());
-        let has_digit = self.new_password.chars().any(|c| c.is_ascii_digit());
-        let has_special = self.new_password.chars().any(|c| !c.is_alphanumeric());
-        
-        if !has_uppercase || !has_lowercase || !has_digit || !has_special {
-            return Err("New password must contain uppercase, lowercase, digit, and special character");
+        let has_uppercase =
+            self.new_password.chars().any(|c| c.is_uppercase());
+        let has_lowercase =
+            self.new_password.chars().any(|c| c.is_lowercase());
+        let has_digit =
+            self.new_password.chars().any(|c| c.is_ascii_digit());
+        let has_special =
+            self.new_password.chars().any(|c| !c.is_alphanumeric());
+
+        if !has_uppercase
+            || !has_lowercase
+            || !has_digit
+            || !has_special
+        {
+            return Err(
+                "New password must contain uppercase, lowercase, digit, and special character",
+            );
         }
-        
+
         Ok(())
     }
 }
 
 #[derive(Deserialize)]
-pub struct SitesQuery {
+pub struct SearchQuery {
     pub q: Option<String>,
-}
-
-#[derive(Deserialize)]
-pub struct SiteCreateForm {
-    pub name: String,
-    pub slug: String,
-    pub default_template: Option<String>,
-}
-
-impl SiteCreateForm {
-    pub fn validate(&self) -> Result<(), &'static str> {
-        if self.name.trim().is_empty() {
-            return Err("Site name is required");
-        }
-        if self.name.len() > 200 {
-            return Err("Site name must not exceed 200 characters");
-        }
-        if self.slug.trim().is_empty() {
-            return Err("Site slug is required");
-        }
-        if self.slug.len() > 200 {
-            return Err("Site slug must not exceed 200 characters");
-        }
-        
-        // Validate slug format: lowercase alphanumeric with hyphens/underscores
-        let slug = self.slug.trim();
-        if !slug.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_') {
-            return Err("Slug must be lowercase alphanumeric with hyphens/underscores only");
-        }
-        
-        Ok(())
-    }
-}
-
-#[derive(Deserialize)]
-pub struct SiteUpdateForm {
-    pub name: Option<String>,
-    pub slug: Option<String>,
-    pub default_template: Option<String>,
-    pub homepage_type: Option<String>,
-    pub homepage_page_id: Option<String>,
 }
 
 #[derive(Deserialize)]
 pub struct ThemesQuery {
     pub q: Option<String>,
     pub category: Option<String>,
-    pub site_id: Option<String>,
-}
-
-#[derive(Deserialize)]
-pub struct ApplyThemeForm {
-    pub template: String,
 }
 
 #[derive(Deserialize)]
@@ -190,16 +168,14 @@ impl AdminCreateForm {
         if self.slug.trim().is_empty() {
             return Err("Slug is required");
         }
-        if self.slug.len() > 200 {
-            return Err("Slug must not exceed 200 characters");
-        }
-        
-        // Validate slug format: lowercase alphanumeric with hyphens/underscores
+        // Validate slug format and length
         let slug = self.slug.trim();
-        if !slug.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_') {
-            return Err("Slug must be lowercase alphanumeric with hyphens/underscores only");
+        if !validate_slug(slug, Some(200)) {
+            return Err(
+                "Slug must be lowercase alphanumeric with hyphens/underscores only and not exceed 200 characters",
+            );
         }
-        
+
         if self.content.len() > MAX_CONTENT_LENGTH {
             return Err("Content must not exceed 10MB");
         }
@@ -246,7 +222,9 @@ impl AdminTemplateCreateForm {
             return Err("Template name is required");
         }
         if self.name.len() > 200 {
-            return Err("Template name must not exceed 200 characters");
+            return Err(
+                "Template name must not exceed 200 characters",
+            );
         }
         if self.html.len() > MAX_TEMPLATE_LENGTH {
             return Err("Template HTML must not exceed 1MB");
@@ -287,24 +265,34 @@ impl AdminCreateUserForm {
         if !email.contains('@') || !email.contains('.') {
             return Err("Invalid email format");
         }
-        
+
         if self.password.len() < MIN_PASSWORD_LENGTH {
             return Err("Password must be at least 12 characters");
         }
         if self.password.len() > MAX_PASSWORD_LENGTH {
             return Err("Password must not exceed 128 characters");
         }
-        
+
         // Check password complexity
-        let has_uppercase = self.password.chars().any(|c| c.is_uppercase());
-        let has_lowercase = self.password.chars().any(|c| c.is_lowercase());
-        let has_digit = self.password.chars().any(|c| c.is_ascii_digit());
-        let has_special = self.password.chars().any(|c| !c.is_alphanumeric());
-        
-        if !has_uppercase || !has_lowercase || !has_digit || !has_special {
-            return Err("Password must contain uppercase, lowercase, digit, and special character");
+        let has_uppercase =
+            self.password.chars().any(|c| c.is_uppercase());
+        let has_lowercase =
+            self.password.chars().any(|c| c.is_lowercase());
+        let has_digit =
+            self.password.chars().any(|c| c.is_ascii_digit());
+        let has_special =
+            self.password.chars().any(|c| !c.is_alphanumeric());
+
+        if !has_uppercase
+            || !has_lowercase
+            || !has_digit
+            || !has_special
+        {
+            return Err(
+                "Password must contain uppercase, lowercase, digit, and special character",
+            );
         }
-        
+
         Ok(())
     }
 }
@@ -314,4 +302,9 @@ pub struct AdminUpdateUserForm {
     pub email: String,
     pub role: RoleName,
     pub new_password: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct DeleteAccountForm {
+    pub password: String,
 }

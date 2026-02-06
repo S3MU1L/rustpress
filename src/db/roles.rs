@@ -6,6 +6,13 @@ use uuid::Uuid;
 use crate::models::{RoleName, User};
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct Role {
+    pub id: Uuid,
+    pub name: String,
+    pub description: String,
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct UserWithRoles {
     pub id: Uuid,
     pub email: String,
@@ -93,8 +100,6 @@ pub async fn get_user_role_names(
     Ok(rows)
 }
 
-/// Set the user's role. Each user has exactly one role (admin or editor).
-/// This replaces any existing role.
 pub async fn set_user_role(
     pool: &PgPool,
     user_id: Uuid,
@@ -204,4 +209,47 @@ pub async fn list_all_users_with_roles(
     .await?;
 
     Ok(rows)
+}
+
+pub async fn get_user_by_email(
+    pool: &PgPool,
+    email: &str,
+) -> Result<Option<User>, sqlx::Error> {
+    sqlx::query_as::<_, User>(
+        r#"SELECT * FROM users WHERE email = $1"#,
+    )
+    .bind(email)
+    .fetch_optional(pool)
+    .await
+}
+
+pub async fn mark_email_verified(
+    pool: &PgPool,
+    user_id: Uuid,
+) -> Result<User, sqlx::Error> {
+    sqlx::query_as::<_, User>(
+        r#"
+        UPDATE users
+        SET email_verified_at = COALESCE(email_verified_at, now()), edited_at = now()
+        WHERE id = $1
+        RETURNING *
+        "#,
+    )
+    .bind(user_id)
+    .fetch_one(pool)
+    .await
+}
+
+pub async fn list_roles(
+    pool: &PgPool,
+) -> Result<Vec<Role>, sqlx::Error> {
+    sqlx::query_as::<_, Role>(
+        r#"
+        SELECT id, name, description
+        FROM roles
+        ORDER BY name ASC
+        "#,
+    )
+    .fetch_all(pool)
+    .await
 }

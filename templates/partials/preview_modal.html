@@ -1,0 +1,68 @@
+<!-- Fullscreen Preview Modal -->
+<div id="preview-modal" class="hidden fixed inset-0 z-50">
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closePreviewModal()"></div>
+  <div
+    class="absolute inset-4 md:inset-8 lg:inset-12 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden border-2 border-rp-border">
+    <!-- Modal Header -->
+    <div class="flex items-center justify-center px-5 py-3 bg-rp-bg/80 shrink-0 relative">
+      <h3 class="text-base font-semibold text-rp-text flex items-center gap-2">
+        <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+        Full Preview
+      </h3>
+      <button type="button" onclick="closePreviewModal()"
+        class="absolute right-4 p-1.5 rounded-lg text-rp-muted hover:text-rp-text hover:bg-rp-border/30 transition-colors"
+        title="Close (Esc)">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <div class="border-b-2 border-rp-border"></div>
+    <div id="preview-modal-body" class="flex-1 min-h-0"></div>
+  </div>
+</div>
+
+<script>
+  function openPreviewModal() {
+    var srcIframe = document.querySelector('#preview iframe');
+    var body = document.getElementById('preview-modal-body');
+    if (!srcIframe || !body) return;
+
+    // Create a new full-size iframe with the same srcdoc
+    var modalIframe = document.createElement('iframe');
+    // Match server-side iframe sandbox policy (see `iframe_srcdoc`).
+    modalIframe.setAttribute('sandbox', 'allow-scripts');
+    modalIframe.setAttribute('referrerpolicy', 'no-referrer');
+    modalIframe.setAttribute('srcdoc', srcIframe.getAttribute('srcdoc'));
+    modalIframe.style.cssText = 'width:100%;height:100%;border:none;';
+    body.innerHTML = '';
+    body.appendChild(modalIframe);
+
+    document.getElementById('preview-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closePreviewModal() {
+    document.getElementById('preview-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+    // Clean up iframe to stop any loading
+    document.getElementById('preview-modal-body').innerHTML = '';
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !document.getElementById('preview-modal').classList.contains('hidden')) {
+      closePreviewModal();
+    }
+  });
+</script>
+
+<style>
+  /* Make sidebar preview iframe non-interactive so clicks pass through to the wrapper */
+  #preview iframe {
+    pointer-events: none;
+  }
+</style>

@@ -1,4 +1,5 @@
 {% extends "layouts/base.html" %}
+{% import "partials/content_macros.html" as macros %}
 
 {% block title %}Dashboard - RustPress{% endblock %}
 
@@ -14,32 +15,8 @@
 
 <!-- Stats Overview -->
 <div class="grid grid-cols-2 gap-4 mb-8">
-  <div class="card p-5 border-l-4 border-l-rp-primary">
-    <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-lg bg-rp-primary/10 flex items-center justify-center">
-        <svg class="w-5 h-5 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-        </svg>
-      </div>
-      <div>
-        <div class="text-2xl font-bold text-rp-primary">{{ posts.len() }}</div>
-        <div class="text-rp-muted text-sm">Total Posts</div>
-      </div>
-    </div>
-  </div>
-  <div class="card p-5 border-l-4 border-l-rp-primary">
-    <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-lg bg-rp-primary/10 flex items-center justify-center">
-        <svg class="w-5 h-5 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      </div>
-      <div>
-        <div class="text-2xl font-bold text-rp-primary">{{ pages.len() }}</div>
-        <div class="text-rp-muted text-sm">Total Pages</div>
-      </div>
-    </div>
-  </div>
+  {{ macros::stat_card(border_class="border-l-rp-primary", bg_class="bg-rp-primary/10", text_class="text-rp-primary", icon_path="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z", count=posts.len(), label="Total Posts") }}
+  {{ macros::stat_card(border_class="border-l-rp-primary", bg_class="bg-rp-primary/10", text_class="text-rp-primary", icon_path="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z", count=pages.len(), label="Total Pages") }}
 </div>
 
 <div class="grid lg:grid-cols-2 gap-6 mb-8">
@@ -47,10 +24,8 @@
   <div class="card overflow-hidden">
     <div class="flex items-center justify-between p-5 border-b border-rp-border bg-rp-primary/5">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-lg bg-rp-primary/10 flex items-center justify-center">
-          <svg class="w-5 h-5 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-          </svg>
+        <div class="w-10 h-10 rounded-lg bg-rp-primary/10 flex items-center justify-center text-rp-primary">
+          {{ macros::post_icon(class="w-5 h-5") }}
         </div>
         <div>
           <h2 class="font-semibold">Recent Posts</h2>
@@ -65,25 +40,15 @@
       </a>
     </div>
     {% if posts.len() == 0 %}
-      <div class="p-12 text-center">
-        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-rp-tertiary/10 mb-4">
-          <svg class="w-8 h-8 text-rp-tertiary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-          </svg>
-        </div>
-        <p class="text-rp-muted mb-4">No posts yet. Create your first post to get started.</p>
-        <a href="/admin/posts/new" class="text-rp-tertiary hover:underline font-medium">Create your first post</a>
-      </div>
+      {{ macros::empty_state(icon_path="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z", message="No posts yet. Create your first post to get started.", link_href="/admin/posts/new", link_text="Create your first post") }}
     {% else %}
       <ul class="divide-y divide-rp-border">
         {% for p in posts %}
           {% if loop.index <= 3 %}
           <li class="group p-5 flex items-center justify-between hover:bg-rp-tertiary/5 transition-colors cursor-pointer" onclick="window.location='/admin/edit/{{ p.id }}'">
             <div class="flex items-center gap-4 flex-1">
-              <div class="w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform bg-rp-tertiary/10">
-                <svg class="w-6 h-6 text-rp-tertiary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-                </svg>
+              <div class="w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform bg-rp-tertiary/10 text-rp-tertiary">
+                {{ macros::post_icon() }}
               </div>
               <div>
                 <span class="font-semibold text-rp-text group-hover:text-rp-tertiary transition-colors">{{ p.title }}</span>
@@ -92,18 +57,12 @@
             </div>
             <div class="flex items-center gap-3">
               <span class="px-3 py-1 rounded-full text-xs font-medium {% if p.status == "published" %}bg-rp-secondary/10 text-rp-secondary{% else %}bg-rp-tertiary/10 text-rp-tertiary{% endif %}">{{ p.status }}</span>
-
-              <a href="/admin/edit/{{ p.id }}" class="p-2 rounded-lg hover:bg-rp-border/50 transition-colors" title="Edit post" onclick="event.stopPropagation()">
-                <svg class="w-5 h-5 text-rp-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
+              <a href="/admin/edit/{{ p.id }}" class="p-2 rounded-lg hover:bg-rp-border/50 transition-colors text-rp-muted" title="Edit post" onclick="event.stopPropagation()">
+                {{ macros::edit_icon() }}
               </a>
-
               {% if p.status == "published" %}
-              <a href="/blog/{{ p.slug }}" target="_blank" class="p-2 rounded-lg hover:bg-rp-border/50 transition-colors" title="View post" onclick="event.stopPropagation()">
-                <svg class="w-5 h-5 text-rp-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
+              <a href="/blog/{{ p.slug }}" target="_blank" class="p-2 rounded-lg hover:bg-rp-border/50 transition-colors text-rp-muted" title="View post" onclick="event.stopPropagation()">
+                {{ macros::view_icon() }}
               </a>
               {% endif %}
             </div>
@@ -113,9 +72,7 @@
       </ul>
       <div class="p-4 border-t border-rp-border bg-rp-primary/5">
         <a href="/admin/posts" class="inline-flex items-center gap-2 text-rp-primary hover:underline font-medium text-sm">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
+          {{ macros::chevron_right_icon() }}
           View all posts
         </a>
       </div>
@@ -126,10 +83,8 @@
   <div class="card overflow-hidden">
     <div class="flex items-center justify-between p-5 border-b border-rp-border bg-rp-primary/5">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-lg bg-rp-primary/10 flex items-center justify-center">
-          <svg class="w-5 h-5 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
+        <div class="w-10 h-10 rounded-lg bg-rp-primary/10 flex items-center justify-center text-rp-primary">
+          {{ macros::page_icon(class="w-5 h-5") }}
         </div>
         <div>
           <h2 class="font-semibold">Recent Pages</h2>
@@ -144,25 +99,15 @@
       </a>
     </div>
     {% if pages.len() == 0 %}
-      <div class="p-12 text-center">
-        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-rp-tertiary/10 mb-4">
-          <svg class="w-8 h-8 text-rp-tertiary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-        </div>
-        <p class="text-rp-muted mb-4">No pages yet. Create your first page to get started.</p>
-        <a href="/admin/pages/new" class="text-rp-tertiary hover:underline font-medium">Create your first page</a>
-      </div>
+      {{ macros::empty_state(icon_path="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z", message="No pages yet. Create your first page to get started.", link_href="/admin/pages/new", link_text="Create your first page") }}
     {% else %}
       <ul class="divide-y divide-rp-border">
         {% for p in pages %}
           {% if loop.index <= 3 %}
           <li class="group p-5 flex items-center justify-between hover:bg-rp-tertiary/5 transition-colors cursor-pointer" onclick="window.location='/admin/edit/{{ p.id }}'">
             <div class="flex items-center gap-4 flex-1">
-              <div class="w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform bg-rp-tertiary/10">
-                <svg class="w-6 h-6 text-rp-tertiary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+              <div class="w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform bg-rp-tertiary/10 text-rp-tertiary">
+                {{ macros::page_icon() }}
               </div>
               <div>
                 <span class="font-semibold text-rp-text group-hover:text-rp-tertiary transition-colors">{{ p.title }}</span>
@@ -171,18 +116,12 @@
             </div>
             <div class="flex items-center gap-3">
               <span class="px-3 py-1 rounded-full text-xs font-medium {% if p.status == "published" %}bg-rp-secondary/10 text-rp-secondary{% else %}bg-rp-tertiary/10 text-rp-tertiary{% endif %}">{{ p.status }}</span>
-
-              <a href="/admin/edit/{{ p.id }}" class="p-2 rounded-lg hover:bg-rp-border/50 transition-colors" title="Edit page" onclick="event.stopPropagation()">
-                <svg class="w-5 h-5 text-rp-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
+              <a href="/admin/edit/{{ p.id }}" class="p-2 rounded-lg hover:bg-rp-border/50 transition-colors text-rp-muted" title="Edit page" onclick="event.stopPropagation()">
+                {{ macros::edit_icon() }}
               </a>
-
               {% if p.status == "published" %}
-              <a href="/{{ p.slug }}" target="_blank" class="p-2 rounded-lg hover:bg-rp-border/50 transition-colors" title="View page" onclick="event.stopPropagation()">
-                <svg class="w-5 h-5 text-rp-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
+              <a href="/{{ p.slug }}" target="_blank" class="p-2 rounded-lg hover:bg-rp-border/50 transition-colors text-rp-muted" title="View page" onclick="event.stopPropagation()">
+                {{ macros::view_icon() }}
               </a>
               {% endif %}
             </div>
@@ -192,9 +131,7 @@
       </ul>
       <div class="p-4 border-t border-rp-border bg-rp-primary/5">
         <a href="/admin/pages" class="inline-flex items-center gap-2 text-rp-primary hover:underline font-medium text-sm">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
+          {{ macros::chevron_right_icon() }}
           View all pages
         </a>
       </div>
