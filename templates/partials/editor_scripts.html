@@ -22,8 +22,16 @@
     document.body.dispatchEvent(new Event('editor-change', { bubbles: true }));
   }, 300);
 
+  // Auto-save is configurable per-browser (default: enabled)
+  const AUTO_SAVE_KEY = 'rustpress_auto_save_enabled';
+  function isAutoSaveEnabled() {
+    const stored = localStorage.getItem(AUTO_SAVE_KEY);
+    return stored === null ? true : stored === 'true';
+  }
+
   const triggerAutosave = debounce(() => {
     if (window.RevisionPreview?.active) return;
+    if (!isAutoSaveEnabled()) return;
     const autosave = document.getElementById('autosave');
     if (autosave) {
       autosave.dispatchEvent(new Event('autosave-trigger', { bubbles: true }));
@@ -33,6 +41,7 @@
   function scheduleAutosave() {
     // Avoid queueing autosave while previewing old revisions.
     if (window.RevisionPreview?.active) return;
+    if (!isAutoSaveEnabled()) return;
     triggerAutosave();
   }
 

@@ -255,35 +255,55 @@
     return `${month} ${day}, ${year} ${hours}:${minutes}`;
   }
 
-  // ── Auto-updates configuration ───────────────────────────
-  const AUTO_UPDATES_KEY = 'rustpress_auto_updates_enabled';
+  // ── Auto-save configuration (backend only; preview always updates) ───────
+  const AUTO_SAVE_KEY = 'rustpress_auto_save_enabled';
 
-  function isAutoUpdatesEnabled() {
-    const stored = localStorage.getItem(AUTO_UPDATES_KEY);
+  function isAutoSaveEnabled() {
+    const stored = localStorage.getItem(AUTO_SAVE_KEY);
     return stored === null ? true : stored === 'true';
   }
 
-  function setAutoUpdatesEnabled(enabled) {
-    localStorage.setItem(AUTO_UPDATES_KEY, enabled.toString());
-    updateAutoUpdatesBadge();
-    if (enabled) {
-      RevisionPreview.startPolling();
+  function setAutoSaveEnabled(enabled) {
+    localStorage.setItem(AUTO_SAVE_KEY, enabled.toString());
+    applyAutoSaveSettingToDom();
+  }
+
+  function updateAutoSaveBadge() {
+    const badge = document.getElementById('auto-save-badge');
+    if (!badge) return;
+
+    if (isAutoSaveEnabled()) {
+      badge.textContent = 'Auto-save';
+      badge.className = 'px-2 py-0.5 rounded-full text-xs bg-rp-secondary/10 text-rp-secondary';
     } else {
-      RevisionPreview.stopPolling();
+      badge.textContent = 'Auto-save Disabled';
+      badge.className = 'px-2 py-0.5 rounded-full text-xs bg-rp-muted/10 text-rp-muted';
     }
   }
 
-  function updateAutoUpdatesBadge() {
-    const badge = document.getElementById('auto-updates-badge');
-    if (!badge) return;
+  function applyAutoSaveSettingToDom() {
+    updateAutoSaveBadge();
 
-    if (isAutoUpdatesEnabled()) {
-      badge.textContent = 'Auto-updates';
-      badge.className = 'px-2 py-0.5 rounded-full text-xs bg-rp-secondary/10 text-rp-secondary';
-    } else {
-      badge.textContent = 'Auto-updates Disabled';
-      badge.className = 'px-2 py-0.5 rounded-full text-xs bg-rp-muted/10 text-rp-muted';
+    const autosaveEl = document.getElementById('autosave');
+    if (!autosaveEl) return;
+
+    // Capture original attrs once so we can restore reliably.
+    if (!autosaveEl.dataset.rpHxPost) {
+      autosaveEl.dataset.rpHxPost = autosaveEl.getAttribute('hx-post') || '';
+      autosaveEl.dataset.rpHxTrigger = autosaveEl.getAttribute('hx-trigger') || '';
     }
+
+    if (isAutoSaveEnabled()) {
+      if (autosaveEl.dataset.rpHxPost) autosaveEl.setAttribute('hx-post', autosaveEl.dataset.rpHxPost);
+      if (autosaveEl.dataset.rpHxTrigger) autosaveEl.setAttribute('hx-trigger', autosaveEl.dataset.rpHxTrigger);
+    } else {
+      autosaveEl.removeAttribute('hx-post');
+      autosaveEl.removeAttribute('hx-trigger');
+      const autosaveStatus = document.getElementById('autosave-status');
+      if (autosaveStatus) autosaveStatus.textContent = '';
+    }
+
+    if (window.htmx) htmx.process(autosaveEl);
   }
 
   // ── Encapsulated revision preview state ──────────────────
@@ -419,9 +439,6 @@
     },
 
     startPolling() {
-      // Only start polling if auto-updates are enabled
-      if (!isAutoUpdatesEnabled()) return;
-
       // Start 3-second polling for live preview
       this.stopPolling(); // Clear any existing first
       const previewEl = document.getElementById('preview');
@@ -487,8 +504,11 @@
           const autosaveEl = document.getElementById('autosave');
           if (autosaveEl) {
             const saved = this.frozenElements[id];
-            if (saved.hxPost) autosaveEl.setAttribute('hx-post', saved.hxPost);
-            if (saved.hxTrigger) autosaveEl.setAttribute('hx-trigger', saved.hxTrigger);
+            // Only restore autosave if user has Auto-save enabled.
+            if (isAutoSaveEnabled()) {
+              if (saved.hxPost) autosaveEl.setAttribute('hx-post', saved.hxPost);
+              if (saved.hxTrigger) autosaveEl.setAttribute('hx-trigger', saved.hxTrigger);
+            }
           }
           return;
         }
@@ -688,21 +708,21 @@
     history.replaceState(null, '', url);
   }
 
-  // ── Initialize auto-updates toggle and polling ───────────
+  // ── Initialize Auto-save toggle and preview polling ──────
   document.addEventListener('DOMContentLoaded', function () {
     // Initialize toggle state from localStorage
-    const toggle = document.getElementById('auto-updates-toggle');
+    const toggle = document.getElementById('auto-save-toggle');
     if (toggle) {
-      toggle.checked = isAutoUpdatesEnabled();
+      toggle.checked = isAutoSaveEnabled();
       toggle.addEventListener('change', function () {
-        setAutoUpdatesEnabled(this.checked);
+        setAutoSaveEnabled(this.checked);
       });
     }
 
-    // Initialize badge
-    updateAutoUpdatesBadge();
+    // Initialize Auto-save badge + autosave wiring
+    applyAutoSaveSettingToDom();
 
-    // Start polling if enabled
+    // Preview polling is always on (unless revision preview freezes it)
     RevisionPreview.startPolling();
   });
 
