@@ -78,9 +78,9 @@ pub async fn sites_create(
     };
 
     let is_admin = get_is_admin(&req);
-    let name = form.name.trim().to_string();
-    let slug = form.slug.trim().to_string();
-    if name.is_empty() || slug.is_empty() {
+    
+    // Validate form before processing
+    if let Err(e) = form.validate() {
         let templates =
             db::list_site_templates_for_user(&state.pool, uid)
                 .await
@@ -91,10 +91,13 @@ pub async fn sites_create(
                 .default_template
                 .clone()
                 .unwrap_or_else(|| "default".to_string()),
-            error: Some("Name and slug are required".to_string()),
+            error: Some(e.to_string()),
             is_admin,
         });
     }
+    
+    let name = form.name.trim().to_string();
+    let slug = form.slug.trim().to_string();
 
     let default_template = form
         .default_template

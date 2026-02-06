@@ -15,6 +15,7 @@ use crate::web::helpers::{
     get_is_admin, is_htmx, is_unique_violation, load_user, render,
     require_user,
 };
+use crate::web::security::{PasswordValidator, validate_email, generic_error_message};
 use crate::web::state::AppState;
 use crate::web::templates::{MeAccountTemplate, MeSecurityTemplate};
 
@@ -62,7 +63,7 @@ pub async fn me_account_update_email(
     let is_admin = get_is_admin(&req);
     let new_email = form.email.trim().to_string();
 
-    if new_email.is_empty() {
+    if !validate_email(&new_email) {
         let user = match load_user(&state.pool, uid).await {
             Ok(u) => u,
             Err(resp) => return resp,
@@ -70,7 +71,7 @@ pub async fn me_account_update_email(
         return render_account(
             user,
             is_admin,
-            Some("Email is required".into()),
+            Some("Invalid email address".into()),
             None,
         );
     }
@@ -103,7 +104,7 @@ pub async fn me_account_update_email(
             let msg = if is_unique_violation(&e) {
                 "A user with this email already exists".into()
             } else {
-                format!("Update failed: {e}")
+                generic_error_message("email update")
             };
             render_account(user, is_admin, Some(msg), None)
         }
@@ -121,6 +122,16 @@ pub async fn me_account_change_password(
         Err(resp) => return resp,
     };
 
+    // Validate before any processing
+    if let Err(e) = form.validate() {
+        let user = match load_user(&state.pool, uid).await {
+            Ok(u) => u,
+            Err(resp) => return resp,
+        };
+        let is_admin = get_is_admin(&req);
+        return render_account(user, is_admin, Some(e.to_string()), None);
+    }
+
     let user = match load_user(&state.pool, uid).await {
         Ok(u) => u,
         Err(resp) => return resp,
@@ -128,25 +139,17 @@ pub async fn me_account_change_password(
 
     let is_admin = get_is_admin(&req);
 
-    if form.new_password.trim().len() < 4 {
-        return render_account(
-            user,
-            is_admin,
-            Some("New password must be at least 4 characters".into()),
-            None,
-        );
-    }
-
     let ok = match PasswordManager::verify_password(
         &form.current_password,
         &user.password_hash,
     ) {
         Ok(v) => v,
         Err(e) => {
+            log::error!("Password verification error: {}", e);
             return render_account(
                 user,
                 is_admin,
-                Some(format!("Password verification error: {e}")),
+                Some(generic_error_message("password verification")),
                 None,
             );
         }
@@ -165,10 +168,11 @@ pub async fn me_account_change_password(
         match PasswordManager::hash_password(&form.new_password) {
             Ok(h) => h,
             Err(e) => {
+                log::error!("Password hashing error: {}", e);
                 return render_account(
                     user,
                     is_admin,
-                    Some(format!("Password hashing error: {e}")),
+                    Some(generic_error_message("password hashing")),
                     None,
                 );
             }
@@ -186,12 +190,15 @@ pub async fn me_account_change_password(
                 Some("Password updated".into()),
             )
         }
-        Err(e) => render_account(
-            user,
-            is_admin,
-            Some(format!("Password update failed: {e}")),
-            None,
-        ),
+        Err(e) => {
+            log::error!("Password update failed: {}", e);
+            render_account(
+                user,
+                is_admin,
+                Some(generic_error_message("password update")),
+                None,
+            )
+        }
     }
 }
 
@@ -238,14 +245,12 @@ pub async fn me_security_change_password(
 
     let is_admin = get_is_admin(&req);
 
-    if form.new_password.trim().len() < 4 {
+    // Validate new password strength
+    if let Err(msg) = PasswordValidator::validate(&form.new_password) {
         return render(MeSecurityTemplate {
             password_set: !user.password_hash.trim().is_empty(),
             email_verified: user.email_verified_at.is_some(),
-            error: Some(
-                "New password must be at least 4 characters"
-                    .to_string(),
-            ),
+            error: Some(msg),
             success: None,
             is_admin,
         });
@@ -257,12 +262,11 @@ pub async fn me_security_change_password(
     ) {
         Ok(v) => v,
         Err(e) => {
+            log::error!("Password verification error: {}", e);
             return render(MeSecurityTemplate {
                 password_set: !user.password_hash.trim().is_empty(),
                 email_verified: user.email_verified_at.is_some(),
-                error: Some(format!(
-                    "Password verification error: {e}"
-                )),
+                error: Some(generic_error_message("password verification")),
                 success: None,
                 is_admin,
             });
@@ -283,15 +287,14 @@ pub async fn me_security_change_password(
         match PasswordManager::hash_password(&form.new_password) {
             Ok(h) => h,
             Err(e) => {
+                log::error!("Password hashing error: {}", e);
                 return render(MeSecurityTemplate {
                     password_set: !user
                         .password_hash
                         .trim()
                         .is_empty(),
                     email_verified: user.email_verified_at.is_some(),
-                    error: Some(format!(
-                        "Password hashing error: {e}"
-                    )),
+                    error: Some(generic_error_message("password hashing")),
                     success: None,
                     is_admin,
                 });
@@ -311,13 +314,16 @@ pub async fn me_security_change_password(
                 is_admin,
             })
         }
-        Err(e) => render(MeSecurityTemplate {
-            password_set: !user.password_hash.trim().is_empty(),
-            email_verified: user.email_verified_at.is_some(),
-            error: Some(format!("Update failed: {e}")),
-            success: None,
-            is_admin,
-        }),
+        Err(e) => {
+            log::error!("Password update failed: {}", e);
+            render(MeSecurityTemplate {
+                password_set: !user.password_hash.trim().is_empty(),
+                email_verified: user.email_verified_at.is_some(),
+                error: Some(generic_error_message("password update")),
+                success: None,
+                is_admin,
+            })
+        }
     }
 }
 

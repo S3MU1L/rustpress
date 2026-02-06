@@ -4,6 +4,14 @@ use uuid::Uuid;
 
 use crate::models::{Site, SiteCreate, SiteUpdate};
 
+/// Escape SQL LIKE wildcards
+fn escape_sql_like(input: &str) -> String {
+    input
+        .replace('\\', "\\\\")
+        .replace('%', "\\%")
+        .replace('_', "\\_")
+}
+
 pub async fn list_sites_for_user(
     pool: &PgPool,
     owner_user_id: Uuid,
@@ -12,7 +20,8 @@ pub async fn list_sites_for_user(
     let q = query.map(str::trim).filter(|s| !s.is_empty());
 
     if let Some(q) = q {
-        let pattern = format!("%{}%", q);
+        let escaped = escape_sql_like(q);
+        let pattern = format!("%{}%", escaped);
         sqlx::query_as::<_, Site>(
             r#"
             SELECT *
