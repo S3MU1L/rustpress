@@ -78,7 +78,7 @@ pub async fn sites_create(
     };
 
     let is_admin = get_is_admin(&req);
-    
+
     // Validate form before processing
     if let Err(e) = form.validate() {
         let templates =
@@ -95,7 +95,7 @@ pub async fn sites_create(
             is_admin,
         });
     }
-    
+
     let name = form.name.trim().to_string();
     let slug = form.slug.trim().to_string();
 

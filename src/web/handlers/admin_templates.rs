@@ -25,28 +25,20 @@ async fn fetch_content_items(
     pool: &sqlx::PgPool,
     uid: Uuid,
 ) -> Vec<rustpress::models::ContentItem> {
-    let mut items = db::list_content_for_user(
-        pool,
-        ContentKind::Page,
-        true,
-        uid,
-    )
-    .await
-    .unwrap_or_default();
+    let mut items =
+        db::list_content_for_user(pool, ContentKind::Page, true, uid)
+            .await
+            .unwrap_or_default();
     items.extend(
-        db::list_content_for_user(
-            pool,
-            ContentKind::Post,
-            true,
-            uid,
-        )
-        .await
-        .unwrap_or_default(),
+        db::list_content_for_user(pool, ContentKind::Post, true, uid)
+            .await
+            .unwrap_or_default(),
     );
     items
 }
 
-fn sample_data() -> (&'static str, &'static str, &'static str, &'static str) {
+fn sample_data()
+-> (&'static str, &'static str, &'static str, &'static str) {
     (
         "Sample Page Title",
         "<p>Sample content with <strong>bold</strong> and <a href=\"#\">links</a>. This is placeholder text to preview your template layout.</p>",
@@ -264,10 +256,8 @@ pub async fn admin_template_edit(
             }
         };
 
-    if !template.is_builtin {
-        if template.owner_user_id != Some(uid) {
-            return HttpResponse::Forbidden().body("Forbidden");
-        }
+    if !template.is_builtin && template.owner_user_id != Some(uid) {
+        return HttpResponse::Forbidden().body("Forbidden");
     }
     let is_admin = get_is_admin(&req);
     let content_items = fetch_content_items(&state.pool, uid).await;
@@ -392,8 +382,9 @@ pub async fn admin_template_delete(
     match db::delete_site_template(&state.pool, id).await {
         Ok(true) => {}
         Ok(false) => {
-            return HttpResponse::BadRequest()
-                .body("Delete failed: template not found or is built-in");
+            return HttpResponse::BadRequest().body(
+                "Delete failed: template not found or is built-in",
+            );
         }
         Err(e) => {
             return HttpResponse::InternalServerError()

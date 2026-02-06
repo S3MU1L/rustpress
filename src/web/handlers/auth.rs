@@ -43,14 +43,17 @@ pub async fn login_submit(
         .realip_remote_addr()
         .unwrap_or("unknown")
         .to_string();
-    
+
     if !state.rate_limiter.check_rate_limit(
         &format!("login:{}", client_ip),
-        5, // 5 attempts
+        5,                        // 5 attempts
         Duration::from_secs(300), // per 5 minutes
     ) {
         return HttpResponse::TooManyRequests()
-            .insert_header(("Location", "/admin/login?error=rate_limit"))
+            .insert_header((
+                "Location",
+                "/admin/login?error=rate_limit",
+            ))
             .finish();
     }
 
@@ -82,14 +85,18 @@ pub async fn login_submit(
         Err(e) => {
             log::error!("Database error during login: {}", e);
             return HttpResponse::SeeOther()
-                .insert_header(("Location", "/admin/login?error=internal"))
+                .insert_header((
+                    "Location",
+                    "/admin/login?error=internal",
+                ))
                 .finish();
         }
     };
 
     // Always perform password verification
-    let password_valid = PasswordManager::verify_password(&password, &stored_hash)
-        .unwrap_or(false);
+    let password_valid =
+        PasswordManager::verify_password(&password, &stored_hash)
+            .unwrap_or(false);
 
     // Only succeed if both user exists and password is valid
     if !user_exists || !password_valid {
@@ -134,7 +141,8 @@ pub async fn register_form(
             "An account with this email already exists".to_string()
         }
         "rate_limit" => {
-            "Too many registration attempts. Please try again later.".to_string()
+            "Too many registration attempts. Please try again later."
+                .to_string()
         }
         "db" => "Database error. Please try again.".to_string(),
         "internal" => "An internal error occurred. Please try again."
@@ -156,7 +164,10 @@ pub async fn register_submit(
         return HttpResponse::SeeOther()
             .insert_header((
                 "Location",
-                format!("/admin/register?error={}", urlencoding::encode(e)),
+                format!(
+                    "/admin/register?error={}",
+                    urlencoding::encode(e)
+                ),
             ))
             .finish();
     }
@@ -167,14 +178,17 @@ pub async fn register_submit(
         .realip_remote_addr()
         .unwrap_or("unknown")
         .to_string();
-    
+
     if !state.rate_limiter.check_rate_limit(
         &format!("register:{}", client_ip),
-        3, // 3 attempts
+        3,                         // 3 attempts
         Duration::from_secs(3600), // per hour
     ) {
         return HttpResponse::TooManyRequests()
-            .insert_header(("Location", "/admin/register?error=rate_limit"))
+            .insert_header((
+                "Location",
+                "/admin/register?error=rate_limit",
+            ))
             .finish();
     }
 
@@ -210,7 +224,10 @@ pub async fn register_submit(
                     .finish();
             }
             Err(e) => {
-                log::error!("Database error during registration: {}", e);
+                log::error!(
+                    "Database error during registration: {}",
+                    e
+                );
                 return HttpResponse::SeeOther()
                     .insert_header((
                         "Location",

@@ -15,7 +15,9 @@ use crate::web::helpers::{
     get_is_admin, is_htmx, is_unique_violation, load_user, render,
     require_user,
 };
-use crate::web::security::{PasswordValidator, validate_email, generic_error_message};
+use crate::web::security::{
+    PasswordValidator, generic_error_message, validate_email,
+};
 use crate::web::state::AppState;
 use crate::web::templates::{MeAccountTemplate, MeSecurityTemplate};
 
@@ -129,7 +131,12 @@ pub async fn me_account_change_password(
             Err(resp) => return resp,
         };
         let is_admin = get_is_admin(&req);
-        return render_account(user, is_admin, Some(e.to_string()), None);
+        return render_account(
+            user,
+            is_admin,
+            Some(e.to_string()),
+            None,
+        );
     }
 
     let user = match load_user(&state.pool, uid).await {
@@ -246,7 +253,8 @@ pub async fn me_security_change_password(
     let is_admin = get_is_admin(&req);
 
     // Validate new password strength
-    if let Err(msg) = PasswordValidator::validate(&form.new_password) {
+    if let Err(msg) = PasswordValidator::validate(&form.new_password)
+    {
         return render(MeSecurityTemplate {
             password_set: !user.password_hash.trim().is_empty(),
             email_verified: user.email_verified_at.is_some(),
@@ -266,7 +274,9 @@ pub async fn me_security_change_password(
             return render(MeSecurityTemplate {
                 password_set: !user.password_hash.trim().is_empty(),
                 email_verified: user.email_verified_at.is_some(),
-                error: Some(generic_error_message("password verification")),
+                error: Some(generic_error_message(
+                    "password verification",
+                )),
                 success: None,
                 is_admin,
             });
@@ -294,7 +304,9 @@ pub async fn me_security_change_password(
                         .trim()
                         .is_empty(),
                     email_verified: user.email_verified_at.is_some(),
-                    error: Some(generic_error_message("password hashing")),
+                    error: Some(generic_error_message(
+                        "password hashing",
+                    )),
                     success: None,
                     is_admin,
                 });
@@ -414,9 +426,7 @@ pub async fn me_account_delete(
         return render_account(
             user,
             is_admin,
-            Some(
-                "Cannot delete the last admin account".into(),
-            ),
+            Some("Cannot delete the last admin account".into()),
             None,
         );
     }

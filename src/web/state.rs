@@ -1,6 +1,6 @@
+use crate::web::security::RateLimiter;
 use sqlx::PgPool;
 use std::sync::Arc;
-use crate::web::security::RateLimiter;
 
 #[derive(Clone)]
 pub struct AppState {

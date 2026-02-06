@@ -12,7 +12,9 @@ use super::super::forms::{AdminCreateUserForm, AdminUpdateUserForm};
 use super::super::helpers::{
     get_is_admin, load_user, render, require_user,
 };
-use super::super::security::{PasswordValidator, validate_email, generic_error_message};
+use super::super::security::{
+    PasswordValidator, generic_error_message, validate_email,
+};
 use super::super::state::AppState;
 use super::super::templates::{
     AdminUserEditTemplate, AdminUserNewTemplate,
@@ -92,7 +94,7 @@ pub async fn users_create(
     }
 
     let is_admin = get_is_admin(&req);
-    
+
     // Validate form before password hashing
     if let Err(e) = form.validate() {
         return render(AdminUserNewTemplate {
@@ -250,7 +252,9 @@ pub async fn users_update(
                             &state.pool,
                             user,
                             is_admin,
-                            Some(generic_error_message("password update")),
+                            Some(generic_error_message(
+                                "password update",
+                            )),
                             None,
                         )
                         .await;
@@ -265,7 +269,9 @@ pub async fn users_update(
                         &state.pool,
                         user,
                         is_admin,
-                        Some(generic_error_message("password hashing")),
+                        Some(generic_error_message(
+                            "password hashing",
+                        )),
                         None,
                     )
                     .await;

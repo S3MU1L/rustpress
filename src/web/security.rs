@@ -1,7 +1,7 @@
 use actix_web::{HttpRequest, cookie::Cookie};
-use std::time::{Duration, SystemTime};
 use std::collections::HashMap;
 use std::sync::Mutex;
+use std::time::{Duration, SystemTime};
 use uuid::Uuid;
 
 /// CSRF token management
@@ -58,24 +58,29 @@ impl RateLimiter {
         window: Duration,
     ) -> bool {
         let now = SystemTime::now();
-        let mut requests = self.requests.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        
-        let entry = requests.entry(key.to_string()).or_insert_with(Vec::new);
-        
+        let mut requests = self
+            .requests
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+        let entry =
+            requests.entry(key.to_string()).or_insert_with(Vec::new);
+
         // Remove old requests outside the window
         entry.retain(|&time| {
-            now.duration_since(time).unwrap_or(Duration::from_secs(0)) < window
+            now.duration_since(time).unwrap_or(Duration::from_secs(0))
+                < window
         });
-        
+
         if entry.len() >= max_requests {
             return false;
         }
-        
+
         entry.push(now);
-        
+
         // Cleanup: remove empty entries to prevent unbounded memory growth
         requests.retain(|_, times| !times.is_empty());
-        
+
         true
     }
 }
@@ -91,7 +96,7 @@ pub struct PasswordValidator;
 
 impl PasswordValidator {
     const MIN_LENGTH: usize = 12;
-    
+
     pub fn validate(password: &str) -> Result<(), String> {
         if password.len() < Self::MIN_LENGTH {
             return Err(format!(
@@ -100,16 +105,27 @@ impl PasswordValidator {
             ));
         }
 
-        let has_uppercase = password.chars().any(|c| c.is_uppercase());
-        let has_lowercase = password.chars().any(|c| c.is_lowercase());
+        let has_uppercase =
+            password.chars().any(|c| c.is_uppercase());
+        let has_lowercase =
+            password.chars().any(|c| c.is_lowercase());
         let has_digit = password.chars().any(|c| c.is_ascii_digit());
-        let has_special = password.chars().any(|c| !c.is_alphanumeric());
+        let has_special =
+            password.chars().any(|c| !c.is_alphanumeric());
 
         let mut requirements_met = 0;
-        if has_uppercase { requirements_met += 1; }
-        if has_lowercase { requirements_met += 1; }
-        if has_digit { requirements_met += 1; }
-        if has_special { requirements_met += 1; }
+        if has_uppercase {
+            requirements_met += 1;
+        }
+        if has_lowercase {
+            requirements_met += 1;
+        }
+        if has_digit {
+            requirements_met += 1;
+        }
+        if has_special {
+            requirements_met += 1;
+        }
 
         if requirements_met < 3 {
             return Err(
@@ -125,29 +141,29 @@ impl PasswordValidator {
 /// Email validation
 pub fn validate_email(email: &str) -> bool {
     let email = email.trim();
-    
+
     if email.is_empty() || email.len() > 254 {
         return false;
     }
-    
+
     // Basic email validation
     let parts: Vec<&str> = email.split('@').collect();
     if parts.len() != 2 {
         return false;
     }
-    
+
     let local = parts[0];
     let domain = parts[1];
-    
+
     if local.is_empty() || local.len() > 64 || domain.is_empty() {
         return false;
     }
-    
+
     // Domain must have at least one dot
     if !domain.contains('.') {
         return false;
     }
-    
+
     true
 }
 
@@ -156,12 +172,20 @@ pub fn validate_slug(slug: &str) -> bool {
     if slug.is_empty() || slug.len() > 255 {
         return false;
     }
-    
+
     // Slug should only contain lowercase alphanumeric, hyphens, and underscores
-    slug.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_')
+    slug.chars().all(|c| {
+        c.is_ascii_lowercase()
+            || c.is_ascii_digit()
+            || c == '-'
+            || c == '_'
+    })
 }
 
 /// Generic error message for security
 pub fn generic_error_message(context: &str) -> String {
-    format!("An error occurred while processing your {}. Please try again.", context)
+    format!(
+        "An error occurred while processing your {}. Please try again.",
+        context
+    )
 }

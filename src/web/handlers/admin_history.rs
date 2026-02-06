@@ -8,7 +8,9 @@ use uuid::Uuid;
 use rustpress::db;
 use rustpress::models::ContentItem;
 
-use crate::web::helpers::{is_htmx, render, render_not_found, require_user};
+use crate::web::helpers::{
+    is_htmx, render, render_not_found, require_user,
+};
 use crate::web::state::AppState;
 use crate::web::templates::AdminHistoryPartialTemplate;
 
@@ -26,11 +28,9 @@ async fn load_viewable(
         })?
         .ok_or_else(|| render_not_found(req))?;
 
-    let ok = db::can_view_content(pool, &item, uid)
-        .await
-        .map_err(|e| {
-            HttpResponse::InternalServerError().body(e.to_string())
-        })?;
+    let ok = db::can_view_content(pool, &item, uid).await.map_err(
+        |e| HttpResponse::InternalServerError().body(e.to_string()),
+    )?;
     if !ok {
         return Err(HttpResponse::Forbidden().body("Forbidden"));
     }
@@ -51,11 +51,9 @@ async fn load_editable(
         })?
         .ok_or_else(|| render_not_found(req))?;
 
-    let ok = db::can_edit_content(pool, &item, uid)
-        .await
-        .map_err(|e| {
-            HttpResponse::InternalServerError().body(e.to_string())
-        })?;
+    let ok = db::can_edit_content(pool, &item, uid).await.map_err(
+        |e| HttpResponse::InternalServerError().body(e.to_string()),
+    )?;
     if !ok {
         return Err(HttpResponse::Forbidden().body("Forbidden"));
     }
@@ -79,12 +77,15 @@ pub async fn admin_list_revisions(
     query: web::Query<RevisionsQuery>,
 ) -> impl Responder {
     let id = path.into_inner();
-    let (uid, _item) = match load_viewable(&state.pool, &req, id).await {
-        Ok(v) => v,
-        Err(r) => return r,
-    };
+    let (uid, _item) =
+        match load_viewable(&state.pool, &req, id).await {
+            Ok(v) => v,
+            Err(r) => return r,
+        };
 
-    if let Err(e) = db::ensure_initial_revision(&state.pool, id, Some(uid)).await {
+    if let Err(e) =
+        db::ensure_initial_revision(&state.pool, id, Some(uid)).await
+    {
         return internal_server_error(e);
     }
 
@@ -120,29 +121,34 @@ pub async fn admin_history_panel(
     path: web::Path<Uuid>,
 ) -> impl Responder {
     let id = path.into_inner();
-    let (uid, item) = match load_viewable(&state.pool, &req, id).await {
+    let (uid, item) = match load_viewable(&state.pool, &req, id).await
+    {
         Ok(v) => v,
         Err(r) => return r,
     };
 
-    if let Err(e) = db::ensure_initial_revision(&state.pool, id, Some(uid)).await {
+    if let Err(e) =
+        db::ensure_initial_revision(&state.pool, id, Some(uid)).await
+    {
         return internal_server_error(e);
     }
 
-    let revisions = match db::list_revisions(&state.pool, id, 50).await {
-        Ok(revs) => revs,
-        Err(e) => return internal_server_error(e),
-    };
+    let revisions =
+        match db::list_revisions(&state.pool, id, 50).await {
+            Ok(revs) => revs,
+            Err(e) => return internal_server_error(e),
+        };
 
     let user_ids: Vec<Uuid> = revisions
         .iter()
         .filter_map(|r| r.created_by_user_id)
         .collect();
 
-    let authors = match db::get_user_email_map(&state.pool, &user_ids).await {
-        Ok(map) => map,
-        Err(e) => return internal_server_error(e),
-    };
+    let authors =
+        match db::get_user_email_map(&state.pool, &user_ids).await {
+            Ok(map) => map,
+            Err(e) => return internal_server_error(e),
+        };
 
     render(AdminHistoryPartialTemplate {
         revisions,
@@ -167,7 +173,10 @@ pub async fn admin_restore_revision(
         Ok(Some(restored)) => {
             if is_htmx(&req) {
                 HttpResponse::Ok()
-                    .insert_header(("HX-Redirect", format!("/admin/edit/{id}")))
+                    .insert_header((
+                        "HX-Redirect",
+                        format!("/admin/edit/{id}"),
+                    ))
                     .finish()
             } else {
                 HttpResponse::Ok().json(restored)
@@ -185,12 +194,15 @@ pub async fn admin_undo(
     path: web::Path<Uuid>,
 ) -> impl Responder {
     let id = path.into_inner();
-    let (uid, _item) = match load_editable(&state.pool, &req, id).await {
-        Ok(v) => v,
-        Err(r) => return r,
-    };
+    let (uid, _item) =
+        match load_editable(&state.pool, &req, id).await {
+            Ok(v) => v,
+            Err(r) => return r,
+        };
 
-    if let Err(e) = db::ensure_initial_revision(&state.pool, id, Some(uid)).await {
+    if let Err(e) =
+        db::ensure_initial_revision(&state.pool, id, Some(uid)).await
+    {
         return internal_server_error(e);
     }
 
@@ -208,12 +220,15 @@ pub async fn admin_redo(
     path: web::Path<Uuid>,
 ) -> impl Responder {
     let id = path.into_inner();
-    let (uid, _item) = match load_editable(&state.pool, &req, id).await {
-        Ok(v) => v,
-        Err(r) => return r,
-    };
+    let (uid, _item) =
+        match load_editable(&state.pool, &req, id).await {
+            Ok(v) => v,
+            Err(r) => return r,
+        };
 
-    if let Err(e) = db::ensure_initial_revision(&state.pool, id, Some(uid)).await {
+    if let Err(e) =
+        db::ensure_initial_revision(&state.pool, id, Some(uid)).await
+    {
         return internal_server_error(e);
     }
 
