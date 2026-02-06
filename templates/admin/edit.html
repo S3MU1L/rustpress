@@ -9,7 +9,8 @@
 
 {% block content %}
 <!-- Revision preview banner (hidden by default, shown above form when previewing) -->
-<div id="revision-preview-banner" class="hidden mb-4 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-sm flex items-center justify-between">
+<div id="revision-preview-banner"
+  class="hidden mb-4 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-sm flex items-center justify-between">
   <div class="flex items-center gap-2">
     <button type="button" id="rev-prev-btn" onclick="navigateRevision(-1)"
       class="p-1 rounded hover:bg-yellow-200 text-yellow-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
@@ -22,8 +23,7 @@
       Revision #<span id="preview-rev-num"></span>
     </span>
     <button type="button" id="rev-next-btn" onclick="navigateRevision(1)"
-      class="p-1 rounded hover:bg-yellow-200 text-yellow-800 transition-colors"
-      title="Next revision">
+      class="p-1 rounded hover:bg-yellow-200 text-yellow-800 transition-colors" title="Next revision">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
       </svg>
@@ -62,20 +62,23 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
           </svg>
         </button>
-        <a id="btn-preview" class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
+        <a id="btn-preview"
+          class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
           href="/admin/content/{{ item.id }}/preview" target="_blank">
           {{ macros::preview_button() }}
           Preview
         </a>
         {% if item.status == "published" %}
         {% if item.kind == "post" %}
-        <a id="btn-view-live" class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
+        <a id="btn-view-live"
+          class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
           href="/blog/{{ item.slug }}" target="_blank">
           {{ macros::external_link_icon() }}
           View Live
         </a>
         {% else %}
-        <a id="btn-view-live" class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
+        <a id="btn-view-live"
+          class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
           href="/{{ item.slug }}" target="_blank">
           {{ macros::external_link_icon() }}
           View Live
@@ -174,9 +177,11 @@
           <span class="px-2 py-0.5 rounded-full text-xs bg-rp-secondary/10 text-rp-secondary">Auto-updates</span>
         </div>
         <div class="preview-wrapper relative cursor-pointer group" onclick="openPreviewModal()">
-          <div class="absolute top-2 right-2 p-1.5 rounded-lg bg-black/50 text-white opacity-0 group-hover:opacity-100 z-10 pointer-events-none transition-opacity">
+          <div
+            class="absolute top-2 right-2 p-1.5 rounded-lg bg-black/50 text-white opacity-0 group-hover:opacity-100 z-10 pointer-events-none transition-opacity">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
             </svg>
           </div>
           <div id="preview" class="border border-rp-border rounded-lg overflow-hidden bg-white"
@@ -257,252 +262,287 @@
 {% include "partials/editor_scripts.html" %}
 
 <script>
-const CONTENT_ITEM_ID = '{{ item.id }}';
-const CURRENT_REV = {{ item.current_rev }};
-let _savedFormState = null;
-let _previewingRev = 0;
-window.revisionPreviewActive = false;
-
-// ── Freeze / unfreeze editing ────────────────────────────
-// Hidden during revision preview. Live preview sidebar stays — it reads from
-// the form fields so it correctly renders whichever revision is loaded.
-const FREEZE_IDS = [
-  'btn-save', 'btn-publish', 'btn-delete',
-  'btn-view-live',
-  'toggle-header',
-];
-
-function freezeEditing() {
-  window.revisionPreviewActive = true;
-
-  if (window.tiptapEditor) window.tiptapEditor.setEditable(false);
-
-  document.getElementById('title')?.setAttribute('readonly', '');
-  document.getElementById('slug')?.setAttribute('readonly', '');
-  document.querySelector('select[name="template"]')?.setAttribute('disabled', '');
-  document.querySelector('select[name="status"]')?.setAttribute('disabled', '');
-
-  const settings = document.getElementById('header-settings');
-  if (settings) settings.style.display = 'none';
-
-  FREEZE_IDS.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.add('hidden');
-  });
-
-  // Update Preview button to point to this revision's full-page preview
-  const previewBtn = document.getElementById('btn-preview');
-  if (previewBtn && _previewingRev) {
-    previewBtn.href = `/admin/content/${CONTENT_ITEM_ID}/preview?rev=${_previewingRev}`;
-  }
-
-  const toolbar = document.querySelector('.tiptap-toolbar');
-  if (toolbar) {
-    toolbar.style.opacity = '0.4';
-    toolbar.style.pointerEvents = 'none';
-  }
-
-  // Kick a live preview refresh so it renders the revision content
-  const previewEl = document.getElementById('preview');
-  if (previewEl) htmx.trigger(previewEl, 'editor-change');
-}
-
-function unfreezeEditing() {
+  const CONTENT_ITEM_ID = '{{ item.id }}';
+  const CURRENT_REV = {{ item.current_rev }};
+  let _savedFormState = null;
+  let _previewingRev = 0;
   window.revisionPreviewActive = false;
 
-  if (window.tiptapEditor) window.tiptapEditor.setEditable(true);
+  // ── Freeze / unfreeze editing ────────────────────────────
+  // Removed from DOM during revision preview so they can't fire at all.
+  // Live preview sidebar stays — it reads form fields so it renders the revision.
+  const FREEZE_IDS = [
+    'btn-save', 'btn-publish', 'btn-delete',
+    'btn-view-live',
+    'toggle-header',
+  ];
+  const _frozenElements = {};
 
-  document.getElementById('title')?.removeAttribute('readonly');
-  document.getElementById('slug')?.removeAttribute('readonly');
-  document.querySelector('select[name="template"]')?.removeAttribute('disabled');
-  document.querySelector('select[name="status"]')?.removeAttribute('disabled');
+  function _blockSubmit(e) { e.preventDefault(); e.stopImmediatePropagation(); }
 
-  const settings = document.getElementById('header-settings');
-  if (settings && localStorage.getItem('header-collapsed') !== 'true') {
-    settings.style.display = 'block';
+  function freezeEditing() {
+    window.revisionPreviewActive = true;
+
+    if (window.tiptapEditor) window.tiptapEditor.setEditable(false);
+
+    document.getElementById('title')?.setAttribute('readonly', '');
+    document.getElementById('slug')?.setAttribute('readonly', '');
+    document.querySelector('select[name="template"]')?.setAttribute('disabled', '');
+    document.querySelector('select[name="status"]')?.setAttribute('disabled', '');
+
+    const settings = document.getElementById('header-settings');
+    if (settings) settings.style.display = 'none';
+
+    // Yank buttons out of the DOM entirely
+    FREEZE_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      _frozenElements[id] = { el, parent: el.parentNode, next: el.nextSibling };
+      el.parentNode.removeChild(el);
+    });
+
+    // Kill form submission (Enter key, any stray submit)
+    const form = document.getElementById('edit-form');
+    if (form) {
+      form._savedHxPost = form.getAttribute('hx-post');
+      form.removeAttribute('hx-post');
+      form.addEventListener('submit', _blockSubmit, true);
+    }
+
+    // Point Preview button at this revision's full-page preview
+    const previewBtn = document.getElementById('btn-preview');
+    if (previewBtn && _previewingRev) {
+      previewBtn.href = `/admin/content/${CONTENT_ITEM_ID}/preview?rev=${_previewingRev}`;
+    }
+
+    const toolbar = document.querySelector('.tiptap-toolbar');
+    if (toolbar) {
+      toolbar.style.opacity = '0.4';
+      toolbar.style.pointerEvents = 'none';
+    }
+
+    // Kick a live preview refresh so it renders the revision content
+    const previewEl = document.getElementById('preview');
+    if (previewEl) htmx.trigger(previewEl, 'editor-change');
   }
 
-  FREEZE_IDS.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove('hidden');
+  function unfreezeEditing() {
+    window.revisionPreviewActive = false;
+
+    if (window.tiptapEditor) window.tiptapEditor.setEditable(true);
+
+    document.getElementById('title')?.removeAttribute('readonly');
+    document.getElementById('slug')?.removeAttribute('readonly');
+    document.querySelector('select[name="template"]')?.removeAttribute('disabled');
+    document.querySelector('select[name="status"]')?.removeAttribute('disabled');
+
+    const settings = document.getElementById('header-settings');
+    if (settings && localStorage.getItem('header-collapsed') !== 'true') {
+      settings.style.display = 'block';
+    }
+
+    // Put the buttons back
+    FREEZE_IDS.forEach(id => {
+      const stash = _frozenElements[id];
+      if (!stash) return;
+      const { el, parent, next } = stash;
+      if (next && next.parentNode === parent) {
+        parent.insertBefore(el, next);
+      } else if (parent) {
+        parent.appendChild(el);
+      }
+      delete _frozenElements[id];
+    });
+
+    // Re-enable form submission
+    const form = document.getElementById('edit-form');
+    if (form) {
+      if (form._savedHxPost) {
+        form.setAttribute('hx-post', form._savedHxPost);
+        htmx.process(form);
+      }
+      form.removeEventListener('submit', _blockSubmit, true);
+    }
+
+    // Reset Preview button to current content
+    const previewBtn = document.getElementById('btn-preview');
+    if (previewBtn) {
+      previewBtn.href = `/admin/content/${CONTENT_ITEM_ID}/preview`;
+    }
+
+    const toolbar = document.querySelector('.tiptap-toolbar');
+    if (toolbar) {
+      toolbar.style.opacity = '';
+      toolbar.style.pointerEvents = '';
+    }
+  }
+
+  // ── Modal ────────────────────────────────────────────────
+  function openVersionsModal() {
+    const modal = document.getElementById('versions-modal');
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    htmx.ajax('GET', `/admin/content/${CONTENT_ITEM_ID}/history`, '#versions-modal-body');
+  }
+
+  function closeVersionsModal() {
+    document.getElementById('versions-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !document.getElementById('versions-modal').classList.contains('hidden')) {
+      closeVersionsModal();
+    }
   });
 
-  // Reset Preview button to current content
-  const previewBtn = document.getElementById('btn-preview');
-  if (previewBtn) {
-    previewBtn.href = `/admin/content/${CONTENT_ITEM_ID}/preview`;
+  // ── Preview / Cancel / URL sync ──────────────────────────
+  function previewRevision(contentItemId, rev) {
+    if (!_savedFormState) {
+      _savedFormState = {
+        title: document.getElementById('title')?.value || '',
+        slug: document.getElementById('slug')?.value || '',
+        content: document.getElementById('editor')?.value || '',
+        template: document.querySelector('select[name="template"]')?.value || '',
+        status: document.querySelector('select[name="status"]')?.value || '',
+      };
+    }
+
+    fetch(`/admin/content/${contentItemId}/revisions/${rev}`)
+      .then(r => r.json())
+      .then(data => {
+        applyRevisionData(data, rev);
+        closeVersionsModal();
+      })
+      .catch(err => console.error('Failed to load revision:', err));
   }
 
-  const toolbar = document.querySelector('.tiptap-toolbar');
-  if (toolbar) {
-    toolbar.style.opacity = '';
-    toolbar.style.pointerEvents = '';
-  }
-}
+  function applyRevisionData(data, rev) {
+    // Ensure autosave is suppressed immediately (TipTap setContent triggers updates).
+    window.revisionPreviewActive = true;
 
-// ── Modal ────────────────────────────────────────────────
-function openVersionsModal() {
-  const modal = document.getElementById('versions-modal');
-  modal.classList.remove('hidden');
-  document.body.style.overflow = 'hidden';
-  htmx.ajax('GET', `/admin/content/${CONTENT_ITEM_ID}/history`, '#versions-modal-body');
-}
+    const titleEl = document.getElementById('title');
+    const slugEl = document.getElementById('slug');
+    const editorEl = document.getElementById('editor');
+    const templateSel = document.querySelector('select[name="template"]');
+    const statusSel = document.querySelector('select[name="status"]');
 
-function closeVersionsModal() {
-  document.getElementById('versions-modal').classList.add('hidden');
-  document.body.style.overflow = '';
-}
+    if (titleEl) titleEl.value = data.title;
+    if (slugEl) slugEl.value = data.slug;
+    if (editorEl) editorEl.value = data.content;
+    if (templateSel) templateSel.value = data.template;
+    if (statusSel) statusSel.value = data.status;
 
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape' && !document.getElementById('versions-modal').classList.contains('hidden')) {
-    closeVersionsModal();
-  }
-});
+    if (window.tiptapEditor) {
+      window.tiptapEditor.commands.setContent(data.content);
+    }
 
-// ── Preview / Cancel / URL sync ──────────────────────────
-function previewRevision(contentItemId, rev) {
-  if (!_savedFormState) {
-    _savedFormState = {
-      title: document.getElementById('title')?.value || '',
-      slug: document.getElementById('slug')?.value || '',
-      content: document.getElementById('editor')?.value || '',
-      template: document.querySelector('select[name="template"]')?.value || '',
-      status: document.querySelector('select[name="status"]')?.value || '',
-    };
-  }
+    _previewingRev = rev;
 
-  fetch(`/admin/content/${contentItemId}/revisions/${rev}`)
-    .then(r => r.json())
-    .then(data => {
-      applyRevisionData(data, rev);
-      closeVersionsModal();
-    })
-    .catch(err => console.error('Failed to load revision:', err));
-}
+    // Show banner
+    document.getElementById('preview-rev-num').textContent = rev;
+    document.getElementById('revision-preview-banner').classList.remove('hidden');
 
-function applyRevisionData(data, rev) {
-  const titleEl = document.getElementById('title');
-  const slugEl = document.getElementById('slug');
-  const editorEl = document.getElementById('editor');
-  const templateSel = document.querySelector('select[name="template"]');
-  const statusSel = document.querySelector('select[name="status"]');
+    // Update navigation arrows
+    const prevBtn = document.getElementById('rev-prev-btn');
+    const nextBtn = document.getElementById('rev-next-btn');
+    prevBtn.disabled = (rev <= 1);
+    if (rev >= CURRENT_REV - 1) {
+      nextBtn.innerHTML = '<span class="text-xs font-medium px-1">Current</span>';
+      nextBtn.title = 'Return to current version';
+    } else {
+      nextBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>';
+      nextBtn.title = 'Next revision';
+    }
 
-  if (titleEl) titleEl.value = data.title;
-  if (slugEl) slugEl.value = data.slug;
-  if (editorEl) editorEl.value = data.content;
-  if (templateSel) templateSel.value = data.template;
-  if (statusSel) statusSel.value = data.status;
+    // Wire restore button
+    const restoreBtn = document.getElementById('restore-preview-btn');
+    restoreBtn.setAttribute('hx-post', `/admin/content/${CONTENT_ITEM_ID}/revisions/${rev}/restore`);
+    restoreBtn.setAttribute('hx-swap', 'none');
+    restoreBtn.setAttribute('hx-confirm', `Restore to revision #${rev}? Current content will be replaced.`);
+    htmx.process(restoreBtn);
 
-  if (window.tiptapEditor) {
-    window.tiptapEditor.commands.setContent(data.content);
+    // Freeze editing + update URL
+    freezeEditing();
+    const url = new URL(window.location);
+    url.searchParams.set('rev', rev);
+    history.replaceState(null, '', url);
   }
 
-  _previewingRev = rev;
-
-  // Show banner
-  document.getElementById('preview-rev-num').textContent = rev;
-  document.getElementById('revision-preview-banner').classList.remove('hidden');
-
-  // Update navigation arrows
-  const prevBtn = document.getElementById('rev-prev-btn');
-  const nextBtn = document.getElementById('rev-next-btn');
-  prevBtn.disabled = (rev <= 1);
-  if (rev >= CURRENT_REV - 1) {
-    nextBtn.innerHTML = '<span class="text-xs font-medium px-1">Current</span>';
-    nextBtn.title = 'Return to current version';
-  } else {
-    nextBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>';
-    nextBtn.title = 'Next revision';
+  function navigateRevision(delta) {
+    const target = _previewingRev + delta;
+    if (target < 1) return;
+    if (target >= CURRENT_REV) {
+      cancelRevisionPreview();
+      return;
+    }
+    // Reuse previewRevision — savedFormState is already captured
+    fetch(`/admin/content/${CONTENT_ITEM_ID}/revisions/${target}`)
+      .then(r => r.json())
+      .then(data => applyRevisionData(data, target))
+      .catch(err => console.error('Failed to load revision:', err));
   }
 
-  // Wire restore button
-  const restoreBtn = document.getElementById('restore-preview-btn');
-  restoreBtn.setAttribute('hx-post', `/admin/content/${CONTENT_ITEM_ID}/revisions/${rev}/restore`);
-  restoreBtn.setAttribute('hx-swap', 'none');
-  restoreBtn.setAttribute('hx-confirm', `Restore to revision #${rev}? Current content will be replaced.`);
-  htmx.process(restoreBtn);
+  function cancelRevisionPreview() {
+    if (!_savedFormState) return;
 
-  // Freeze editing + update URL
-  freezeEditing();
-  const url = new URL(window.location);
-  url.searchParams.set('rev', rev);
-  history.replaceState(null, '', url);
-}
+    const titleEl = document.getElementById('title');
+    const slugEl = document.getElementById('slug');
+    const editorEl = document.getElementById('editor');
+    const templateSel = document.querySelector('select[name="template"]');
+    const statusSel = document.querySelector('select[name="status"]');
 
-function navigateRevision(delta) {
-  const target = _previewingRev + delta;
-  if (target < 1) return;
-  if (target >= CURRENT_REV) {
-    cancelRevisionPreview();
-    return;
-  }
-  // Reuse previewRevision — savedFormState is already captured
-  fetch(`/admin/content/${CONTENT_ITEM_ID}/revisions/${target}`)
-    .then(r => r.json())
-    .then(data => applyRevisionData(data, target))
-    .catch(err => console.error('Failed to load revision:', err));
-}
+    if (titleEl) titleEl.value = _savedFormState.title;
+    if (slugEl) slugEl.value = _savedFormState.slug;
+    if (editorEl) editorEl.value = _savedFormState.content;
+    if (templateSel) templateSel.value = _savedFormState.template;
+    if (statusSel) statusSel.value = _savedFormState.status;
 
-function cancelRevisionPreview() {
-  if (!_savedFormState) return;
+    if (window.tiptapEditor) {
+      window.tiptapEditor.commands.setContent(_savedFormState.content);
+    }
 
-  const titleEl = document.getElementById('title');
-  const slugEl = document.getElementById('slug');
-  const editorEl = document.getElementById('editor');
-  const templateSel = document.querySelector('select[name="template"]');
-  const statusSel = document.querySelector('select[name="status"]');
+    document.getElementById('revision-preview-banner').classList.add('hidden');
+    _savedFormState = null;
 
-  if (titleEl) titleEl.value = _savedFormState.title;
-  if (slugEl) slugEl.value = _savedFormState.slug;
-  if (editorEl) editorEl.value = _savedFormState.content;
-  if (templateSel) templateSel.value = _savedFormState.template;
-  if (statusSel) statusSel.value = _savedFormState.status;
-
-  if (window.tiptapEditor) {
-    window.tiptapEditor.commands.setContent(_savedFormState.content);
+    // Unfreeze editing + clean URL
+    unfreezeEditing();
+    const url = new URL(window.location);
+    url.searchParams.delete('rev');
+    history.replaceState(null, '', url);
   }
 
-  document.getElementById('revision-preview-banner').classList.add('hidden');
-  _savedFormState = null;
+  // ── On-load: auto-enter preview if ?rev=N ────────────────
+  (function () {
+    const params = new URLSearchParams(window.location.search);
+    const rev = parseInt(params.get('rev'), 10);
+    if (!rev || rev < 1) return;
 
-  // Unfreeze editing + clean URL
-  unfreezeEditing();
-  const url = new URL(window.location);
-  url.searchParams.delete('rev');
-  history.replaceState(null, '', url);
-}
+    // Wait for TipTap to initialise (module script runs async)
+    const poll = setInterval(() => {
+      if (!window.tiptapEditor) return;
+      clearInterval(poll);
 
-// ── On-load: auto-enter preview if ?rev=N ────────────────
-(function() {
-  const params = new URLSearchParams(window.location.search);
-  const rev = parseInt(params.get('rev'), 10);
-  if (!rev || rev < 1) return;
+      // Snapshot current (live) state before overwriting
+      _savedFormState = {
+        title: document.getElementById('title')?.value || '',
+        slug: document.getElementById('slug')?.value || '',
+        content: document.getElementById('editor')?.value || '',
+        template: document.querySelector('select[name="template"]')?.value || '',
+        status: document.querySelector('select[name="status"]')?.value || '',
+      };
 
-  // Wait for TipTap to initialise (module script runs async)
-  const poll = setInterval(() => {
-    if (!window.tiptapEditor) return;
-    clearInterval(poll);
-
-    // Snapshot current (live) state before overwriting
-    _savedFormState = {
-      title: document.getElementById('title')?.value || '',
-      slug: document.getElementById('slug')?.value || '',
-      content: document.getElementById('editor')?.value || '',
-      template: document.querySelector('select[name="template"]')?.value || '',
-      status: document.querySelector('select[name="status"]')?.value || '',
-    };
-
-    fetch(`/admin/content/${CONTENT_ITEM_ID}/revisions/${rev}`)
-      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-      .then(data => applyRevisionData(data, rev))
-      .catch(() => {
-        // Invalid rev — clean the param and carry on
-        _savedFormState = null;
-        const url = new URL(window.location);
-        url.searchParams.delete('rev');
-        history.replaceState(null, '', url);
-      });
-  }, 50);
-})();
+      fetch(`/admin/content/${CONTENT_ITEM_ID}/revisions/${rev}`)
+        .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+        .then(data => applyRevisionData(data, rev))
+        .catch(() => {
+          // Invalid rev — clean the param and carry on
+          _savedFormState = null;
+          const url = new URL(window.location);
+          url.searchParams.delete('rev');
+          history.replaceState(null, '', url);
+        });
+    }, 50);
+  })();
 </script>
 {% endblock %}

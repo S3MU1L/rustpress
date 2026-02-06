@@ -637,6 +637,30 @@ pub async fn admin_autosave(
         status: None,
     };
 
+    // Avoid creating a new revision when nothing actually changed.
+    // This prevents "future versions" from being created when the editor updates
+    // fields programmatically (e.g. revision preview navigation) or when autosave
+    // fires with identical content.
+    let mut changed = false;
+    if let Some(v) = update.title.as_ref() {
+        changed |= v != &item.title;
+    }
+    if let Some(v) = update.slug.as_ref() {
+        changed |= v != &item.slug;
+    }
+    if let Some(v) = update.template.as_ref() {
+        changed |= v != &item.template;
+    }
+    if let Some(v) = update.content.as_ref() {
+        changed |= v != &item.content;
+    }
+
+    if !changed {
+        return HttpResponse::Ok()
+            .content_type("text/html; charset=utf-8")
+            .body("<span class=\"muted\">No changes</span>");
+    }
+
     match db::update_content(&state.pool, id, &update).await {
         Ok(Some(updated)) => {
             if let Err(e) = db::ensure_initial_revision(
