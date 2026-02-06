@@ -93,8 +93,6 @@ pub async fn get_user_role_names(
     Ok(rows)
 }
 
-/// Set the user's role. Each user has exactly one role (admin or editor).
-/// This replaces any existing role.
 pub async fn set_user_role(
     pool: &PgPool,
     user_id: Uuid,
