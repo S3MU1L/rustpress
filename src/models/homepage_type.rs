@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 #[derive(
     Debug,
+    Default,
     Clone,
     Copy,
     PartialEq,
@@ -14,6 +15,7 @@ use uuid::Uuid;
 #[sqlx(type_name = "text", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 pub enum HomepageType {
+    #[default]
     Posts,
     Page,
 }
@@ -28,12 +30,6 @@ impl HomepageType {
             (Self::Page, None) => Err("homepage_page_id is required when homepage_type=page".into()),
             _ => Ok(()),
         }
-    }
-}
-
-impl Default for HomepageType {
-    fn default() -> Self {
-        Self::Posts
     }
 }
 

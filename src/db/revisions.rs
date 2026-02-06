@@ -291,17 +291,11 @@ pub async fn undo(
         return Ok(None);
     };
 
-    if current <= 1 {
-        // Already at oldest revision, just restore it
-        let item =
-            restore_revision_in_tx(&mut tx, content_item_id, current)
-                .await?;
-        tx.commit().await?;
-        return Ok(item);
-    }
+    // Go to previous revision, or stay at 1 if already there
+    let target_rev = if current <= 1 { 1 } else { current - 1 };
 
     let item =
-        restore_revision_in_tx(&mut tx, content_item_id, current - 1)
+        restore_revision_in_tx(&mut tx, content_item_id, target_rev)
             .await?;
     tx.commit().await?;
     Ok(item)
@@ -329,7 +323,7 @@ pub async fn redo(
         return Ok(None);
     };
 
-    // Redo only if next revision exists.
+    // Check if next revision exists
     let exists = sqlx::query_scalar::<_, bool>(
         r#"
         SELECT EXISTS(
@@ -344,17 +338,11 @@ pub async fn redo(
     .fetch_one(&mut *tx)
     .await?;
 
-    if !exists {
-        // Already at latest revision, just restore current
-        let item =
-            restore_revision_in_tx(&mut tx, content_item_id, current)
-                .await?;
-        tx.commit().await?;
-        return Ok(item);
-    }
+    // Go to next revision if it exists, otherwise stay at current
+    let target_rev = if exists { current + 1 } else { current };
 
     let item =
-        restore_revision_in_tx(&mut tx, content_item_id, current + 1)
+        restore_revision_in_tx(&mut tx, content_item_id, target_rev)
             .await?;
     tx.commit().await?;
     Ok(item)

@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(
     Debug,
+    Default,
     Clone,
     Copy,
     Eq,
@@ -13,6 +14,7 @@ use serde::{Deserialize, Serialize};
 #[sqlx(type_name = "text", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 pub enum ContentStatus {
+    #[default]
     Draft,
     Published,
 }
@@ -23,12 +25,6 @@ impl ContentStatus {
             Self::Draft => "draft",
             Self::Published => "published",
         }
-    }
-}
-
-impl Default for ContentStatus {
-    fn default() -> Self {
-        Self::Draft
     }
 }
 
