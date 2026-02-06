@@ -1,7 +1,6 @@
 use actix_web::{
     HttpRequest, HttpResponse, Responder, get, post, web,
 };
-use sqlx::PgPool;
 use uuid::Uuid;
 
 use rustpress::db;
@@ -22,7 +21,7 @@ use super::super::templates::{
 };
 
 async fn render_edit(
-    pool: &PgPool,
+    pool: &db::PgPool,
     user: User,
     is_admin: bool,
     error: Option<String>,
@@ -41,7 +40,7 @@ async fn render_edit(
 }
 
 async fn render_list(
-    pool: &PgPool,
+    pool: &db::PgPool,
     current_user_id: Uuid,
     is_admin: bool,
     error: Option<String>,

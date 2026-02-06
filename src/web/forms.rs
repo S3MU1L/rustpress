@@ -1,6 +1,8 @@
 use rustpress::models::RoleName;
 use serde::Deserialize;
 
+use crate::web::security::validate_slug;
+
 pub const MIN_PASSWORD_LENGTH: usize = 12;
 pub const MAX_PASSWORD_LENGTH: usize = 128; // Prevent DoS via huge passwords
 pub const MAX_EMAIL_LENGTH: usize = 255;
@@ -159,20 +161,10 @@ impl SiteCreateForm {
         if self.slug.trim().is_empty() {
             return Err("Site slug is required");
         }
-        if self.slug.len() > 200 {
-            return Err("Site slug must not exceed 200 characters");
-        }
-
-        // Validate slug format: lowercase alphanumeric with hyphens/underscores
         let slug = self.slug.trim();
-        if !slug.chars().all(|c| {
-            c.is_ascii_lowercase()
-                || c.is_ascii_digit()
-                || c == '-'
-                || c == '_'
-        }) {
+        if !validate_slug(slug, Some(200)) {
             return Err(
-                "Slug must be lowercase alphanumeric with hyphens/underscores only",
+                "Slug must be lowercase alphanumeric with hyphens/underscores only and not exceed 200 characters",
             );
         }
 
@@ -220,20 +212,11 @@ impl AdminCreateForm {
         if self.slug.trim().is_empty() {
             return Err("Slug is required");
         }
-        if self.slug.len() > 200 {
-            return Err("Slug must not exceed 200 characters");
-        }
-
-        // Validate slug format: lowercase alphanumeric with hyphens/underscores
+        // Validate slug format and length
         let slug = self.slug.trim();
-        if !slug.chars().all(|c| {
-            c.is_ascii_lowercase()
-                || c.is_ascii_digit()
-                || c == '-'
-                || c == '_'
-        }) {
+        if !validate_slug(slug, Some(200)) {
             return Err(
-                "Slug must be lowercase alphanumeric with hyphens/underscores only",
+                "Slug must be lowercase alphanumeric with hyphens/underscores only and not exceed 200 characters",
             );
         }
 

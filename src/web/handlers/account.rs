@@ -351,17 +351,7 @@ pub async fn me_security_mark_email_verified(
 
     let is_admin = get_is_admin(&req);
 
-    let updated = sqlx::query_as::<_, User>(
-        r#"
-        UPDATE users
-        SET email_verified_at = COALESCE(email_verified_at, now()), edited_at = now()
-        WHERE id = $1
-        RETURNING *
-        "#,
-    )
-    .bind(uid)
-    .fetch_one(&state.pool)
-    .await;
+    let updated = db::mark_email_verified(&state.pool, uid).await;
 
     match updated {
         Ok(user) => render(MeSecurityTemplate {

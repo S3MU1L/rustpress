@@ -1,3 +1,5 @@
+pub use sqlx::PgPool;
+
 pub use collaborators::*;
 pub use content::*;
 pub use db::*;

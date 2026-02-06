@@ -22,7 +22,7 @@ use crate::web::templates::{
 };
 
 async fn fetch_content_items(
-    pool: &sqlx::PgPool,
+    pool: &db::PgPool,
     uid: Uuid,
 ) -> Vec<rustpress::models::ContentItem> {
     let mut items =
@@ -430,7 +430,7 @@ pub async fn admin_template_duplicate(
     }
 
     // Try a few times to avoid rare name collisions.
-    let mut last_err: Option<sqlx::Error> = None;
+    let mut last_err: Option<String> = None;
     for _ in 0..3 {
         let suffix = Uuid::new_v4().to_string();
         let short = &suffix[..8];
@@ -464,14 +464,12 @@ pub async fn admin_template_duplicate(
                     .finish();
             }
             Err(e) => {
-                last_err = Some(e);
+                last_err = Some(e.to_string());
             }
         }
     }
 
     let msg = last_err
-        .as_ref()
-        .map(|e| e.to_string())
         .unwrap_or_else(|| "Duplicate failed".to_string());
     HttpResponse::BadRequest().body(msg)
 }

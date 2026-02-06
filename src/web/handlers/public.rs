@@ -1,5 +1,4 @@
 use actix_web::{HttpResponse, Responder, get, web};
-use sqlx::PgPool;
 
 use rustpress::db;
 use rustpress::models::{ContentItem, ContentKind, HomepageType};
@@ -15,7 +14,7 @@ use crate::web::templates::{
 };
 
 async fn render_content(
-    pool: &PgPool,
+    pool: &db::PgPool,
     item: &ContentItem,
 ) -> HttpResponse {
     match get_template_for_item(pool, item).await {
@@ -42,7 +41,7 @@ async fn render_content(
 }
 
 async fn get_template_for_item(
-    pool: &PgPool,
+    pool: &db::PgPool,
     item: &ContentItem,
 ) -> Option<rustpress::models::SiteTemplate> {
     let tpl = match item.owner_user_id {
@@ -78,7 +77,7 @@ async fn get_template_for_item(
     }
 }
 
-async fn render_posts_index(pool: &PgPool) -> HttpResponse {
+async fn render_posts_index(pool: &db::PgPool) -> HttpResponse {
     let posts = db::list_content(pool, ContentKind::Post, false)
         .await
         .unwrap_or_default();

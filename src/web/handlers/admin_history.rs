@@ -2,7 +2,6 @@ use actix_web::{
     HttpRequest, HttpResponse, Responder, get, post, web,
 };
 use serde::Deserialize;
-use sqlx::PgPool;
 use uuid::Uuid;
 
 use rustpress::db;
@@ -16,7 +15,7 @@ use crate::web::templates::AdminHistoryPartialTemplate;
 
 /// Auth + load + `can_view_content` gate.
 async fn load_viewable(
-    pool: &PgPool,
+    pool: &db::PgPool,
     req: &HttpRequest,
     id: Uuid,
 ) -> Result<(Uuid, ContentItem), HttpResponse> {
@@ -39,7 +38,7 @@ async fn load_viewable(
 
 /// Auth + load + `can_edit_content` gate.
 async fn load_editable(
-    pool: &PgPool,
+    pool: &db::PgPool,
     req: &HttpRequest,
     id: Uuid,
 ) -> Result<(Uuid, ContentItem), HttpResponse> {

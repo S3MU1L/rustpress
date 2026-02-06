@@ -5,7 +5,7 @@ use actix_web::{
 use std::time::Duration;
 
 use rustpress::db;
-use rustpress::models::{RoleName, SiteCreate, User};
+use rustpress::models::{RoleName, SiteCreate};
 use rustpress::services::PasswordManager;
 
 use crate::web::forms::{AuthQuery, LoginForm, RegisterForm};
@@ -57,16 +57,24 @@ pub async fn login_submit(
             .finish();
     }
 
+    // Validate form first
+    if let Err(e) = form.validate() {
+        return HttpResponse::SeeOther()
+            .insert_header((
+                "Location",
+                format!(
+                    "/admin/login?error={}",
+                    urlencoding::encode(e)
+                ),
+            ))
+            .finish();
+    }
+
     let email = form.email.trim().to_string();
     let password = form.password.to_string();
 
     // Fetch user
-    let user = sqlx::query_as::<_, User>(
-        r#"SELECT * FROM users WHERE email = $1"#,
-    )
-    .bind(&email)
-    .fetch_optional(&state.pool)
-    .await;
+    let user = db::get_user_by_email(&state.pool, &email).await;
 
     // Constant-time response: always verify password even if user doesn't exist
     let (user_exists, stored_hash) = match user {
@@ -106,13 +114,10 @@ pub async fn login_submit(
     }
 
     // Re-fetch user (we know it exists now)
-    let user = sqlx::query_as::<_, User>(
-        r#"SELECT * FROM users WHERE email = $1"#,
-    )
-    .bind(&email)
-    .fetch_one(&state.pool)
-    .await
-    .expect("User should exist");
+    let user = db::get_user_by_email(&state.pool, &email)
+        .await
+        .expect("Database error re-fetching user")
+        .expect("User should exist");
 
     let cookie = Cookie::build("rp_uid", user.id.to_string())
         .path("/")

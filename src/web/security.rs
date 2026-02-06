@@ -63,8 +63,7 @@ impl RateLimiter {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
 
-        let entry =
-            requests.entry(key.to_string()).or_default();
+        let entry = requests.entry(key.to_string()).or_default();
 
         // Remove old requests outside the window
         entry.retain(|&time| {
@@ -167,9 +166,9 @@ pub fn validate_email(email: &str) -> bool {
     true
 }
 
-/// Slug validation
-pub fn validate_slug(slug: &str) -> bool {
-    if slug.is_empty() || slug.len() > 255 {
+pub fn validate_slug(slug: &str, max_length: Option<usize>) -> bool {
+    let max_len = max_length.unwrap_or(255);
+    if slug.is_empty() || slug.len() > max_len {
         return false;
     }
 
