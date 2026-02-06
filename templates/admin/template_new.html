@@ -178,14 +178,23 @@
           {% endfor %}
         </select>
       </label>
-      <div id="preview" class="border border-rp-border rounded-lg overflow-hidden bg-white"
-        hx-post="/admin/templates/preview" hx-trigger="load, template-change from:body delay:500ms"
-        hx-include="#tpl-html, #preview-content-id" hx-target="this" hx-swap="innerHTML">
-        <p class="text-rp-muted text-sm p-4">Loading preview...</p>
+      <div class="preview-wrapper relative cursor-pointer group" onclick="openPreviewModal()">
+        <div class="absolute top-2 right-2 p-1.5 rounded-lg bg-black/50 text-white opacity-0 group-hover:opacity-100 z-10 pointer-events-none transition-opacity">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+          </svg>
+        </div>
+        <div id="preview" class="border border-rp-border rounded-lg overflow-hidden bg-white"
+          hx-post="/admin/templates/preview" hx-trigger="load, template-change from:body delay:500ms"
+          hx-include="#tpl-html, #preview-content-id" hx-target="this" hx-swap="innerHTML">
+          <p class="text-rp-muted text-sm p-4">Loading preview...</p>
+        </div>
       </div>
     </div>
   </div>
 </div>
+
+{% include "partials/preview_modal.html" %}
 {% endblock %}
 
 {% block scripts %}
