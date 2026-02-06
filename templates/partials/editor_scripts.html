@@ -31,7 +31,7 @@
   }, 2000);
 
   function scheduleAutosave() {
-    // Avoid even queueing autosave while previewing old revisions.
+    // Avoid queueing autosave while previewing old revisions.
     if (window.revisionPreviewActive) return;
     triggerAutosave();
   }

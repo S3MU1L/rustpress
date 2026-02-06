@@ -13,7 +13,7 @@ use serde::Deserialize;
 
 use crate::web::forms::{
     AdminCreateForm, AdminLiveForm, AdminNewPreviewForm,
-    AdminUpdateForm, SitesQuery,
+    AdminUpdateForm, SearchQuery,
 };
 use crate::web::helpers::{
     apply_site_template, escape_html, get_is_admin, iframe_srcdoc,
@@ -65,7 +65,7 @@ pub async fn admin_dashboard(
 pub async fn admin_posts_list(
     state: web::Data<AppState>,
     req: HttpRequest,
-    query: web::Query<SitesQuery>,
+    query: web::Query<SearchQuery>,
 ) -> impl Responder {
     let uid = match require_user(&req) {
         Ok(uid) => uid,
@@ -109,7 +109,7 @@ pub async fn admin_posts_list(
 pub async fn admin_pages_list(
     state: web::Data<AppState>,
     req: HttpRequest,
-    query: web::Query<SitesQuery>,
+    query: web::Query<SearchQuery>,
 ) -> impl Responder {
     let uid = match require_user(&req) {
         Ok(uid) => uid,

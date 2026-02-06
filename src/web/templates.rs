@@ -126,38 +126,9 @@ pub struct MeSecurityTemplate {
 }
 
 #[derive(Template)]
-#[template(path = "admin/sites_list.html")]
-pub struct SitesListTemplate {
-    pub sites: Vec<Site>,
-    pub query: String,
-    pub is_admin: bool,
-}
-
-#[derive(Template)]
-#[template(path = "admin/site_new.html")]
-pub struct SiteNewTemplate {
-    pub templates: Vec<SiteTemplate>,
-    pub default_template: String,
-    pub error: Option<String>,
-    pub is_admin: bool,
-}
-
-#[derive(Template)]
-#[template(path = "admin/site_edit.html")]
-pub struct SiteEditTemplate {
-    pub site: Site,
-    pub templates: Vec<SiteTemplate>,
-    pub error: Option<String>,
-    pub success: Option<String>,
-    pub is_admin: bool,
-}
-
-#[derive(Template)]
 #[template(path = "admin/themes.html")]
 pub struct ThemesTemplate {
     pub templates: Vec<SiteTemplate>,
-    pub sites: Vec<Site>,
-    pub selected_site_id: Option<uuid::Uuid>,
     pub query: String,
     pub category: String,
     pub is_admin: bool,

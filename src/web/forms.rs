@@ -139,58 +139,14 @@ impl ChangePasswordForm {
 }
 
 #[derive(Deserialize)]
-pub struct SitesQuery {
+pub struct SearchQuery {
     pub q: Option<String>,
-}
-
-#[derive(Deserialize)]
-pub struct SiteCreateForm {
-    pub name: String,
-    pub slug: String,
-    pub default_template: Option<String>,
-}
-
-impl SiteCreateForm {
-    pub fn validate(&self) -> Result<(), &'static str> {
-        if self.name.trim().is_empty() {
-            return Err("Site name is required");
-        }
-        if self.name.len() > 200 {
-            return Err("Site name must not exceed 200 characters");
-        }
-        if self.slug.trim().is_empty() {
-            return Err("Site slug is required");
-        }
-        let slug = self.slug.trim();
-        if !validate_slug(slug, Some(200)) {
-            return Err(
-                "Slug must be lowercase alphanumeric with hyphens/underscores only and not exceed 200 characters",
-            );
-        }
-
-        Ok(())
-    }
-}
-
-#[derive(Deserialize)]
-pub struct SiteUpdateForm {
-    pub name: Option<String>,
-    pub slug: Option<String>,
-    pub default_template: Option<String>,
-    pub homepage_type: Option<String>,
-    pub homepage_page_id: Option<String>,
 }
 
 #[derive(Deserialize)]
 pub struct ThemesQuery {
     pub q: Option<String>,
     pub category: Option<String>,
-    pub site_id: Option<String>,
-}
-
-#[derive(Deserialize)]
-pub struct ApplyThemeForm {
-    pub template: String,
 }
 
 #[derive(Deserialize)]

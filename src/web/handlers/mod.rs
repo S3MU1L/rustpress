@@ -8,7 +8,6 @@ pub mod admin_users;
 pub mod auth;
 pub mod configuration;
 pub mod public;
-pub mod sites;
 pub mod themes;
 
 use actix_web::web;
@@ -26,7 +25,6 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     admin_users::configure(cfg);
     account::configure(cfg);
     configuration::configure(cfg);
-    sites::configure(cfg);
     themes::configure(cfg);
 }
 
