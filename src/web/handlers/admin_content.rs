@@ -287,14 +287,12 @@ async fn compute_preview_html(
     };
     if tpl.is_none() {
         tpl = match owner_user_id {
-            Some(owner_id) => {
-                db::get_site_template_by_name_for_user(
-                    pool, owner_id, "default",
-                )
-                .await
-                .ok()
-                .flatten()
-            }
+            Some(owner_id) => db::get_site_template_by_name_for_user(
+                pool, owner_id, "default",
+            )
+            .await
+            .ok()
+            .flatten(),
             None => db::get_site_template_by_name(pool, "default")
                 .await
                 .ok()

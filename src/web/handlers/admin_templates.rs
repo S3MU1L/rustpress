@@ -469,8 +469,8 @@ pub async fn admin_template_duplicate(
         }
     }
 
-    let msg = last_err
-        .unwrap_or_else(|| "Duplicate failed".to_string());
+    let msg =
+        last_err.unwrap_or_else(|| "Duplicate failed".to_string());
     HttpResponse::BadRequest().body(msg)
 }
 
