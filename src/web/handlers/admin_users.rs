@@ -39,6 +39,7 @@ async fn render_edit(
 
 async fn render_list(
     pool: &PgPool,
+    current_user_id: Uuid,
     is_admin: bool,
     error: Option<String>,
     success: Option<String>,
@@ -48,6 +49,7 @@ async fn render_list(
         .unwrap_or_default();
     render(AdminUsersListTemplate {
         users,
+        current_user_id,
         is_admin,
         error,
         success,
@@ -59,10 +61,12 @@ pub async fn users_list(
     state: web::Data<AppState>,
     req: HttpRequest,
 ) -> impl Responder {
-    if let Err(resp) = require_user(&req) {
-        return resp;
-    }
-    render_list(&state.pool, get_is_admin(&req), None, None).await
+    let uid = match require_user(&req) {
+        Ok(uid) => uid,
+        Err(resp) => return resp,
+    };
+    render_list(&state.pool, uid, get_is_admin(&req), None, None)
+        .await
 }
 
 #[get("/admin/users/new")]
@@ -300,6 +304,7 @@ pub async fn users_delete(
     if target_id == uid {
         return render_list(
             &state.pool,
+            uid,
             is_admin,
             Some("You cannot delete your own account".into()),
             None,
@@ -316,6 +321,7 @@ pub async fn users_delete(
     {
         return render_list(
             &state.pool,
+            uid,
             is_admin,
             Some("Cannot delete the last admin".into()),
             None,
@@ -327,6 +333,7 @@ pub async fn users_delete(
     {
         return render_list(
             &state.pool,
+            uid,
             is_admin,
             Some(format!("Delete failed: {e}")),
             None,
@@ -336,6 +343,7 @@ pub async fn users_delete(
 
     render_list(
         &state.pool,
+        uid,
         is_admin,
         None,
         Some("User deleted".into()),

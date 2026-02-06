@@ -2,7 +2,8 @@ use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
 use crate::models::{
-    ContentItem, ContentItemRevisionMeta, ContentStatus,
+    ContentItem, ContentItemRevision, ContentItemRevisionMeta,
+    ContentStatus,
 };
 
 pub async fn ensure_initial_revision(
@@ -156,6 +157,24 @@ pub async fn list_revisions(
     .bind(content_item_id)
     .bind(limit)
     .fetch_all(pool)
+    .await
+}
+
+pub async fn get_revision(
+    pool: &PgPool,
+    content_item_id: Uuid,
+    rev_num: i32,
+) -> Result<Option<ContentItemRevision>, sqlx::Error> {
+    sqlx::query_as::<_, ContentItemRevision>(
+        r#"
+        SELECT *
+        FROM content_item_revisions
+        WHERE content_item_id = $1 AND rev = $2
+        "#,
+    )
+    .bind(content_item_id)
+    .bind(rev_num)
+    .fetch_optional(pool)
     .await
 }
 

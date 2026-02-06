@@ -4,7 +4,9 @@ use askama::Template;
 use uuid::Uuid;
 
 use rustpress::db::UserWithRoles;
-use rustpress::models::{ContentItem, Site, SiteTemplate, User};
+use rustpress::models::{
+    ContentItem, ContentItemRevisionMeta, Site, SiteTemplate, User,
+};
 
 #[derive(Template)]
 #[template(path = "public/index.html")]
@@ -175,6 +177,7 @@ pub struct ConfigurationTemplate {
 #[template(path = "admin/users_list.html")]
 pub struct AdminUsersListTemplate {
     pub users: Vec<UserWithRoles>,
+    pub current_user_id: Uuid,
     pub is_admin: bool,
     pub error: Option<String>,
     pub success: Option<String>,
@@ -207,4 +210,13 @@ pub struct NotFoundTemplate {
 #[template(path = "401.html")]
 pub struct UnauthorizedTemplate {
     pub is_admin: bool,
+}
+
+#[derive(Template)]
+#[template(path = "partials/history_panel.html")]
+pub struct AdminHistoryPartialTemplate {
+    pub revisions: Vec<ContentItemRevisionMeta>,
+    pub authors: HashMap<Uuid, String>,
+    pub current_rev: i32,
+    pub content_item_id: Uuid,
 }
