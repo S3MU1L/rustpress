@@ -3,6 +3,9 @@ mod web;
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenvy::dotenv().ok();
+    
+    // Initialize logging
+    env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
 
     use crate::web::helpers::{AdminStatus, render_unauthorized};
     use crate::web::{AppState, handlers};
@@ -101,6 +104,7 @@ async fn main() -> std::io::Result<()> {
 
     let state = actix_web::web::Data::new(AppState {
         pool: db.pool.clone(),
+        rate_limiter: std::sync::Arc::new(web::security::RateLimiter::new()),
     });
 
     println!("Starting RustPress (Actix + Askama + HTMX)");
@@ -110,6 +114,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(state.clone())
+            .wrap(web::middleware::SecurityHeaders)
             .wrap(from_fn(admin_auth_guard))
             .service(Files::new("/static", "./static"))
             .configure(handlers::configure)

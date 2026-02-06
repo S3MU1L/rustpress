@@ -14,6 +14,7 @@ use crate::web::helpers::{
     apply_site_template, get_is_admin, iframe_srcdoc, is_htmx,
     is_unique_violation, render, render_not_found, require_user,
 };
+
 use crate::web::state::AppState;
 use crate::web::templates::{
     AdminTemplateEditTemplate, AdminTemplateNewTemplate,
@@ -105,6 +106,13 @@ pub async fn admin_template_create(
         Ok(uid) => uid,
         Err(resp) => return resp,
     };
+
+    // Validate form before processing
+    if let Err(e) = form.validate() {
+        return HttpResponse::BadRequest()
+            .content_type("text/plain; charset=utf-8")
+            .body(e.to_string());
+    }
 
     let data = rustpress::models::SiteTemplateCreate {
         owner_user_id,

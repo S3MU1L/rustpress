@@ -186,6 +186,13 @@ pub async fn admin_create(
         Err(resp) => return resp,
     };
 
+    // Validate form before processing
+    if let Err(e) = form.validate() {
+        return HttpResponse::BadRequest()
+            .content_type("text/plain; charset=utf-8")
+            .body(e.to_string());
+    }
+
     let kind = match path.into_inner().as_str() {
         "posts" => ContentKind::Post,
         "pages" => ContentKind::Page,

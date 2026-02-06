@@ -2,6 +2,7 @@ use actix_web::cookie::{Cookie, SameSite};
 use actix_web::{
     HttpRequest, HttpResponse, Responder, get, post, web,
 };
+use std::time::Duration;
 
 use rustpress::db;
 use rustpress::models::{RoleName, SiteCreate, User};
@@ -33,17 +34,30 @@ pub async fn login_form(
 #[post("/admin/login")]
 pub async fn login_submit(
     state: web::Data<AppState>,
+    req: HttpRequest,
     form: web::Form<LoginForm>,
 ) -> impl Responder {
-    let email = form.email.trim().to_string();
-    let password = form.password.to_string();
-
-    if email.is_empty() || password.is_empty() {
-        return HttpResponse::SeeOther()
-            .insert_header(("Location", "/admin/login?error=missing"))
+    // Rate limiting
+    let client_ip = req
+        .connection_info()
+        .realip_remote_addr()
+        .unwrap_or("unknown")
+        .to_string();
+    
+    if !state.rate_limiter.check_rate_limit(
+        &format!("login:{}", client_ip),
+        5, // 5 attempts
+        Duration::from_secs(300), // per 5 minutes
+    ) {
+        return HttpResponse::TooManyRequests()
+            .insert_header(("Location", "/admin/login?error=rate_limit"))
             .finish();
     }
 
+    let email = form.email.trim().to_string();
+    let password = form.password.to_string();
+
+    // Fetch user
     let user = sqlx::query_as::<_, User>(
         r#"SELECT * FROM users WHERE email = $1"#,
     )
@@ -51,50 +65,54 @@ pub async fn login_submit(
     .fetch_optional(&state.pool)
     .await;
 
-    let user = match user {
-        Ok(Some(u)) => u,
+    // Constant-time response: always verify password even if user doesn't exist
+    let (user_exists, stored_hash) = match user {
+        Ok(Some(u)) => (true, u.password_hash.clone()),
         Ok(None) => {
-            return HttpResponse::SeeOther()
-                .insert_header((
-                    "Location",
-                    "/admin/login?error=invalid",
-                ))
-                .finish();
+            // Use a dummy hash with same parameters as PasswordManager
+            // to prevent timing side-channels
+            let dummy_hash = PasswordManager::hash_password("dummy_password_for_timing")
+                .unwrap_or_else(|e| {
+                    log::error!("Failed to generate dummy hash: {}", e);
+                    // Fallback to hardcoded hash
+                    "$argon2id$v=19$m=65536,t=3,p=4$dW5rbm93bl9zYWx0X2R1bW15$E2LvWPx3FxvDaJxEMpLLBfWbLkPXfYHrF8z9CGCX3eI".to_string()
+                });
+            (false, dummy_hash)
         }
         Err(e) => {
-            eprintln!("Database error: {e}");
+            log::error!("Database error during login: {}", e);
             return HttpResponse::SeeOther()
-                .insert_header(("Location", "/admin/login?error=db"))
+                .insert_header(("Location", "/admin/login?error=internal"))
                 .finish();
         }
     };
 
-    let ok = match PasswordManager::verify_password(
-        &password,
-        &user.password_hash,
-    ) {
-        Ok(v) => v,
-        Err(e) => {
-            eprintln!("Password verification error: {e}");
-            return HttpResponse::SeeOther()
-                .insert_header((
-                    "Location",
-                    "/admin/login?error=internal",
-                ))
-                .finish();
-        }
-    };
+    // Always perform password verification
+    let password_valid = PasswordManager::verify_password(&password, &stored_hash)
+        .unwrap_or(false);
 
-    if !ok {
+    // Only succeed if both user exists and password is valid
+    if !user_exists || !password_valid {
         return HttpResponse::SeeOther()
             .insert_header(("Location", "/admin/login?error=invalid"))
             .finish();
     }
 
+    // Re-fetch user (we know it exists now)
+    let user = sqlx::query_as::<_, User>(
+        r#"SELECT * FROM users WHERE email = $1"#,
+    )
+    .bind(&email)
+    .fetch_one(&state.pool)
+    .await
+    .expect("User should exist");
+
     let cookie = Cookie::build("rp_uid", user.id.to_string())
         .path("/")
         .http_only(true)
+        .secure(true)
         .same_site(SameSite::Lax)
+        .max_age(actix_web::cookie::time::Duration::days(7))
         .finish();
 
     HttpResponse::SeeOther()
@@ -115,6 +133,9 @@ pub async fn register_form(
         "exists" => {
             "An account with this email already exists".to_string()
         }
+        "rate_limit" => {
+            "Too many registration attempts. Please try again later.".to_string()
+        }
         "db" => "Database error. Please try again.".to_string(),
         "internal" => "An internal error occurred. Please try again."
             .to_string(),
@@ -127,25 +148,45 @@ pub async fn register_form(
 #[post("/admin/register")]
 pub async fn register_submit(
     state: web::Data<AppState>,
+    req: HttpRequest,
     form: web::Form<RegisterForm>,
 ) -> impl Responder {
-    let email = form.email.trim().to_string();
-    let password = form.password.to_string();
-
-    if email.is_empty() || password.len() < 4 {
+    // Validate form first (before password hashing)
+    if let Err(e) = form.validate() {
         return HttpResponse::SeeOther()
             .insert_header((
                 "Location",
-                "/admin/register?error=missing",
+                format!("/admin/register?error={}", urlencoding::encode(e)),
             ))
             .finish();
     }
 
+    // Rate limiting
+    let client_ip = req
+        .connection_info()
+        .realip_remote_addr()
+        .unwrap_or("unknown")
+        .to_string();
+    
+    if !state.rate_limiter.check_rate_limit(
+        &format!("register:{}", client_ip),
+        3, // 3 attempts
+        Duration::from_secs(3600), // per hour
+    ) {
+        return HttpResponse::TooManyRequests()
+            .insert_header(("Location", "/admin/register?error=rate_limit"))
+            .finish();
+    }
+
+    let email = form.email.trim().to_string();
+    let password = form.password.to_string();
+
+    // Hash password (validation already done by form.validate())
     let password_hash =
         match PasswordManager::hash_password(&password) {
             Ok(h) => h,
             Err(e) => {
-                eprintln!("Password hashing error: {e}");
+                log::error!("Password hashing error: {}", e);
                 return HttpResponse::SeeOther()
                     .insert_header((
                         "Location",
@@ -169,11 +210,11 @@ pub async fn register_submit(
                     .finish();
             }
             Err(e) => {
-                eprintln!("Database error: {e}");
+                log::error!("Database error during registration: {}", e);
                 return HttpResponse::SeeOther()
                     .insert_header((
                         "Location",
-                        "/admin/register?error=db",
+                        "/admin/register?error=internal",
                     ))
                     .finish();
             }
@@ -189,7 +230,7 @@ pub async fn register_submit(
     if let Err(e) =
         db::set_user_role(&state.pool, user.id, role).await
     {
-        eprintln!("Failed to set user role: {e}");
+        log::error!("Failed to set user role: {}", e);
     }
 
     // Create default site if none exists
@@ -212,7 +253,7 @@ pub async fn register_submit(
             if let Err(e) =
                 db::publish_site(&state.pool, site.id, user.id).await
             {
-                eprintln!("Failed to publish default site: {e}");
+                log::error!("Failed to publish default site: {}", e);
             }
         }
     }
@@ -220,7 +261,9 @@ pub async fn register_submit(
     let cookie = Cookie::build("rp_uid", user.id.to_string())
         .path("/")
         .http_only(true)
+        .secure(true)
         .same_site(SameSite::Lax)
+        .max_age(actix_web::cookie::time::Duration::days(7))
         .finish();
 
     HttpResponse::SeeOther()
@@ -234,6 +277,7 @@ pub async fn logout(req: HttpRequest) -> impl Responder {
     let mut cookie = Cookie::build("rp_uid", "")
         .path("/")
         .http_only(true)
+        .secure(true)
         .same_site(SameSite::Lax)
         .finish();
     cookie.make_removal();
