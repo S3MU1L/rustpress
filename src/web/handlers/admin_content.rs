@@ -18,7 +18,6 @@ use crate::web::helpers::{
     is_htmx, is_unique_violation, normalize_builtin_template_html,
     render, render_not_found, require_user,
 };
-use crate::web::security::validate_slug;
 use crate::web::state::AppState;
 use crate::web::templates::{
     AdminDashboardTemplate, AdminEditTemplate, AdminNewTemplate,
@@ -200,26 +199,11 @@ pub async fn admin_create(
         _ => return render_not_found(&req),
     };
 
-    // Validate slug
-    let slug = form.slug.trim();
-    if !validate_slug(slug) {
-        return HttpResponse::BadRequest()
-            .content_type("text/plain; charset=utf-8")
-            .body("Invalid slug: must be lowercase alphanumeric with hyphens/underscores only");
-    }
-
-    // Validate title
-    if form.title.trim().is_empty() {
-        return HttpResponse::BadRequest()
-            .content_type("text/plain; charset=utf-8")
-            .body("Title is required");
-    }
-
     let data = ContentCreate {
         owner_user_id: Some(uid),
         kind,
         title: form.title.trim().to_string(),
-        slug: slug.to_string(),
+        slug: form.slug.trim().to_string(),
         content: form.content.to_string(),
         template: form
             .template

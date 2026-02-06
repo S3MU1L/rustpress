@@ -58,7 +58,7 @@ impl RateLimiter {
         window: Duration,
     ) -> bool {
         let now = SystemTime::now();
-        let mut requests = self.requests.lock().unwrap();
+        let mut requests = self.requests.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         
         let entry = requests.entry(key.to_string()).or_insert_with(Vec::new);
         
@@ -72,6 +72,10 @@ impl RateLimiter {
         }
         
         entry.push(now);
+        
+        // Cleanup: remove empty entries to prevent unbounded memory growth
+        requests.retain(|_, times| !times.is_empty());
+        
         true
     }
 }
@@ -80,14 +84,6 @@ impl Default for RateLimiter {
     fn default() -> Self {
         Self::new()
     }
-}
-
-/// Escape special characters for SQL LIKE patterns
-pub fn escape_sql_like(input: &str) -> String {
-    input
-        .replace('\\', "\\\\")
-        .replace('%', "\\%")
-        .replace('_', "\\_")
 }
 
 /// Password validation

@@ -102,7 +102,7 @@ impl ChangePasswordForm {
         // Check new password complexity
         let has_uppercase = self.new_password.chars().any(|c| c.is_uppercase());
         let has_lowercase = self.new_password.chars().any(|c| c.is_lowercase());
-        let has_digit = self.new_password.chars().any(|c| c.is_numeric());
+        let has_digit = self.new_password.chars().any(|c| c.is_ascii_digit());
         let has_special = self.new_password.chars().any(|c| !c.is_alphanumeric());
         
         if !has_uppercase || !has_lowercase || !has_digit || !has_special {
@@ -139,6 +139,13 @@ impl SiteCreateForm {
         if self.slug.len() > 200 {
             return Err("Site slug must not exceed 200 characters");
         }
+        
+        // Validate slug format: lowercase alphanumeric with hyphens/underscores
+        let slug = self.slug.trim();
+        if !slug.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_') {
+            return Err("Slug must be lowercase alphanumeric with hyphens/underscores only");
+        }
+        
         Ok(())
     }
 }
@@ -186,6 +193,13 @@ impl AdminCreateForm {
         if self.slug.len() > 200 {
             return Err("Slug must not exceed 200 characters");
         }
+        
+        // Validate slug format: lowercase alphanumeric with hyphens/underscores
+        let slug = self.slug.trim();
+        if !slug.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_') {
+            return Err("Slug must be lowercase alphanumeric with hyphens/underscores only");
+        }
+        
         if self.content.len() > MAX_CONTENT_LENGTH {
             return Err("Content must not exceed 10MB");
         }
@@ -284,7 +298,7 @@ impl AdminCreateUserForm {
         // Check password complexity
         let has_uppercase = self.password.chars().any(|c| c.is_uppercase());
         let has_lowercase = self.password.chars().any(|c| c.is_lowercase());
-        let has_digit = self.password.chars().any(|c| c.is_numeric());
+        let has_digit = self.password.chars().any(|c| c.is_ascii_digit());
         let has_special = self.password.chars().any(|c| !c.is_alphanumeric());
         
         if !has_uppercase || !has_lowercase || !has_digit || !has_special {

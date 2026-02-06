@@ -69,8 +69,15 @@ pub async fn login_submit(
     let (user_exists, stored_hash) = match user {
         Ok(Some(u)) => (true, u.password_hash.clone()),
         Ok(None) => {
-            // Use a dummy hash to maintain constant time
-            (false, "$argon2id$v=19$m=65536,t=3,p=4$dW5rbm93bl9zYWx0X2R1bW15$E2LvWPx3FxvDaJxEMpLLBfWbLkPXfYHrF8z9CGCX3eI".to_string())
+            // Use a dummy hash with same parameters as PasswordManager
+            // to prevent timing side-channels
+            let dummy_hash = PasswordManager::hash_password("dummy_password_for_timing")
+                .unwrap_or_else(|e| {
+                    log::error!("Failed to generate dummy hash: {}", e);
+                    // Fallback to hardcoded hash
+                    "$argon2id$v=19$m=65536,t=3,p=4$dW5rbm93bl9zYWx0X2R1bW15$E2LvWPx3FxvDaJxEMpLLBfWbLkPXfYHrF8z9CGCX3eI".to_string()
+                });
+            (false, dummy_hash)
         }
         Err(e) => {
             log::error!("Database error during login: {}", e);
@@ -125,6 +132,9 @@ pub async fn register_form(
         }
         "exists" => {
             "An account with this email already exists".to_string()
+        }
+        "rate_limit" => {
+            "Too many registration attempts. Please try again later.".to_string()
         }
         "db" => "Database error. Please try again.".to_string(),
         "internal" => "An internal error occurred. Please try again."
