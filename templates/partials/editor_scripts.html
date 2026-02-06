@@ -23,7 +23,7 @@
   }, 300);
 
   const triggerAutosave = debounce(() => {
-    if (window.revisionPreviewActive) return;
+    if (window.RevisionPreview?.active) return;
     const autosave = document.getElementById('autosave');
     if (autosave) {
       autosave.dispatchEvent(new Event('autosave-trigger', { bubbles: true }));
@@ -32,7 +32,7 @@
 
   function scheduleAutosave() {
     // Avoid queueing autosave while previewing old revisions.
-    if (window.revisionPreviewActive) return;
+    if (window.RevisionPreview?.active) return;
     triggerAutosave();
   }
 

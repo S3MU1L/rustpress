@@ -104,8 +104,7 @@
           {{ macros::clock_icon() }}
           Versions
         </button>
-        <button id="btn-delete" type="button"
-          class="btn-danger text-sm inline-flex items-center gap-2"
+        <button id="btn-delete" type="button" class="btn-danger text-sm inline-flex items-center gap-2"
           hx-post="/admin/edit/{{ item.id }}/delete" hx-swap="none"
           hx-confirm="Delete '{{ item.title }}'? This cannot be undone.">
           {{ macros::delete_icon() }}
@@ -168,7 +167,7 @@
             {{ macros::expand_icon() }}
           </div>
           <div id="preview" class="border border-rp-border rounded-lg overflow-hidden bg-white"
-            hx-post="/admin/edit/{{ item.id }}/preview" hx-trigger="load, editor-change from:body delay:500ms, every 3s"
+            hx-post="/admin/edit/{{ item.id }}/preview" hx-trigger="load, editor-change from:body delay:500ms"
             hx-include="#edit-form" hx-target="this" hx-swap="innerHTML">
             <p class="text-rp-muted text-sm p-4">Loading preview...</p>
           </div>
@@ -181,23 +180,23 @@
           <span class="text-rp-primary">{{ macros::info_icon() }}</span>
           Info
         </h3>
-        <dl class="text-xs space-y-2">
+        <dl id="info-panel" class="text-xs space-y-2">
           <div class="flex justify-between">
             <dt class="text-rp-muted">Author</dt>
-            <dd>{{ author }}</dd>
+            <dd id="info-author">{{ author }}</dd>
           </div>
           <div class="flex justify-between">
             <dt class="text-rp-muted">Created</dt>
-            <dd>{{ item.created_at.format("%b %d, %Y") }}</dd>
+            <dd id="info-created">{{ item.created_at.format("%b %d, %Y %H:%M") }}</dd>
           </div>
-          <div class="flex justify-between">
+          <div id="info-edited-row" class="flex justify-between">
             <dt class="text-rp-muted">Last edited</dt>
-            <dd>{{ item.edited_at.format("%b %d, %Y %H:%M") }}</dd>
+            <dd id="info-edited">{{ item.edited_at.format("%b %d, %Y %H:%M") }}</dd>
           </div>
           {% if item.published_at.is_some() %}
-          <div class="flex justify-between">
+          <div id="info-published-row" class="flex justify-between">
             <dt class="text-rp-muted">Published</dt>
-            <dd>{{ item.published_at.unwrap().format("%b %d, %Y") }}</dd>
+            <dd id="info-published">{{ item.published_at.unwrap().format("%b %d, %Y") }}</dd>
           </div>
           {% endif %}
         </dl>
@@ -238,119 +237,303 @@
 
 <script>
   const CONTENT_ITEM_ID = '{{ item.id }}';
-  const CURRENT_REV = {{ item.current_rev }};
-  let _savedFormState = null;
-  let _previewingRev = 0;
-  window.revisionPreviewActive = false;
+  const CURRENT_REV = {{ item.current_rev }}; // This is the NEXT revision number (current + 1)
 
-  // ── Freeze / unfreeze editing ────────────────────────────
-  // Removed from DOM during revision preview so they can't fire at all.
-  // Live preview sidebar stays — it reads form fields so it renders the revision.
-  const FREEZE_IDS = [
-    'btn-save', 'btn-publish', 'btn-delete',
-    'btn-view-live',
-    'toggle-header',
-  ];
-  const _frozenElements = {};
+  // ── Utility: Format timestamp ────────────────────────────
+  function formatTimestamp(isoString) {
+    if (!isoString) return '';
 
-  function _blockSubmit(e) { e.preventDefault(); e.stopImmediatePropagation(); }
+    const date = new Date(isoString);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-  function freezeEditing() {
-    window.revisionPreviewActive = true;
+    const month = months[date.getMonth()];
+    const day = date.getDate();
+    const year = date.getFullYear();
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
 
-    if (window.tiptapEditor) window.tiptapEditor.setEditable(false);
-
-    document.getElementById('title')?.setAttribute('readonly', '');
-    document.getElementById('slug')?.setAttribute('readonly', '');
-    document.querySelector('select[name="template"]')?.setAttribute('disabled', '');
-    document.querySelector('select[name="status"]')?.setAttribute('disabled', '');
-
-    const settings = document.getElementById('header-settings');
-    if (settings) settings.style.display = 'none';
-
-    // Yank buttons out of the DOM entirely
-    FREEZE_IDS.forEach(id => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      _frozenElements[id] = { el, parent: el.parentNode, next: el.nextSibling };
-      el.parentNode.removeChild(el);
-    });
-
-    // Kill form submission (Enter key, any stray submit)
-    const form = document.getElementById('edit-form');
-    if (form) {
-      form._savedHxPost = form.getAttribute('hx-post');
-      form.removeAttribute('hx-post');
-      form.addEventListener('submit', _blockSubmit, true);
-    }
-
-    // Point Preview button at this revision's full-page preview
-    const previewBtn = document.getElementById('btn-preview');
-    if (previewBtn && _previewingRev) {
-      previewBtn.href = `/admin/content/${CONTENT_ITEM_ID}/preview?rev=${_previewingRev}`;
-    }
-
-    const toolbar = document.querySelector('.tiptap-toolbar');
-    if (toolbar) {
-      toolbar.style.opacity = '0.4';
-      toolbar.style.pointerEvents = 'none';
-    }
-
-    // Kick a live preview refresh so it renders the revision content
-    const previewEl = document.getElementById('preview');
-    if (previewEl) htmx.trigger(previewEl, 'editor-change');
+    return `${month} ${day}, ${year} ${hours}:${minutes}`;
   }
 
-  function unfreezeEditing() {
-    window.revisionPreviewActive = false;
+  // ── Auto-updates configuration ───────────────────────────
+  const AUTO_UPDATES_KEY = 'rustpress_auto_updates_enabled';
 
-    if (window.tiptapEditor) window.tiptapEditor.setEditable(true);
+  function isAutoUpdatesEnabled() {
+    const stored = localStorage.getItem(AUTO_UPDATES_KEY);
+    return stored === null ? true : stored === 'true';
+  }
 
-    document.getElementById('title')?.removeAttribute('readonly');
-    document.getElementById('slug')?.removeAttribute('readonly');
-    document.querySelector('select[name="template"]')?.removeAttribute('disabled');
-    document.querySelector('select[name="status"]')?.removeAttribute('disabled');
-
-    const settings = document.getElementById('header-settings');
-    if (settings && localStorage.getItem('header-collapsed') !== 'true') {
-      settings.style.display = 'block';
-    }
-
-    // Put the buttons back
-    FREEZE_IDS.forEach(id => {
-      const stash = _frozenElements[id];
-      if (!stash) return;
-      const { el, parent, next } = stash;
-      if (next && next.parentNode === parent) {
-        parent.insertBefore(el, next);
-      } else if (parent) {
-        parent.appendChild(el);
-      }
-      delete _frozenElements[id];
-    });
-
-    // Re-enable form submission
-    const form = document.getElementById('edit-form');
-    if (form) {
-      if (form._savedHxPost) {
-        form.setAttribute('hx-post', form._savedHxPost);
-        htmx.process(form);
-      }
-      form.removeEventListener('submit', _blockSubmit, true);
-    }
-
-    // Reset Preview button to current content
-    const previewBtn = document.getElementById('btn-preview');
-    if (previewBtn) {
-      previewBtn.href = `/admin/content/${CONTENT_ITEM_ID}/preview`;
-    }
-
-    const toolbar = document.querySelector('.tiptap-toolbar');
-    if (toolbar) {
-      toolbar.style.opacity = '';
-      toolbar.style.pointerEvents = '';
+  function setAutoUpdatesEnabled(enabled) {
+    localStorage.setItem(AUTO_UPDATES_KEY, enabled.toString());
+    updateAutoUpdatesBadge();
+    if (enabled) {
+      RevisionPreview.startPolling();
+    } else {
+      RevisionPreview.stopPolling();
     }
   }
+
+  function updateAutoUpdatesBadge() {
+    const badge = document.getElementById('auto-updates-badge');
+    if (!badge) return;
+
+    if (isAutoUpdatesEnabled()) {
+      badge.textContent = 'Auto-updates';
+      badge.className = 'px-2 py-0.5 rounded-full text-xs bg-rp-secondary/10 text-rp-secondary';
+    } else {
+      badge.textContent = 'Auto-updates Disabled';
+      badge.className = 'px-2 py-0.5 rounded-full text-xs bg-rp-muted/10 text-rp-muted';
+    }
+  }
+
+  // ── Encapsulated revision preview state ──────────────────
+  window.RevisionPreview = {
+    active: false,
+    savedForm: null,
+    rev: null,
+    frozenElements: {},
+    pollingInterval: null,
+    savedInfo: null, // Store original info panel data
+
+    freeze() {
+      this.active = true;
+
+      if (window.tiptapEditor) window.tiptapEditor.setEditable(false);
+
+      document.getElementById('title')?.setAttribute('readonly', '');
+      document.getElementById('slug')?.setAttribute('readonly', '');
+      document.querySelector('select[name="template"]')?.setAttribute('disabled', '');
+      document.querySelector('select[name="status"]')?.setAttribute('disabled', '');
+
+      const settings = document.getElementById('header-settings');
+      if (settings) settings.style.display = 'none';
+
+      // Disable buttons safely without DOM removal
+      const FREEZE_IDS = [
+        'btn-save', 'btn-publish', 'btn-delete',
+        'btn-view-live', 'toggle-header',
+      ];
+
+      FREEZE_IDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        // Store original hx-* attributes
+        this.frozenElements[id] = {
+          hxPost: el.getAttribute('hx-post'),
+          hxConfirm: el.getAttribute('hx-confirm'),
+        };
+
+        // Disable completely
+        el.setAttribute('disabled', '');
+        el.style.pointerEvents = 'none';
+        el.style.opacity = '0.4';
+
+        // Remove HTMX attributes to prevent any firing
+        if (el.hasAttribute('hx-post')) el.removeAttribute('hx-post');
+        if (el.hasAttribute('hx-confirm')) el.removeAttribute('hx-confirm');
+      });
+
+      // Point Preview button at this revision's full-page preview
+      const previewBtn = document.getElementById('btn-preview');
+      if (previewBtn && this.rev) {
+        if (!this.frozenElements['btn-preview']) {
+          this.frozenElements['btn-preview'] = { href: previewBtn.href };
+        }
+        previewBtn.href = `/admin/content/${CONTENT_ITEM_ID}/preview?rev=${this.rev}`;
+      }
+
+      const toolbar = document.querySelector('.tiptap-toolbar');
+      if (toolbar) {
+        toolbar.style.opacity = '0.4';
+        toolbar.style.pointerEvents = 'none';
+      }
+
+      // Stop live preview polling - it's frozen, no need to update
+      this.stopPolling();
+
+      // Trigger one final preview update to show the revision content
+      const previewEl = document.getElementById('preview');
+      if (previewEl) {
+        htmx.trigger(previewEl, 'editor-change');
+      }
+
+      // Disable form submission
+      const form = document.getElementById('edit-form');
+      if (form) {
+        this.frozenElements['_form'] = {
+          hxPost: form.getAttribute('hx-post'),
+        };
+        form.removeAttribute('hx-post');
+        form.addEventListener('submit', this._blockSubmit, true);
+      }
+
+      // Disable autosave and clear status message
+      const autosaveEl = document.getElementById('autosave');
+      if (autosaveEl) {
+        this.frozenElements['_autosave'] = {
+          hxPost: autosaveEl.getAttribute('hx-post'),
+          hxTrigger: autosaveEl.getAttribute('hx-trigger'),
+        };
+        autosaveEl.removeAttribute('hx-post');
+        autosaveEl.removeAttribute('hx-trigger');
+      }
+
+      // Clear and hide autosave status
+      const autosaveStatus = document.getElementById('autosave-status');
+      if (autosaveStatus) {
+        this.frozenElements['_autosave_status_text'] = autosaveStatus.textContent;
+        autosaveStatus.textContent = '';
+      }
+
+      // Save original info panel data (will be replaced with revision info)
+      if (!this.savedInfo) {
+        this.savedInfo = {
+          author: document.getElementById('info-author')?.textContent || '',
+          created: document.getElementById('info-created')?.textContent || '',
+          edited: document.getElementById('info-edited')?.textContent || '',
+          published: document.getElementById('info-published')?.textContent || '',
+        };
+      }
+
+      // Hide "Last edited" and "Published" rows during revision preview
+      const editedRow = document.getElementById('info-edited-row');
+      const publishedRow = document.getElementById('info-published-row');
+      if (editedRow) editedRow.style.display = 'none';
+      if (publishedRow) publishedRow.style.display = 'none';
+
+      htmx.process(document.body);
+    },
+
+    _blockSubmit(e) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    },
+
+    stopPolling() {
+      // Clear any existing polling interval
+      if (this.pollingInterval) {
+        clearInterval(this.pollingInterval);
+        this.pollingInterval = null;
+      }
+    },
+
+    startPolling() {
+      // Only start polling if auto-updates are enabled
+      if (!isAutoUpdatesEnabled()) return;
+
+      // Start 3-second polling for live preview
+      this.stopPolling(); // Clear any existing first
+      const previewEl = document.getElementById('preview');
+      if (previewEl) {
+        this.pollingInterval = setInterval(() => {
+          if (!this.active) { // Safety check
+            htmx.trigger(previewEl, 'editor-change');
+          }
+        }, 3000);
+      }
+    },
+
+    unfreeze() {
+      this.active = false;
+
+      if (window.tiptapEditor) window.tiptapEditor.setEditable(true);
+
+      document.getElementById('title')?.removeAttribute('readonly');
+      document.getElementById('slug')?.removeAttribute('readonly');
+      document.querySelector('select[name="template"]')?.removeAttribute('disabled');
+      document.querySelector('select[name="status"]')?.removeAttribute('disabled');
+
+      const settings = document.getElementById('header-settings');
+      if (settings && localStorage.getItem('header-collapsed') !== 'true') {
+        settings.style.display = 'block';
+      }
+
+      // Restore original info panel data
+      if (this.savedInfo) {
+        const authorEl = document.getElementById('info-author');
+        const createdEl = document.getElementById('info-created');
+        const editedEl = document.getElementById('info-edited');
+        const publishedEl = document.getElementById('info-published');
+
+        if (authorEl) authorEl.textContent = this.savedInfo.author;
+        if (createdEl) createdEl.textContent = this.savedInfo.created;
+        if (editedEl) editedEl.textContent = this.savedInfo.edited;
+        if (publishedEl && this.savedInfo.published) publishedEl.textContent = this.savedInfo.published;
+
+        // Show "Last edited" and "Published" rows again
+        const editedRow = document.getElementById('info-edited-row');
+        const publishedRow = document.getElementById('info-published-row');
+        if (editedRow) editedRow.style.display = '';
+        if (publishedRow) publishedRow.style.display = '';
+
+        this.savedInfo = null;
+      }
+
+      // Re-enable buttons and restore attributes
+      Object.keys(this.frozenElements).forEach(id => {
+        if (id === '_form') {
+          // Handle form separately
+          const form = document.getElementById('edit-form');
+          if (form && this.frozenElements[id].hxPost) {
+            form.setAttribute('hx-post', this.frozenElements[id].hxPost);
+            form.removeEventListener('submit', this._blockSubmit, true);
+          }
+          return;
+        }
+
+        if (id === '_autosave') {
+          // Restore autosave
+          const autosaveEl = document.getElementById('autosave');
+          if (autosaveEl) {
+            const saved = this.frozenElements[id];
+            if (saved.hxPost) autosaveEl.setAttribute('hx-post', saved.hxPost);
+            if (saved.hxTrigger) autosaveEl.setAttribute('hx-trigger', saved.hxTrigger);
+          }
+          return;
+        }
+
+        if (id === '_autosave_status_text') {
+          // Restore autosave status text
+          const autosaveStatus = document.getElementById('autosave-status');
+          if (autosaveStatus) {
+            autosaveStatus.textContent = this.frozenElements[id];
+          }
+          return;
+        }
+
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        const saved = this.frozenElements[id];
+
+        el.removeAttribute('disabled');
+        el.style.pointerEvents = '';
+        el.style.opacity = '';
+
+        // Restore HTMX attributes
+        if (saved.hxPost) el.setAttribute('hx-post', saved.hxPost);
+        if (saved.hxConfirm) el.setAttribute('hx-confirm', saved.hxConfirm);
+
+        // Restore href for preview button
+        if (saved.href) el.href = saved.href;
+      });
+
+      this.frozenElements = {};
+
+      const toolbar = document.querySelector('.tiptap-toolbar');
+      if (toolbar) {
+        toolbar.style.opacity = '';
+        toolbar.style.pointerEvents = '';
+      }
+
+      // Resume live preview polling
+      this.startPolling();
+
+      // Re-process HTMX
+      htmx.process(document.body);
+    }
+  };
 
   // ── Modal ────────────────────────────────────────────────
   function openVersionsModal() {
@@ -373,14 +556,13 @@
 
   // ── Preview / Cancel / URL sync ──────────────────────────
   function previewRevision(contentItemId, rev) {
-    if (!_savedFormState) {
-      _savedFormState = {
-        title: document.getElementById('title')?.value || '',
-        slug: document.getElementById('slug')?.value || '',
-        content: document.getElementById('editor')?.value || '',
-        template: document.querySelector('select[name="template"]')?.value || '',
-        status: document.querySelector('select[name="status"]')?.value || '',
-      };
+    const form = document.getElementById('edit-form');
+
+    // Capture complete form state using FormData
+    if (!RevisionPreview.savedForm && form) {
+      RevisionPreview.savedForm = new FormData(form);
+      // Also capture TipTap content explicitly since it may not be in FormData yet
+      RevisionPreview.savedForm.set('_tiptap_content', window.tiptapEditor?.getHTML() || '');
     }
 
     fetch(`/admin/content/${contentItemId}/revisions/${rev}`)
@@ -393,9 +575,6 @@
   }
 
   function applyRevisionData(data, rev) {
-    // Ensure autosave is suppressed immediately (TipTap setContent triggers updates).
-    window.revisionPreviewActive = true;
-
     const titleEl = document.getElementById('title');
     const slugEl = document.getElementById('slug');
     const editorEl = document.getElementById('editor');
@@ -412,7 +591,18 @@
       window.tiptapEditor.commands.setContent(data.content);
     }
 
-    _previewingRev = rev;
+    RevisionPreview.rev = rev;
+
+    // Update info panel with revision metadata
+    if (data.author) {
+      const authorEl = document.getElementById('info-author');
+      if (authorEl) authorEl.textContent = data.author;
+    }
+    if (data.created_at) {
+      const createdEl = document.getElementById('info-created');
+      if (createdEl) createdEl.textContent = formatTimestamp(data.created_at);
+    }
+    // Note: Revisions don't have "edited" or "published" dates - they have a single creation timestamp
 
     // Show banner
     document.getElementById('preview-rev-num').textContent = rev;
@@ -422,12 +612,15 @@
     const prevBtn = document.getElementById('rev-prev-btn');
     const nextBtn = document.getElementById('rev-next-btn');
     prevBtn.disabled = (rev <= 1);
+    // CURRENT_REV is the next revision number, so current live content is CURRENT_REV - 1
     if (rev >= CURRENT_REV - 1) {
       nextBtn.innerHTML = '<span class="text-xs font-medium px-1">Current</span>';
       nextBtn.title = 'Return to current version';
+      nextBtn.disabled = (rev === CURRENT_REV - 1);
     } else {
       nextBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>';
       nextBtn.title = 'Next revision';
+      nextBtn.disabled = false;
     }
 
     // Wire restore button
@@ -438,20 +631,21 @@
     htmx.process(restoreBtn);
 
     // Freeze editing + update URL
-    freezeEditing();
+    RevisionPreview.freeze();
     const url = new URL(window.location);
     url.searchParams.set('rev', rev);
     history.replaceState(null, '', url);
   }
 
   function navigateRevision(delta) {
-    const target = _previewingRev + delta;
+    const target = RevisionPreview.rev + delta;
     if (target < 1) return;
+    // CURRENT_REV is next revision number, so current content is CURRENT_REV - 1
     if (target >= CURRENT_REV) {
       cancelRevisionPreview();
       return;
     }
-    // Reuse previewRevision — savedFormState is already captured
+    // Reuse previewRevision — savedForm is already captured
     fetch(`/admin/content/${CONTENT_ITEM_ID}/revisions/${target}`)
       .then(r => r.json())
       .then(data => applyRevisionData(data, target))
@@ -459,64 +653,130 @@
   }
 
   function cancelRevisionPreview() {
-    if (!_savedFormState) return;
+    if (!RevisionPreview.savedForm) return;
 
-    const titleEl = document.getElementById('title');
-    const slugEl = document.getElementById('slug');
-    const editorEl = document.getElementById('editor');
-    const templateSel = document.querySelector('select[name="template"]');
-    const statusSel = document.querySelector('select[name="status"]');
+    const form = document.getElementById('edit-form');
 
-    if (titleEl) titleEl.value = _savedFormState.title;
-    if (slugEl) slugEl.value = _savedFormState.slug;
-    if (editorEl) editorEl.value = _savedFormState.content;
-    if (templateSel) templateSel.value = _savedFormState.template;
-    if (statusSel) statusSel.value = _savedFormState.status;
+    // Restore all form fields from FormData
+    for (const [key, value] of RevisionPreview.savedForm.entries()) {
+      if (key === '_tiptap_content') continue; // Handle separately
 
-    if (window.tiptapEditor) {
-      window.tiptapEditor.commands.setContent(_savedFormState.content);
+      const el = form.elements[key];
+      if (!el) continue;
+
+      if (el.type === 'checkbox' || el.type === 'radio') {
+        el.checked = (value === 'on' || value === 'true');
+      } else {
+        el.value = value;
+      }
+    }
+
+    // Restore TipTap content
+    const tiptapContent = RevisionPreview.savedForm.get('_tiptap_content');
+    if (window.tiptapEditor && tiptapContent) {
+      window.tiptapEditor.commands.setContent(tiptapContent);
     }
 
     document.getElementById('revision-preview-banner').classList.add('hidden');
-    _savedFormState = null;
+    RevisionPreview.savedForm = null;
+    RevisionPreview.rev = null;
 
     // Unfreeze editing + clean URL
-    unfreezeEditing();
+    RevisionPreview.unfreeze();
     const url = new URL(window.location);
     url.searchParams.delete('rev');
     history.replaceState(null, '', url);
   }
 
+  // ── Initialize auto-updates toggle and polling ───────────
+  document.addEventListener('DOMContentLoaded', function () {
+    // Initialize toggle state from localStorage
+    const toggle = document.getElementById('auto-updates-toggle');
+    if (toggle) {
+      toggle.checked = isAutoUpdatesEnabled();
+      toggle.addEventListener('change', function () {
+        setAutoUpdatesEnabled(this.checked);
+      });
+    }
+
+    // Initialize badge
+    updateAutoUpdatesBadge();
+
+    // Start polling if enabled
+    RevisionPreview.startPolling();
+  });
+
+  // ── Keyboard navigation for revisions ────────────────────
+  document.addEventListener('keydown', function (e) {
+    // Only handle arrow keys during revision preview
+    if (!RevisionPreview.active) return;
+
+    // Don't interfere if user is typing in an input/textarea
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+      return;
+    }
+
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      navigateRevision(-1); // Previous revision
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      navigateRevision(1); // Next revision
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelRevisionPreview();
+    }
+  });
+
   // ── On-load: auto-enter preview if ?rev=N ────────────────
   (function () {
     const params = new URLSearchParams(window.location.search);
     const rev = parseInt(params.get('rev'), 10);
-    if (!rev || rev < 1) return;
+    if (!rev || rev < 1) {
+      // No revision preview, start normal polling
+      return;
+    }
 
     // Wait for TipTap to initialise (module script runs async)
+    let attempts = 0;
+    const maxAttempts = 200; // 10 seconds max (50ms * 200)
+
     const poll = setInterval(() => {
-      if (!window.tiptapEditor) return;
-      clearInterval(poll);
+      if (window.tiptapEditor) {
+        clearInterval(poll);
 
-      // Snapshot current (live) state before overwriting
-      _savedFormState = {
-        title: document.getElementById('title')?.value || '',
-        slug: document.getElementById('slug')?.value || '',
-        content: document.getElementById('editor')?.value || '',
-        template: document.querySelector('select[name="template"]')?.value || '',
-        status: document.querySelector('select[name="status"]')?.value || '',
-      };
+        // Snapshot current (live) state before overwriting
+        const form = document.getElementById('edit-form');
+        if (form) {
+          RevisionPreview.savedForm = new FormData(form);
+          RevisionPreview.savedForm.set('_tiptap_content', window.tiptapEditor.getHTML());
+        }
 
-      fetch(`/admin/content/${CONTENT_ITEM_ID}/revisions/${rev}`)
-        .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-        .then(data => applyRevisionData(data, rev))
-        .catch(() => {
-          // Invalid rev — clean the param and carry on
-          _savedFormState = null;
-          const url = new URL(window.location);
-          url.searchParams.delete('rev');
-          history.replaceState(null, '', url);
-        });
+        fetch(`/admin/content/${CONTENT_ITEM_ID}/revisions/${rev}`)
+          .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+          .then(data => applyRevisionData(data, rev))
+          .catch(() => {
+            // Invalid rev — clean the param and carry on
+            RevisionPreview.savedForm = null;
+            const url = new URL(window.location);
+            url.searchParams.delete('rev');
+            history.replaceState(null, '', url);
+            // Start normal polling since we're not in preview mode
+            RevisionPreview.startPolling();
+          });
+        return;
+      }
+
+      if (++attempts >= maxAttempts) {
+        clearInterval(poll);
+        console.error('TipTap editor failed to initialize within timeout');
+        // Clean up URL param
+        const url = new URL(window.location);
+        url.searchParams.delete('rev');
+        history.replaceState(null, '', url);
+        // Start normal polling
+        RevisionPreview.startPolling();
+      }
     }, 50);
   })();
 </script>
