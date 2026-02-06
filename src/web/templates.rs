@@ -5,7 +5,8 @@ use uuid::Uuid;
 
 use rustpress::db::UserWithRoles;
 use rustpress::models::{
-    ContentItem, ContentItemRevisionMeta, Site, SiteTemplate, User,
+    ContentItem, ContentItemRevision, ContentItemRevisionMeta, Site,
+    SiteTemplate, User,
 };
 
 #[derive(Template)]
@@ -59,6 +60,16 @@ pub struct AdminEditTemplate {
     pub item: ContentItem,
     pub author: String,
     pub templates: Vec<SiteTemplate>,
+    pub is_admin: bool,
+}
+
+#[derive(Template)]
+#[template(path = "admin/revision_preview.html")]
+pub struct AdminRevisionPreviewTemplate {
+    pub item: ContentItem,
+    pub revision: ContentItemRevision,
+    pub revision_author: String,
+    pub preview_html: String,
     pub is_admin: bool,
 }
 

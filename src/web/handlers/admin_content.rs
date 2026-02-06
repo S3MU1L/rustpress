@@ -24,6 +24,7 @@ use crate::web::state::AppState;
 use crate::web::templates::{
     AdminDashboardTemplate, AdminEditTemplate, AdminNewTemplate,
     AdminPagesListTemplate, AdminPostsListTemplate,
+    AdminRevisionPreviewTemplate,
 };
 
 #[get("/admin")]
@@ -260,11 +261,80 @@ pub async fn admin_create(
     }
 }
 
+/// Resolve a site template and render preview HTML as an `<iframe srcdoc>`.
+async fn compute_preview_html(
+    pool: &sqlx::PgPool,
+    owner_user_id: Option<Uuid>,
+    template_name: &str,
+    title: &str,
+    content: &str,
+    slug: &str,
+    kind_str: &str,
+) -> String {
+    let mut tpl = match owner_user_id {
+        Some(owner_id) => db::get_site_template_by_name_for_user(
+            pool,
+            owner_id,
+            template_name,
+        )
+        .await
+        .ok()
+        .flatten(),
+        None => db::get_site_template_by_name(pool, template_name)
+            .await
+            .ok()
+            .flatten(),
+    };
+    if tpl.is_none() {
+        tpl = match owner_user_id {
+            Some(owner_id) => {
+                db::get_site_template_by_name_for_user(
+                    pool, owner_id, "default",
+                )
+                .await
+                .ok()
+                .flatten()
+            }
+            None => db::get_site_template_by_name(pool, "default")
+                .await
+                .ok()
+                .flatten(),
+        };
+    }
+
+    let html = match tpl {
+        Some(tpl) => {
+            let tpl_html = if tpl.is_builtin {
+                normalize_builtin_template_html(&tpl.html)
+            } else {
+                std::borrow::Cow::Borrowed(tpl.html.as_str())
+            };
+            apply_site_template(
+                tpl_html.as_ref(),
+                title,
+                content,
+                slug,
+                kind_str,
+            )
+        }
+        None => apply_site_template(
+            "<!doctype html><html><head><meta charset=\"utf-8\"><title>{{title}}</title></head><body><h1>{{title}}</h1>{{content}}</body></html>",
+            title,
+            content,
+            slug,
+            kind_str,
+        ),
+    };
+
+    iframe_srcdoc(&html)
+}
+
 #[get("/admin/edit/{id}")]
 pub async fn admin_edit(
     state: web::Data<AppState>,
     req: HttpRequest,
     path: web::Path<Uuid>,
+    query: web::Query<PreviewQuery>,
 ) -> impl Responder {
     let uid = match require_user(&req) {
         Ok(uid) => uid,
@@ -304,6 +374,60 @@ pub async fn admin_edit(
     }
 
     let is_admin = get_is_admin(&req);
+
+    // Branch: revision preview vs normal edit
+    if let Some(rev) = query.rev {
+        if rev < 1 {
+            return render_not_found(&req);
+        }
+        if rev >= item.current_rev {
+            return HttpResponse::SeeOther()
+                .insert_header((
+                    "Location",
+                    format!("/admin/edit/{}", id),
+                ))
+                .finish();
+        }
+
+        let revision =
+            match db::get_revision(&state.pool, id, rev).await {
+                Ok(Some(r)) => r,
+                Ok(None) => return render_not_found(&req),
+                Err(e) => {
+                    return HttpResponse::InternalServerError()
+                        .body(e.to_string());
+                }
+            };
+
+        let revision_author = match revision.created_by_user_id {
+            Some(uid) => db::get_user_email_map(&state.pool, &[uid])
+                .await
+                .ok()
+                .and_then(|m| m.into_values().next())
+                .unwrap_or_else(|| "Unknown".to_string()),
+            None => "System".to_string(),
+        };
+
+        let preview_html = compute_preview_html(
+            &state.pool,
+            item.owner_user_id,
+            &revision.template,
+            &revision.title,
+            &revision.content,
+            &revision.slug,
+            item.kind.as_str(),
+        )
+        .await;
+
+        return render(AdminRevisionPreviewTemplate {
+            item,
+            revision,
+            revision_author,
+            preview_html,
+            is_admin,
+        });
+    }
+
     let author = match item.owner_user_id {
         Some(oid) => db::get_user_email_map(&state.pool, &[oid])
             .await
@@ -769,68 +893,20 @@ pub async fn admin_preview(
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| item.template.clone());
 
-    let mut tpl = match item.owner_user_id {
-        Some(owner_id) => db::get_site_template_by_name_for_user(
-            &state.pool,
-            owner_id,
-            &template_name,
-        )
-        .await
-        .ok()
-        .flatten(),
-        None => {
-            db::get_site_template_by_name(&state.pool, &template_name)
-                .await
-                .ok()
-                .flatten()
-        }
-    };
-    if tpl.is_none() {
-        tpl = match item.owner_user_id {
-            Some(owner_id) => db::get_site_template_by_name_for_user(
-                &state.pool,
-                owner_id,
-                "default",
-            )
-            .await
-            .ok()
-            .flatten(),
-            None => {
-                db::get_site_template_by_name(&state.pool, "default")
-                    .await
-                    .ok()
-                    .flatten()
-            }
-        };
-    }
-
-    let html = match tpl {
-        Some(tpl) => {
-            let tpl_html = if tpl.is_builtin {
-                normalize_builtin_template_html(&tpl.html)
-            } else {
-                std::borrow::Cow::Borrowed(tpl.html.as_str())
-            };
-            apply_site_template(
-                tpl_html.as_ref(),
-                &title,
-                &content,
-                &slug,
-                item.kind.as_str(),
-            )
-        }
-        None => apply_site_template(
-            "<!doctype html><html><head><meta charset=\"utf-8\"><title>{{title}}</title></head><body><h1>{{title}}</h1>{{content}}</body></html>",
-            &title,
-            &content,
-            &slug,
-            item.kind.as_str(),
-        ),
-    };
+    let preview = compute_preview_html(
+        &state.pool,
+        item.owner_user_id,
+        &template_name,
+        &title,
+        &content,
+        &slug,
+        item.kind.as_str(),
+    )
+    .await;
 
     HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
-        .body(iframe_srcdoc(&html))
+        .body(preview)
 }
 
 #[derive(Deserialize)]
@@ -900,6 +976,7 @@ pub async fn admin_preview_fullpage(
             )
         };
 
+    // compute_preview_html wraps in iframe_srcdoc; we need raw HTML here.
     let mut tpl = match item.owner_user_id {
         Some(owner_id) => db::get_site_template_by_name_for_user(
             &state.pool,
@@ -1001,52 +1078,20 @@ pub async fn admin_preview_new(
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| "default".to_string());
 
-    let mut tpl = db::get_site_template_by_name_for_user(
+    let preview = compute_preview_html(
         &state.pool,
-        uid,
+        Some(uid),
         &template_name,
+        &title,
+        &content,
+        &slug,
+        kind,
     )
-    .await
-    .ok()
-    .flatten();
-    if tpl.is_none() {
-        tpl = db::get_site_template_by_name_for_user(
-            &state.pool,
-            uid,
-            "default",
-        )
-        .await
-        .ok()
-        .flatten();
-    }
-
-    let html = match tpl {
-        Some(tpl) => {
-            let tpl_html = if tpl.is_builtin {
-                normalize_builtin_template_html(&tpl.html)
-            } else {
-                std::borrow::Cow::Borrowed(tpl.html.as_str())
-            };
-            apply_site_template(
-                tpl_html.as_ref(),
-                &title,
-                &content,
-                &slug,
-                kind,
-            )
-        }
-        None => apply_site_template(
-            "<!doctype html><html><head><meta charset=\"utf-8\"><title>{{title}}</title></head><body><h1>{{title}}</h1>{{content}}</body></html>",
-            &title,
-            &content,
-            &slug,
-            kind,
-        ),
-    };
+    .await;
 
     HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
-        .body(iframe_srcdoc(&html))
+        .body(preview)
 }
 
 pub fn configure(cfg: &mut web::ServiceConfig) {

@@ -31,11 +31,10 @@
     </div>
     {% if rev.rev != current_rev %}
     <div class="flex gap-1">
-      <button type="button"
-        class="px-2 py-1 rounded bg-rp-border/50 hover:bg-rp-border text-rp-text text-[11px] transition-colors"
-        onclick="previewRevision('{{ content_item_id }}', {{ rev.rev }})">
+      <a href="/admin/edit/{{ content_item_id }}?rev={{ rev.rev }}"
+        class="px-2 py-1 rounded bg-rp-border/50 hover:bg-rp-border text-rp-text text-[11px] transition-colors">
         Preview
-      </button>
+      </a>
       <button type="button"
         class="px-2 py-1 rounded bg-rp-primary/80 hover:bg-rp-primary text-white text-[11px] transition-colors"
         hx-post="/admin/content/{{ content_item_id }}/revisions/{{ rev.rev }}/restore"
