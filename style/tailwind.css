@@ -41,14 +41,6 @@
   --color-rp-warning: #dba617;
   --color-rp-warning-bg: #fcf9e8;
 
-  /* Header/sidebar colors */
-  --color-rp-header: #1a2436;
-  --color-rp-header-text: #f0f0f1;
-
-  /* Subtle backgrounds */
-  --color-rp-subtle: #f6f7f7;
-  --color-rp-hover: #f0f0f1;
-
   /* Fonts */
   --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Segoe UI Mono", monospace;
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
@@ -215,12 +207,10 @@
   }
 }
 
-/* Preview iframe */
 .preview-iframe {
   @apply w-full h-[70vh] border border-rp-border rounded bg-white;
 }
 
-/* Prose content for rendered HTML */
 .prose {
   @apply text-rp-text;
   line-height: 1.7;

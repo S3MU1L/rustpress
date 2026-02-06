@@ -8,6 +8,23 @@
 {% endblock %}
 
 {% block content %}
+<!-- Revision preview banner (hidden by default, shown above form when previewing) -->
+<div id="revision-preview-banner" class="hidden mb-4 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-sm flex items-center justify-between">
+  <span class="text-yellow-800 font-medium">
+    Previewing revision #<span id="preview-rev-num"></span>
+  </span>
+  <div class="flex gap-2">
+    <button type="button" onclick="cancelRevisionPreview()"
+      class="px-3 py-1.5 rounded-lg bg-rp-border/50 hover:bg-rp-border text-rp-text text-sm transition-colors">
+      Cancel
+    </button>
+    <button type="button" id="restore-preview-btn"
+      class="px-3 py-1.5 rounded-lg bg-rp-primary text-white text-sm font-medium hover:bg-rp-primary-hover transition-colors">
+      Restore this version
+    </button>
+  </div>
+</div>
+
 <form id="edit-form" method="post" action="/admin/edit/{{ item.id }}" hx-post="/admin/edit/{{ item.id }}"
   hx-target="body" hx-swap="outerHTML">
   <!-- Top Bar -->
@@ -29,39 +46,47 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
           </svg>
         </button>
-        <a class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
+        <a id="btn-preview" class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
           href="/admin/content/{{ item.id }}/preview" target="_blank">
           {{ macros::preview_button() }}
           Preview
         </a>
         {% if item.kind == "post" %}
-        <a class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
+        <a id="btn-view-live" class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
           href="/blog/{{ item.slug }}" target="_blank">
           {{ macros::external_link_icon() }}
           View Live
         </a>
         {% else %}
-        <a class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
+        <a id="btn-view-live" class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
           href="/{{ item.slug }}" target="_blank">
           {{ macros::external_link_icon() }}
           View Live
         </a>
         {% endif %}
-        <button
+        <button id="btn-save"
           class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
           type="submit">
           {{ macros::save_icon() }}
           Save
         </button>
         {% if item.status == "draft" %}
-        <button
+        <button id="btn-publish"
           class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
           type="button" hx-post="/admin/publish/{{ item.id }}" hx-target="body" hx-swap="outerHTML">
           {{ macros::publish_icon() }}
           Publish
         </button>
         {% endif %}
-        <button type="button"
+        <button type="button" onclick="openVersionsModal()"
+          class="px-4 py-2 rounded-lg bg-rp-surface border border-rp-border text-rp-text font-medium hover:bg-rp-border/30 transition-colors text-sm inline-flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Versions
+        </button>
+        <button id="btn-delete" type="button"
           class="px-4 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors text-sm inline-flex items-center gap-2"
           hx-post="/admin/edit/{{ item.id }}/delete" hx-swap="none"
           hx-confirm="Delete '{{ item.title }}'? This cannot be undone.">
@@ -117,7 +142,7 @@
     <!-- Sidebar -->
     <div class="space-y-4">
       <!-- Live Preview -->
-      <div class="card p-5">
+      <div id="live-preview-card" class="card p-5">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-sm font-medium flex items-center gap-2">
             <svg class="w-4 h-4 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -174,8 +199,252 @@
   <div id="autosave" hx-post="/admin/edit/{{ item.id }}/autosave" hx-trigger="autosave-trigger" hx-include="#edit-form"
     hx-target="#autosave-status" hx-swap="innerHTML"></div>
 </form>
+
+<!-- Versions Modal -->
+<div id="versions-modal" class="hidden fixed inset-0 z-50">
+  <div class="absolute inset-0 bg-black/50" onclick="closeVersionsModal()"></div>
+  <div class="absolute inset-y-0 right-0 w-full max-w-md bg-rp-bg border-l border-rp-border shadow-xl flex flex-col">
+    <div class="flex items-center justify-between p-4 border-b border-rp-border">
+      <h2 class="text-lg font-semibold flex items-center gap-2">
+        <svg class="w-5 h-5 text-rp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Version History
+      </h2>
+      <button type="button" onclick="closeVersionsModal()"
+        class="p-1.5 rounded-lg text-rp-muted hover:text-rp-text hover:bg-rp-border/30 transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <div id="versions-modal-body" class="flex-1 overflow-y-auto p-4">
+      <p class="text-rp-muted text-sm">Loading...</p>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 {% include "partials/editor_scripts.html" %}
+
+<script>
+const CONTENT_ITEM_ID = '{{ item.id }}';
+let _savedFormState = null;
+window.revisionPreviewActive = false;
+
+// ── Freeze / unfreeze editing ────────────────────────────
+// Everything that should be hidden during revision preview
+const FREEZE_IDS = [
+  'btn-save', 'btn-publish', 'btn-delete',
+  'btn-preview', 'btn-view-live',
+  'toggle-header', 'live-preview-card',
+];
+
+function freezeEditing() {
+  window.revisionPreviewActive = true;
+
+  if (window.tiptapEditor) window.tiptapEditor.setEditable(false);
+
+  // Disable form inputs
+  document.getElementById('title')?.setAttribute('readonly', '');
+  document.getElementById('slug')?.setAttribute('readonly', '');
+  document.querySelector('select[name="template"]')?.setAttribute('disabled', '');
+  document.querySelector('select[name="status"]')?.setAttribute('disabled', '');
+
+  // Collapse settings if open
+  const settings = document.getElementById('header-settings');
+  if (settings) settings.style.display = 'none';
+
+  // Hide buttons + live preview card
+  FREEZE_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('hidden');
+  });
+
+  // Dim the toolbar
+  const toolbar = document.querySelector('.tiptap-toolbar');
+  if (toolbar) {
+    toolbar.style.opacity = '0.4';
+    toolbar.style.pointerEvents = 'none';
+  }
+
+  // Stop the live preview HTMX polling
+  const previewEl = document.getElementById('preview');
+  if (previewEl) previewEl.removeAttribute('hx-trigger');
+}
+
+function unfreezeEditing() {
+  window.revisionPreviewActive = false;
+
+  if (window.tiptapEditor) window.tiptapEditor.setEditable(true);
+
+  document.getElementById('title')?.removeAttribute('readonly');
+  document.getElementById('slug')?.removeAttribute('readonly');
+  document.querySelector('select[name="template"]')?.removeAttribute('disabled');
+  document.querySelector('select[name="status"]')?.removeAttribute('disabled');
+
+  // Restore settings visibility based on saved preference
+  const settings = document.getElementById('header-settings');
+  if (settings && localStorage.getItem('header-collapsed') !== 'true') {
+    settings.style.display = 'block';
+  }
+
+  FREEZE_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('hidden');
+  });
+
+  const toolbar = document.querySelector('.tiptap-toolbar');
+  if (toolbar) {
+    toolbar.style.opacity = '';
+    toolbar.style.pointerEvents = '';
+  }
+
+  // Re-enable live preview polling
+  const previewEl = document.getElementById('preview');
+  if (previewEl) {
+    previewEl.setAttribute('hx-trigger', 'editor-change from:body delay:500ms, every 3s');
+    htmx.process(previewEl);
+  }
+}
+
+// ── Modal ────────────────────────────────────────────────
+function openVersionsModal() {
+  const modal = document.getElementById('versions-modal');
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  htmx.ajax('GET', `/admin/content/${CONTENT_ITEM_ID}/history`, '#versions-modal-body');
+}
+
+function closeVersionsModal() {
+  document.getElementById('versions-modal').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && !document.getElementById('versions-modal').classList.contains('hidden')) {
+    closeVersionsModal();
+  }
+});
+
+// ── Preview / Cancel / URL sync ──────────────────────────
+function previewRevision(contentItemId, rev) {
+  if (!_savedFormState) {
+    _savedFormState = {
+      title: document.getElementById('title')?.value || '',
+      slug: document.getElementById('slug')?.value || '',
+      content: document.getElementById('editor')?.value || '',
+      template: document.querySelector('select[name="template"]')?.value || '',
+      status: document.querySelector('select[name="status"]')?.value || '',
+    };
+  }
+
+  fetch(`/admin/content/${contentItemId}/revisions/${rev}`)
+    .then(r => r.json())
+    .then(data => {
+      applyRevisionData(data, rev);
+      closeVersionsModal();
+    })
+    .catch(err => console.error('Failed to load revision:', err));
+}
+
+function applyRevisionData(data, rev) {
+  const titleEl = document.getElementById('title');
+  const slugEl = document.getElementById('slug');
+  const editorEl = document.getElementById('editor');
+  const templateSel = document.querySelector('select[name="template"]');
+  const statusSel = document.querySelector('select[name="status"]');
+
+  if (titleEl) titleEl.value = data.title;
+  if (slugEl) slugEl.value = data.slug;
+  if (editorEl) editorEl.value = data.content;
+  if (templateSel) templateSel.value = data.template;
+  if (statusSel) statusSel.value = data.status;
+
+  if (window.tiptapEditor) {
+    window.tiptapEditor.commands.setContent(data.content);
+  }
+
+  // Show banner
+  document.getElementById('preview-rev-num').textContent = rev;
+  document.getElementById('revision-preview-banner').classList.remove('hidden');
+
+  // Wire restore button
+  const restoreBtn = document.getElementById('restore-preview-btn');
+  restoreBtn.setAttribute('hx-post', `/admin/content/${CONTENT_ITEM_ID}/revisions/${rev}/restore`);
+  restoreBtn.setAttribute('hx-swap', 'none');
+  restoreBtn.setAttribute('hx-confirm', `Restore to revision #${rev}? Current content will be replaced.`);
+  htmx.process(restoreBtn);
+
+  // Freeze editing + update URL
+  freezeEditing();
+  const url = new URL(window.location);
+  url.searchParams.set('rev', rev);
+  history.replaceState(null, '', url);
+}
+
+function cancelRevisionPreview() {
+  if (!_savedFormState) return;
+
+  const titleEl = document.getElementById('title');
+  const slugEl = document.getElementById('slug');
+  const editorEl = document.getElementById('editor');
+  const templateSel = document.querySelector('select[name="template"]');
+  const statusSel = document.querySelector('select[name="status"]');
+
+  if (titleEl) titleEl.value = _savedFormState.title;
+  if (slugEl) slugEl.value = _savedFormState.slug;
+  if (editorEl) editorEl.value = _savedFormState.content;
+  if (templateSel) templateSel.value = _savedFormState.template;
+  if (statusSel) statusSel.value = _savedFormState.status;
+
+  if (window.tiptapEditor) {
+    window.tiptapEditor.commands.setContent(_savedFormState.content);
+  }
+
+  document.getElementById('revision-preview-banner').classList.add('hidden');
+  _savedFormState = null;
+
+  // Unfreeze editing + clean URL
+  unfreezeEditing();
+  const url = new URL(window.location);
+  url.searchParams.delete('rev');
+  history.replaceState(null, '', url);
+}
+
+// ── On-load: auto-enter preview if ?rev=N ────────────────
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const rev = parseInt(params.get('rev'), 10);
+  if (!rev || rev < 1) return;
+
+  // Wait for TipTap to initialise (module script runs async)
+  const poll = setInterval(() => {
+    if (!window.tiptapEditor) return;
+    clearInterval(poll);
+
+    // Snapshot current (live) state before overwriting
+    _savedFormState = {
+      title: document.getElementById('title')?.value || '',
+      slug: document.getElementById('slug')?.value || '',
+      content: document.getElementById('editor')?.value || '',
+      template: document.querySelector('select[name="template"]')?.value || '',
+      status: document.querySelector('select[name="status"]')?.value || '',
+    };
+
+    fetch(`/admin/content/${CONTENT_ITEM_ID}/revisions/${rev}`)
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(data => applyRevisionData(data, rev))
+      .catch(() => {
+        // Invalid rev — clean the param and carry on
+        _savedFormState = null;
+        const url = new URL(window.location);
+        url.searchParams.delete('rev');
+        history.replaceState(null, '', url);
+      });
+  }, 50);
+})();
+</script>
 {% endblock %}

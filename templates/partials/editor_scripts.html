@@ -23,6 +23,7 @@ const triggerEditorChange = debounce(() => {
 }, 300);
 
 const triggerAutosave = debounce(() => {
+  if (window.revisionPreviewActive) return;
   const autosave = document.getElementById('autosave');
   if (autosave) {
     autosave.dispatchEvent(new Event('autosave-trigger', { bubbles: true }));
@@ -59,6 +60,9 @@ const editor = new Editor({
     triggerAutosave();
   },
 });
+
+// Expose editor instance globally for revision preview
+window.tiptapEditor = editor;
 
 // Toolbar button handlers
 window.editorCmd = {
