@@ -69,6 +69,24 @@
     </form>
   </div>
 
+  <div class="card p-5 mb-6" style="border-color: var(--color-rp-error);">
+    <h2 class="text-lg mb-2" style="color: var(--color-rp-error);">Delete Account</h2>
+    <p class="text-rp-muted text-sm mb-4">
+      Permanently delete your account. This action cannot be undone.
+    </p>
+    <form method="post" action="/admin/me/account/delete"
+          hx-post="/admin/me/account/delete" hx-target="body" hx-swap="outerHTML"
+          hx-confirm="Are you sure you want to delete your account? This cannot be undone.">
+      <label>
+        Confirm Password
+        <input type="password" name="password" required placeholder="Enter your password to confirm" />
+      </label>
+      <div class="mt-4">
+        <button class="btn-danger" type="submit">Delete My Account</button>
+      </div>
+    </form>
+  </div>
+
   <div class="flex items-center gap-3">
     <a class="btn-secondary" href="/admin">Back to Dashboard</a>
     <a class="btn-secondary" href="/admin/me/security">Security Settings</a>

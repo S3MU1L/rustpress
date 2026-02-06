@@ -129,3 +129,8 @@ pub struct AdminUpdateUserForm {
     pub role: RoleName,
     pub new_password: Option<String>,
 }
+
+#[derive(Deserialize)]
+pub struct DeleteAccountForm {
+    pub password: String,
+}
