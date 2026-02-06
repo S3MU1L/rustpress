@@ -9,6 +9,8 @@ use rustpress::models::{
     ContentCreate, ContentKind, ContentStatus, ContentUpdate,
 };
 
+use serde::Deserialize;
+
 use crate::web::forms::{
     AdminCreateForm, AdminLiveForm, AdminNewPreviewForm,
     AdminUpdateForm, SitesQuery,
@@ -800,12 +802,19 @@ pub async fn admin_preview(
         .body(iframe_srcdoc(&html))
 }
 
-/// Full-page preview in a new tab (does NOT publish)
+#[derive(Deserialize)]
+pub struct PreviewQuery {
+    pub rev: Option<i32>,
+}
+
+/// Full-page preview in a new tab (does NOT publish).
+/// Accepts optional `?rev=N` to preview a specific revision.
 #[get("/admin/content/{id}/preview")]
 pub async fn admin_preview_fullpage(
     state: web::Data<AppState>,
     req: HttpRequest,
     path: web::Path<Uuid>,
+    query: web::Query<PreviewQuery>,
 ) -> impl Responder {
     let uid = match require_user(&req) {
         Ok(uid) => uid,
@@ -835,19 +844,42 @@ pub async fn admin_preview_fullpage(
         return HttpResponse::Forbidden().body("Forbidden");
     }
 
-    let template_name = &item.template;
+    // If a specific revision is requested, use its content instead.
+    let (title, slug, content, template_name) =
+        if let Some(rev) = query.rev {
+            match db::get_revision(&state.pool, id, rev).await {
+                Ok(Some(revision)) => (
+                    revision.title,
+                    revision.slug,
+                    revision.content,
+                    revision.template,
+                ),
+                Ok(None) => return render_not_found(&req),
+                Err(e) => {
+                    return HttpResponse::InternalServerError()
+                        .body(e.to_string());
+                }
+            }
+        } else {
+            (
+                item.title.clone(),
+                item.slug.clone(),
+                item.content.clone(),
+                item.template.clone(),
+            )
+        };
 
     let mut tpl = match item.owner_user_id {
         Some(owner_id) => db::get_site_template_by_name_for_user(
             &state.pool,
             owner_id,
-            template_name,
+            &template_name,
         )
         .await
         .ok()
         .flatten(),
         None => {
-            db::get_site_template_by_name(&state.pool, template_name)
+            db::get_site_template_by_name(&state.pool, &template_name)
                 .await
                 .ok()
                 .flatten()
@@ -881,17 +913,17 @@ pub async fn admin_preview_fullpage(
             };
             apply_site_template(
                 tpl_html.as_ref(),
-                &item.title,
-                &item.content,
-                &item.slug,
+                &title,
+                &content,
+                &slug,
                 item.kind.as_str(),
             )
         }
         None => apply_site_template(
             "<!doctype html><html><head><meta charset=\"utf-8\"><title>{{title}}</title></head><body><h1>{{title}}</h1>{{content}}</body></html>",
-            &item.title,
-            &item.content,
-            &item.slug,
+            &title,
+            &content,
+            &slug,
             item.kind.as_str(),
         ),
     };

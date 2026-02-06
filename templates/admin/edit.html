@@ -10,9 +10,25 @@
 {% block content %}
 <!-- Revision preview banner (hidden by default, shown above form when previewing) -->
 <div id="revision-preview-banner" class="hidden mb-4 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-sm flex items-center justify-between">
-  <span class="text-yellow-800 font-medium">
-    Previewing revision #<span id="preview-rev-num"></span>
-  </span>
+  <div class="flex items-center gap-2">
+    <button type="button" id="rev-prev-btn" onclick="navigateRevision(-1)"
+      class="p-1 rounded hover:bg-yellow-200 text-yellow-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+      title="Previous revision">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+      </svg>
+    </button>
+    <span class="text-yellow-800 font-medium">
+      Revision #<span id="preview-rev-num"></span>
+    </span>
+    <button type="button" id="rev-next-btn" onclick="navigateRevision(1)"
+      class="p-1 rounded hover:bg-yellow-200 text-yellow-800 transition-colors"
+      title="Next revision">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+      </svg>
+    </button>
+  </div>
   <div class="flex gap-2">
     <button type="button" onclick="cancelRevisionPreview()"
       class="px-3 py-1.5 rounded-lg bg-rp-border/50 hover:bg-rp-border text-rp-text text-sm transition-colors">
@@ -51,6 +67,7 @@
           {{ macros::preview_button() }}
           Preview
         </a>
+        {% if item.status == "published" %}
         {% if item.kind == "post" %}
         <a id="btn-view-live" class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
           href="/blog/{{ item.slug }}" target="_blank">
@@ -63,6 +80,7 @@
           {{ macros::external_link_icon() }}
           View Live
         </a>
+        {% endif %}
         {% endif %}
         <button id="btn-save"
           class="px-4 py-2 rounded-lg bg-rp-primary text-white font-medium hover:bg-rp-primary-hover transition-colors text-sm inline-flex items-center gap-2"
@@ -240,15 +258,18 @@
 
 <script>
 const CONTENT_ITEM_ID = '{{ item.id }}';
+const CURRENT_REV = {{ item.current_rev }};
 let _savedFormState = null;
+let _previewingRev = 0;
 window.revisionPreviewActive = false;
 
 // ── Freeze / unfreeze editing ────────────────────────────
-// Everything that should be hidden during revision preview
+// Hidden during revision preview. Live preview sidebar stays — it reads from
+// the form fields so it correctly renders whichever revision is loaded.
 const FREEZE_IDS = [
   'btn-save', 'btn-publish', 'btn-delete',
-  'btn-preview', 'btn-view-live',
-  'toggle-header', 'live-preview-card',
+  'btn-view-live',
+  'toggle-header',
 ];
 
 function freezeEditing() {
@@ -256,32 +277,34 @@ function freezeEditing() {
 
   if (window.tiptapEditor) window.tiptapEditor.setEditable(false);
 
-  // Disable form inputs
   document.getElementById('title')?.setAttribute('readonly', '');
   document.getElementById('slug')?.setAttribute('readonly', '');
   document.querySelector('select[name="template"]')?.setAttribute('disabled', '');
   document.querySelector('select[name="status"]')?.setAttribute('disabled', '');
 
-  // Collapse settings if open
   const settings = document.getElementById('header-settings');
   if (settings) settings.style.display = 'none';
 
-  // Hide buttons + live preview card
   FREEZE_IDS.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add('hidden');
   });
 
-  // Dim the toolbar
+  // Update Preview button to point to this revision's full-page preview
+  const previewBtn = document.getElementById('btn-preview');
+  if (previewBtn && _previewingRev) {
+    previewBtn.href = `/admin/content/${CONTENT_ITEM_ID}/preview?rev=${_previewingRev}`;
+  }
+
   const toolbar = document.querySelector('.tiptap-toolbar');
   if (toolbar) {
     toolbar.style.opacity = '0.4';
     toolbar.style.pointerEvents = 'none';
   }
 
-  // Stop the live preview HTMX polling
+  // Kick a live preview refresh so it renders the revision content
   const previewEl = document.getElementById('preview');
-  if (previewEl) previewEl.removeAttribute('hx-trigger');
+  if (previewEl) htmx.trigger(previewEl, 'editor-change');
 }
 
 function unfreezeEditing() {
@@ -294,7 +317,6 @@ function unfreezeEditing() {
   document.querySelector('select[name="template"]')?.removeAttribute('disabled');
   document.querySelector('select[name="status"]')?.removeAttribute('disabled');
 
-  // Restore settings visibility based on saved preference
   const settings = document.getElementById('header-settings');
   if (settings && localStorage.getItem('header-collapsed') !== 'true') {
     settings.style.display = 'block';
@@ -305,17 +327,16 @@ function unfreezeEditing() {
     if (el) el.classList.remove('hidden');
   });
 
+  // Reset Preview button to current content
+  const previewBtn = document.getElementById('btn-preview');
+  if (previewBtn) {
+    previewBtn.href = `/admin/content/${CONTENT_ITEM_ID}/preview`;
+  }
+
   const toolbar = document.querySelector('.tiptap-toolbar');
   if (toolbar) {
     toolbar.style.opacity = '';
     toolbar.style.pointerEvents = '';
-  }
-
-  // Re-enable live preview polling
-  const previewEl = document.getElementById('preview');
-  if (previewEl) {
-    previewEl.setAttribute('hx-trigger', 'editor-change from:body delay:500ms, every 3s');
-    htmx.process(previewEl);
   }
 }
 
@@ -376,9 +397,23 @@ function applyRevisionData(data, rev) {
     window.tiptapEditor.commands.setContent(data.content);
   }
 
+  _previewingRev = rev;
+
   // Show banner
   document.getElementById('preview-rev-num').textContent = rev;
   document.getElementById('revision-preview-banner').classList.remove('hidden');
+
+  // Update navigation arrows
+  const prevBtn = document.getElementById('rev-prev-btn');
+  const nextBtn = document.getElementById('rev-next-btn');
+  prevBtn.disabled = (rev <= 1);
+  if (rev >= CURRENT_REV - 1) {
+    nextBtn.innerHTML = '<span class="text-xs font-medium px-1">Current</span>';
+    nextBtn.title = 'Return to current version';
+  } else {
+    nextBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>';
+    nextBtn.title = 'Next revision';
+  }
 
   // Wire restore button
   const restoreBtn = document.getElementById('restore-preview-btn');
@@ -392,6 +427,20 @@ function applyRevisionData(data, rev) {
   const url = new URL(window.location);
   url.searchParams.set('rev', rev);
   history.replaceState(null, '', url);
+}
+
+function navigateRevision(delta) {
+  const target = _previewingRev + delta;
+  if (target < 1) return;
+  if (target >= CURRENT_REV) {
+    cancelRevisionPreview();
+    return;
+  }
+  // Reuse previewRevision — savedFormState is already captured
+  fetch(`/admin/content/${CONTENT_ITEM_ID}/revisions/${target}`)
+    .then(r => r.json())
+    .then(data => applyRevisionData(data, target))
+    .catch(err => console.error('Failed to load revision:', err));
 }
 
 function cancelRevisionPreview() {
